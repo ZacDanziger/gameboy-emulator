@@ -43,4 +43,6 @@ Memory& Interconnect::resolve_device(uint16_t address) {
     if (address >= HRAM_START && address <= HRAM_END) {
         return _hram;
     }
+
+    throw std::runtime_error("Address not valid");
 }
