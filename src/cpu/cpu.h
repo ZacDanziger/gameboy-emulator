@@ -2,14 +2,6 @@
 #define CPU_H
 
 #include "interconnect.h"
-#include <array>
-
-// Struct for opcode metadata stored in /instructions.cpp
-struct Instruction {
-    const char* name;
-    uint8_t cycles;
-    void (CPU::*exec)();
-};
 
 struct Registers {
     // Gameboy's Eight 8-bit registers
@@ -37,6 +29,12 @@ struct Registers {
     A = 111
     */
     uint8_t *reg_array[8] = {&b, &c, &d, &e, &h, &l, nullptr, &a};
+
+    uint8_t &reg(int code) {    // needs testing - not sure I'm dereferencing correctly
+        if (code == 6) throw std::runtime_error("Use memory for [HL]");
+        return *reg_array[code];
+    }
+
 };
 
 class CPU {
@@ -44,19 +42,36 @@ class CPU {
         CPU(const std::vector<uint8_t>& rom_data);
 
         uint8_t fetch();
-        size_t step();
+        int step();
 
     private:
         Interconnect _memory;
         Registers _registers;
 
-        void handle_interrupts();
+        bool _zero_flag = false;
+        bool _sub_flag = false;
+        bool _half_carry_flag = false;
+        bool _carry_flag = false;
+
+        void handle_interrupts() {} // needs to be created
 
         uint8_t get_hl();
         void set_hl(int reg);
 
-        void NOP() {}
-        size_t LD_8(int& dest, int src);      
+        // CPU control
+        int nop() {}
+        int halt() {}  // needs to be created
+        int stop() {}
+
+        // 8-bit transfer and I/O
+        int ld_8(int dest, int src);
+        int add_8(int src);
+        int adc_8(int src);
+        int sub_8(int src);
+        int sbc_8(int src);
+        int and_8(int src);
+
+
 };
 
 #endif
