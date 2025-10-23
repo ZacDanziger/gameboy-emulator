@@ -1,7 +1,7 @@
 #include "interconnect.h"
 
 Interconnect::Interconnect(const std::vector<uint8_t>& rom_data) 
-    : _rom(rom_data), _vram(0), _wram(0), _hram(0) {}  //need to change out 0s
+    : _rom(rom_data), _vram(VRAM_SIZE), _wram(WRAM_SIZE), _hram(HRAM_SIZE) {}
 
 uint8_t Interconnect::read(uint16_t address) {
     return resolve_device(address).read(address);
@@ -34,6 +34,10 @@ Memory& Interconnect::resolve_device(uint16_t address) {
 
     if (address <= OAM_END) {
         return _vram;
+    }
+
+    if (address < IO_START) {
+        throw std::runtime_error("Cannot use this section of memory");
     }
 
     if (address >= HRAM_START && address <= HRAM_END) {

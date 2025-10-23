@@ -12,7 +12,7 @@ Work RAM--------------------------0xC000 - 0xCFFF
 Switchable Banks 1-7--------------0xD000 - 0xDFFF
 Echo RAM--------------------------0xE000 - 0xFDFF
 Object Attribute Memory (OAM)-----0xFE00 - 0xFE9F
-NOT USABLE------------------------0xFEA0 - 0xFEFF
+NOT USABLE!!!---------------------0xFEA0 - 0xFEFF
 I/O Registers---------------------0xFF00 - 0xFF7F
 High RAM--------------------------0xFF80 - 0xFFFE
 Interrupt Enable Register---------0xFFFF
@@ -23,9 +23,19 @@ const uint16_t ERAM_END = 0xBFFF;
 const uint16_t WRAM_END = 0xDFFF;
 const uint16_t ECHO_END = 0xFDFF;
 const uint16_t OAM_END = 0xFE9F;
+const uint16_t IO_START = 0xFF00;
 const uint16_t HRAM_START = 0xFF80;
 const uint16_t HRAM_END = 0xFFFE;
 const uint16_t IE_REGISTER = 0xFFFF;
+
+/*
+VRAM size = 0x9FFF - 0x7FFF = 0x2000
+WRAM size = 0xDFFF - 0xBFFF = 0x2000
+HRAM size = 0xFFFE - 0xFF7F = 0x007F
+*/
+const uint16_t VRAM_SIZE = 0x2000;
+const uint16_t WRAM_SIZE = 0x2000;
+const uint16_t HRAM_SIZE = 0x007F;
 
 // Needs Error Handling
 class Interconnect {
