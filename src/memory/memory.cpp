@@ -12,8 +12,19 @@ void Memory::write(uint16_t address, uint8_t data) {
     _bytes[address] = data; // check for edge cases
 }
 
+ROM::ROM() : Memory(0) {}
+
 ROM::ROM(const std::vector<uint8_t>& data) : Memory(data) {}
 
 void ROM::write(uint16_t address, uint8_t data) {
     throw std::runtime_error("Cannot write to ROM");
+}
+
+void ROM::load(char* file) {
+    std::ifstream is(file, std::ios::binary);
+    std::istream_iterator<uint8_t> start(is), end;
+    std::vector<uint8_t> buffer(start, end);
+
+    _size = buffer.size();
+    _bytes = buffer;
 }

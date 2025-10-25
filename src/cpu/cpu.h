@@ -3,73 +3,62 @@
 
 #include "interconnect.h"
 
-struct Registers {
-    // Gameboy's Eight 8-bit registers
-    uint8_t a;
-    uint8_t f;
-    uint8_t b;
-    uint8_t c;
-    uint8_t d;
-    uint8_t e;
-    uint8_t h;
-    uint8_t l;
-
-    // Stack Pointer and Program Counter
-    uint16_t sp;
-    uint16_t pc;
-
-    /*
-    B = 000
-    C = 001
-    D = 010
-    E = 011
-    H = 100
-    L = 101
-    [HL] = 110 - LD [HL], [HL] is actually HALT
-    A = 111
-    */
-    uint8_t *reg_array[8] = {&b, &c, &d, &e, &h, &l, nullptr, &a};
-
-    uint8_t &reg(int code) {    // needs testing - not sure I'm dereferencing correctly
-        if (code == 6) throw std::runtime_error("Use memory for [HL]");
-        return *reg_array[code];
-    }
-
-};
-
 class CPU {
     public:
         CPU(const std::vector<uint8_t>& rom_data);
 
-        uint8_t fetch();
         int step();
 
     private:
         Interconnect _memory;
-        Registers _registers;
+        
+        // Gameboy's Eight 8-bit registers
+        uint8_t reg_A;
+        uint8_t reg_F;
+        uint8_t reg_B;
+        uint8_t reg_C;
+        uint8_t reg_D;
+        uint8_t reg_E;
+        uint8_t reg_H;
+        uint8_t reg_L;
 
-        bool _zero_flag = false;
-        bool _sub_flag = false;
-        bool _half_carry_flag = false;
-        bool _carry_flag = false;
+        // Stack Pointer and Program Counter
+        uint16_t reg_SP;
+        uint16_t reg_PC;
+
+        const uint8_t FLAG_ZERO       = 0b10000000;
+        const uint8_t FLAG_SUB        = 0b01000000;
+        const uint8_t FLAG_HALF_CARRY = 0b00100000;
+        const uint8_t FLAG_CARRY      = 0b00010000;
 
         void handle_interrupts() {} // needs to be created
+
+        uint8_t fetch();
+        int decode_execute(uint8_t opcode);
+
+        void update_flag(uint8_t flag, bool new_val);
 
         uint8_t get_hl();
         void set_hl(int reg);
 
+        int parse_op_code;
+
         // CPU control
         int nop() {}
         int halt() {}  // needs to be created
-        int stop() {}
+        int stop() {}  // needs to be created
 
         // 8-bit transfer and I/O
-        int ld_8(int dest, int src);
-        int add_8(int src);
-        int adc_8(int src);
-        int sub_8(int src);
-        int sbc_8(int src);
-        int and_8(int src);
+        int ld_8(uint8_t& dest, uint8_t value);
+        int ld_8(uint8_t& dest, uint16_t address);
+        int add_8(int reg, bool carry);
+        int sub_8(int reg, bool carry);
+        int and_8(int reg);
+        int xor_8(int reg);
+        int or_8(int reg);
+        int cp_8(int reg);
+        
+
 
 
 };
