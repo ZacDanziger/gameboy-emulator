@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include "interconnect.h"
+#include "../memory/interconnect.h"
 
 class CPU {
     public:

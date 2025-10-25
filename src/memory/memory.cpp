@@ -1,30 +1,32 @@
 #include "memory.h"
 
-Memory::Memory(size_t size) : _size(size), _bytes(_size, 0) {}
-
-Memory::Memory(const std::vector<uint8_t>& data) : _size(data.size()), _bytes(data) {}
-
-uint8_t Memory::read(uint16_t address) {
-    return _bytes[address]; //check for edge cases
+Memory::Memory() {
+    _rom_bank_00  = {0};
+    _rom_bank_01  = {0};
+    _vram         = {0};
+    _wram_bank_00 = {0};
+    _wram_bank_01 = {0};
+    _hram         = {0};
 }
 
-void Memory::write(uint16_t address, uint8_t data) {
-    _bytes[address] = data; // check for edge cases
+Byte Memory::read(Address address) {
+    if (address < ROM_BANK_01_START)                    { return _rom_bank_00[address]; }
+    if (address < VRAM_START)                           { return _rom_bank_01[address - ROM_BANK_01_START]; }
+    if (address < ERAM_START)                           { return _vram[address - VRAM_START]; }
+    if (address < WRAM_BANK_01_START)                   { return _wram_bank_00[address - WRAM_BANK_00_START]; }
+    if (address < ECHO_START)                           { return _wram_bank_01[address - WRAM_BANK_01_START]; }
+    if (address <= HRAM_START && address < IE_REGISTER) { return _hram[address - HRAM_START]; }
 }
 
-ROM::ROM() : Memory(0) {}
-
-ROM::ROM(const std::vector<uint8_t>& data) : Memory(data) {}
-
-void ROM::write(uint16_t address, uint8_t data) {
-    throw std::runtime_error("Cannot write to ROM");
+void Memory::write(Address address, Byte data) {
+    if (address < ROM_BANK_01_START)                    { _rom_bank_00[address] = data; }
+    if (address < VRAM_START)                           { _rom_bank_01[address - ROM_BANK_01_START] = data; }
+    if (address < ERAM_START)                           { _vram[address - VRAM_START] = data; }\
+    if (address < WRAM_BANK_01_START)                   { _wram_bank_00[address - WRAM_BANK_00_START] = data; }
+    if (address < ECHO_START)                           { _wram_bank_01[address - WRAM_BANK_01_START] = data; }
+    if (address <= HRAM_START && address < IE_REGISTER) { _hram[address - HRAM_START] = data; }
 }
 
-void ROM::load(char* file) {
-    std::ifstream is(file, std::ios::binary);
-    std::istream_iterator<uint8_t> start(is), end;
-    std::vector<uint8_t> buffer(start, end);
-
-    _size = buffer.size();
-    _bytes = buffer;
+void Memory::load_rom(std::string file) {
+    
 }
