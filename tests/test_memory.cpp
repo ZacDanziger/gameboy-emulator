@@ -1,11 +1,9 @@
 #include "../src/memory/memory.h"
 #include <iostream>
+#include <gtest/gtest.h>
 
-bool test_memory_constructor() {
-    Memory memory;
+TEST(MemoryTest, DefaultConstructor) {
 
-    return false;
-    
 }
 
 int main() {

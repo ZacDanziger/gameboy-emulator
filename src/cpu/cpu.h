@@ -45,9 +45,9 @@ class CPU {
         int parse_op_code;
 
         // CPU control
-        int nop() {}
-        int halt() {}  // needs to be created
-        int stop() {}  // needs to be created
+        // int nop() {}
+        // int halt() {}  // needs to be created
+        // int stop() {}  // needs to be created
 
         // 8-bit transfer and I/O
         int ld_8(uint8_t& dest, uint8_t value);
@@ -64,4 +64,4 @@ class CPU {
 
 };
 
-#endif
+#endif // CPU_H

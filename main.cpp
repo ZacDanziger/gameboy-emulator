@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "src/memory/memory.h"
+#include "src/src.h"
 
 int main(int, char**){
     Memory memory;
