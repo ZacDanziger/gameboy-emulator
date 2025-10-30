@@ -1,16 +1,17 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include "../memory/interconnect.h"
+#include "../memory/memory.h"
 
 class CPU {
     public:
+        CPU();
         CPU(const std::vector<uint8_t>& rom_data);
 
         int step();
 
     private:
-        Interconnect _memory;
+        Memory _memory;
         
         // Gameboy's Eight 8-bit registers
         uint8_t reg_A;

@@ -1,27 +1,30 @@
-#ifndef INTERCONNECT_H
-#define INTERCONNECT_H
+#ifndef MEMORY_H
+#define MEMORY_H
 
 #include <stdint.h>
 #include <array>
+#include <vector>
 #include <stdexcept>
+#include <fstream>
+#include <iterator>
 
 
 typedef uint8_t Byte;
 typedef uint16_t Address;
 
 /*
-ROM bank 00-----------------------0x0000 - 0x3FFF
-ROM banks 01-NN-------------------0x4000 - 0x7FFF
-Video RAM-------------------------0x8000 - 0x9FFF
-External RAM----------------------0xA000 - 0xBFFF
-Work RAM--------------------------0xC000 - 0xCFFF
-Switchable Banks 1-7--------------0xD000 - 0xDFFF
-Echo RAM--------------------------0xE000 - 0xFDFF
-Object Attribute Memory (OAM)-----0xFE00 - 0xFE9F
-NOT USABLE!!!---------------------0xFEA0 - 0xFEFF
-I/O Registers---------------------0xFF00 - 0xFF7F
-High RAM--------------------------0xFF80 - 0xFFFE
-Interrupt Enable Register---------0xFFFF
+ROM bank 00------------------------0x0000 - 0x3FFF
+ROM banks 01-NN--------------------0x4000 - 0x7FFF
+Video RAM--------------------------0x8000 - 0x9FFF
+External RAM-----------------------0xA000 - 0xBFFF
+Work RAM---------------------------0xC000 - 0xCFFF
+Switchable Banks 1-7---------------0xD000 - 0xDFFF
+Echo RAM---------------------------0xE000 - 0xFDFF
+Object Attribute Memory (OAM)------0xFE00 - 0xFE9F
+NOT USABLE!!!----------------------0xFEA0 - 0xFEFF
+I/O Registers----------------------0xFF00 - 0xFF7F
+High RAM---------------------------0xFF80 - 0xFFFE
+Interrupt Enable Register----------0xFFFF
 */
 const Address ROM_BANK_01_START  = 0x4000;
 const Address VRAM_START         = 0x8000;
@@ -49,6 +52,9 @@ const uint16_t HRAM_SIZE      = 0x007F;
     Represents all memory in the gameboy
     ** currently handles ROM, VRAM, WRAM, and HRAM
     ** currently does not handle ERAM, ECHO RAM, OAM, I/O REGISTERS, and IE REGISTER
+
+    ** TODO:
+        * 
 */
 class Memory {
     public:
