@@ -75,9 +75,10 @@ void Memory::load_rom(std::string file) {
 
     std::array<Byte, ROM_BANK_SIZE> buffer = {0};
 
-    for (int i = 0; i < ROM_BANK_SIZE; i++) {
-        infile >> buffer[i];
-    }
+    infile.read(reinterpret_cast<char*>(buffer.data()), (buffer.size()));
+    // for (int i = 0; i < ROM_BANK_SIZE; i++) {
+    //     infile >> buffer[i];
+    // }
 
     infile.close();
 

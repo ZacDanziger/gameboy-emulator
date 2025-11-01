@@ -1,3 +1,4 @@
 .vscode/
 # CMakeLists.txt
 build/
+googletest/
