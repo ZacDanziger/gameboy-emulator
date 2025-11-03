@@ -6,6 +6,7 @@ Memory::Memory() {
     _vram = {0};
     _wram_bank_00 = {0};
     _wram_bank_01 = {0};
+    _io_registers = {0};
     _hram = {0};
 }
 
@@ -22,7 +23,7 @@ Byte Memory::read(Address address) const {
         return _vram[address - VRAM_START];
     }
 
-    if (address < WRAM_BANK_01_START && address >= WRAM_BANK_00_START) {
+    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) {
         return _wram_bank_00[address - WRAM_BANK_00_START];
     }
 
@@ -30,7 +31,11 @@ Byte Memory::read(Address address) const {
         return _wram_bank_01[address - WRAM_BANK_01_START];
     }
 
-    if (address <= HRAM_START && address < IE_REGISTER) {
+    if (address >= IO_START && address < HRAM_START) {
+        return _io_registers[address - IO_START];
+    }
+
+    if (address < IE_REGISTER) {
         return _hram[address - HRAM_START];
     }
 
@@ -38,6 +43,7 @@ Byte Memory::read(Address address) const {
 }
 
 void Memory::write(Address address, Byte data) {
+
     // NO WRITING TO ROM!!!
     // if (address < ROM_BANK_01_START) {
     //     _rom_bank_00[address] = data;
@@ -52,15 +58,23 @@ void Memory::write(Address address, Byte data) {
         _vram[address - VRAM_START] = data;
         return;
     }
-    if (address < WRAM_BANK_01_START && address >= WRAM_BANK_00_START) {
+
+    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) {
         _wram_bank_00[address - WRAM_BANK_00_START] = data;
         return;
     }
+
     if (address < ECHO_START) {
         _wram_bank_01[address - WRAM_BANK_01_START] = data;
         return;
     }
-    if (address <= HRAM_START && address < IE_REGISTER) {
+
+    if (address >= IO_START && address < HRAM_START) {
+        _io_registers[address - IO_START] = data;
+        return;
+    }
+
+    if (address < IE_REGISTER) {
         _hram[address - HRAM_START] = data;
         return;
     }

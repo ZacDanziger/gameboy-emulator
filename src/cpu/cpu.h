@@ -47,12 +47,14 @@ class CPU {
         void handle_interrupts(); // not implemented
 
         // Fetch -> Decode -> Execute cycle
+
         Byte fetch();
         Word fetch16();
         int decode_execute(Byte opcode);
         int decode_execute_cb();
 
         // Helper Functions
+
         bool get_flag(const uint8_t flag) const;        
         void update_flag(const uint8_t flag, bool new_val);
         Word get_pair(const Pair& pair) const;
@@ -103,7 +105,7 @@ class CPU {
         // 16-bit arithmetic
 
         void ADD(const Word value);     // HL += value
-        void ADD();                     // SP += e8
+        Word ADD();                     // SP + e8 
         void INC(Word& reg);
         void INC(Pair& pair);
         void DEC(Word& reg);

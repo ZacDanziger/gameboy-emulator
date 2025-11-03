@@ -490,21 +490,25 @@ void CPU::ADD(const Word value) {
  * Adds signed 8-bit imm value to SP
  * --- NOT TESTED ---
  * 0 0 H C
+ * 
+ * @return SP + e8
 */
-void CPU::ADD() {
+Word CPU::ADD() {
     // Get signed one byte immediate value
-    int8_t imm = static_cast<int8_t>(fetch());
-    uint32_t res = static_cast<uint32_t>(reg_SP + imm);
+    Byte imm = static_cast<Byte>(fetch());
+    uint32_t temp = static_cast<uint32_t>(reg_SP + imm);
 
-    bool carry = (res >> 16) & 0b1;
+    bool carry = (temp >> 16) & 0b1;
     bool half_carry = (((imm & 0xF) + (reg_SP & 0xF)) > 0xF);
 
-    reg_SP = (res & 0xFF);
+    Word res = static_cast<Word>(temp & 0xFF);
 
     update_flag(FLAG_ZERO, false);
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
     update_flag(FLAG_CARRY, carry);
+
+    return res;
 }
 /***
  * 16-bit increment

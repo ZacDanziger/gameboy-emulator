@@ -44,14 +44,14 @@ TEST_F(MemoryTest, LoadROM) {
 }
 
 
-TEST_F(MemoryTest, HandlesWrite) {
-    int index = std::rand() % ROM_BANK_SIZE;
+// TEST_F(MemoryTest, HandlesWrite) {
+//     int index = std::rand() % ROM_BANK_SIZE;
 
-    uint8_t old_data = _mem.read(index);
-    _mem.write(index, old_data + 1);
+//     uint8_t old_data = _mem.read(index);
+//     _mem.write(index, old_data + 1);
 
-    EXPECT_NE(_mem.read(index), old_data);
-}
+//     EXPECT_NE(_mem.read(index), old_data);
+// }
 
 
 

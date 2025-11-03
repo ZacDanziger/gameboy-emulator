@@ -40,20 +40,22 @@ const Address IE_REGISTER        = 0xFFFF;
 /*
 VRAM size = 0x9FFF - 0x7FFF = 0x2000
 WRAM size = 0xDFFF - 0xBFFF = 0x2000
+I/O size  = 0xFF7F - 0xFF00 = 0x0080
 HRAM size = 0xFFFE - 0xFF7F = 0x007F
 */
 const uint16_t ROM_BANK_SIZE  = 0x4000;
 const uint16_t VRAM_SIZE      = 0x2000;
 const uint16_t WRAM_BANK_SIZE = 0x1000;
+const uint16_t IO_REG_SIZE    = 0x0080;
 const uint16_t HRAM_SIZE      = 0x007F;
 
-/*
-    Represents all memory in the gameboy
-    ** currently handles ROM, VRAM, WRAM, and HRAM
-    ** currently does not handle ERAM, ECHO RAM, OAM, I/O REGISTERS, and IE REGISTER
-
-    ** TODO:
-        * Make way to other sections of memory than ROM
+/**
+ * Represents all memory in the gameboy
+ * Byte-addressable 16-bit address size
+ *      currently handles ROM, VRAM, WRAM, I/O REGISTERS, and HRAM
+ *      currently does not handle ERAM, ECHO RAM, OAM, and IE REGISTER
+ * TODO:
+ *      Make way to load other sections of memory than ROM
 */
 class Memory {
     public:
@@ -70,6 +72,7 @@ class Memory {
         std::array<Byte, VRAM_SIZE> _vram;                  // 0x8000 - 0x9FFF
         std::array<Byte, WRAM_BANK_SIZE> _wram_bank_00;     // 0xC000 - 0xCFFF
         std::array<Byte, WRAM_BANK_SIZE> _wram_bank_01;     // 0xD000 - 0xDFFF
+        std::array<Byte, IO_REG_SIZE> _io_registers;        // 0xFF00 - 0xFF7F
         std::array<Byte, HRAM_SIZE> _hram;                  // 0xFF80 - 0xFFFE
 };
 
