@@ -1,216 +1,302 @@
-// #include "cpu.h"
+#include "cpu.h"
 
-// CPU::CPU(const std::vector<uint8_t>& rom_data) : _memory(rom_data), {0} {} 
+/**
+ * Z - Zero Flag
+ * N - Subtraction Flag
+ * H - Half-Carry Flag
+ * C - Carry Flag
+ * 
+ * 0 - unset
+ * 1 - set
+ * - - no change
+*/
 
-// int CPU::step() {
-//     handle_interrupts();    // not created yet
+CPU::CPU() : 
+    _memory(), 
+    reg_A(0),
+    reg_B(0),
+    reg_C(0),
+    reg_D(0),
+    reg_E(0),
+    reg_H(0),
+    reg_L(0),
+    reg_SP(0),
+    reg_PC(0) {} 
 
-//     uint8_t opcode = fetch();
-//     return decode_execute(opcode);
-// }
+/**
+ * Perform the fetch, decode, execute loop
+ * 
+ * @return the number of T-states taken in the loop (always some multiple of 4)
+*/
+int CPU::step() {
+    handle_interrupts();    // not created yet
 
-// // May need wrapping add
-// uint8_t CPU::fetch() {
-//     return _memory.read(reg_PC++);
-// }
+    Byte opcode = fetch();
+    return decode_execute(opcode);
+}
 
-// int CPU::decode_execute(uint8_t opcode) {
-//     switch (opcode) {
-//     }
+/**
+ * Fetch the next instruction and increment PC
+ * 
+ * @return the value in memory[PC]
+*/
+Byte CPU::fetch() {
+    return _memory.read(reg_PC++);
+}
 
-//     // LD 8-bit
-//     if (opcode >= 0x40 && opcode < 0x80) {
-//         int source = opcode & 0b111;
-//         int destination = (opcode >> 3) & 0b111;
+/**
+ * update flag to new_val
+ * 
+ * @param flag the flag to be updated
+ * @param new_val the new value of the flag
+ */ 
+void CPU::update_flag(const uint8_t flag, bool new_val) {
+    if (new_val) {
+        reg_F |= flag;
+    } else {
+        reg_F &= ~(flag);
+    }
+}
 
-//         return ld_8(destination, source);
-//     }
+/**
+ * Get the value in memory stored in [HL]
+ * 
+ * @return the value in memory[HL]
+*/
+Byte CPU::get_hl() {
+    Address address =  (reg_H << 8) | reg_L;
+    return _memory.read(address);
+}
 
-//     switch (opcode >> 4) {
-//     case 0x8:   // ADD and ADC
-//         int reg = opcode & 0b111;
-//         bool carry = ((opcode >> 3) & 1);
+/**
+ * Update the value in memory stored in [HL]
+ * 
+ * @param value the new value to be stored in memory[HL]
+ */
+void CPU::set_hl(const Byte value) {
+    Address address = (reg_H << 8) | reg_L;
+    _memory.write(address, value);
+}
 
-//         return add_8(reg, carry);
-//     case 0x9:   // SUB and SBC
-//         int reg = opcode & 0b111;
-//         bool carry = ((opcode >> 3) & 1);
+/**
+ * 8-bit load [LD] 
+ * register[dest] = value
+ * Z N H C
+ * - - - -
+ * 
+ * @param reg the address of the destination register
+ * @param value the value to load into the destination register
+*/
+void CPU::ld_8(Byte& reg, Byte value) {
+    reg = value;
+}
 
-//         return sub_8(reg, carry);
-//     case 0xA:   // AND and XOR
-//         int reg = opcode & 0b111;
+/**
+ * 8-bit load [LD]
+ * register[dest] = memory[address]
+ * Z N H C
+ * - - - -
+ * 
+ * @param reg the address of the destination register
+ * @param address the address of the value to load into the destination register
+*/
+void CPU::ld_8(Byte& reg, Address address) {
+    reg = _memory.read(address);
+}
 
-//         if ((opcode >> 3) & 1) {
-//             return xor_8(reg);
-//         } else {
-//             return and_8(reg);
-//         }
-//     case 0xB:   // OR and CP
-//         int reg = opcode & 0b111;
+/**
+ * 8-bit addition [ADD] [ADC]
+ * *** NEED TO ADD ADD HL and ADC HL ***
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 0 H C
+ * 
+ * @param value the byte to be added to the accumulator (reg A) (usually a register, though can be imm value)
+ * @param carry whether or not to add the carry flag to result, true if ADC, false if ADD
+*/
+void CPU::add_8(const Byte value, bool carry) {
+    // do math in 16-bit to check for carrys on bit [8]
+    uint16_t res = reg_A + value;
 
-//         if ((opcode >> 3) & 1) {
-//             return or_8(reg);
-//         } else {
-//             return cp_8(reg);
-//         }
-//     }
-// }
+    if (carry) {
+        // update carry to the value stored in reg_F
+        carry = ((reg_F & FLAG_CARRY) == FLAG_CARRY) ? 1 : 0;
+        res += carry;
+    }
 
-// // needs testing
-// void CPU::update_flag(uint8_t flag, bool new_val) {
-//     if (new_val) {
-//         .reg_F |= flag;
-//     } else {
-//         reg_F &= ~(flag);
-//     }
-// }
+    // check for carries from bit [3] to bit [4]
+    bool half_carry = ((reg_A & 0xF) + (value & 0xF) + carry) > 0xF;
 
-// // Get the value in memory stored in [HL]
-// uint8_t CPU::get_hl() {
-//     int address =  (reg_H << 8) | reg_L;
-//     return _memory.read(address);
-// }
+    // update reg_A to bits [7:0] of res
+    reg_A = res & 0xFF;
 
-// // Set the value in memory stored in [HL] to the value stored in register reg
-// void CPU::set_hl(int reg) {
-//     uint16_t address = (reg_H << 8) | reg_L;
-//     // uint8_t data = reg(reg);
-//     _memory.write(address, data);
-// }
+    update_flag(FLAG_ZERO, reg_A == 0); // true if bits [7:0] of res are 0 (i.e. including wrappings)
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, half_carry);   
+    update_flag(FLAG_CARRY, (res >> 8) != 0);  // check bit [8] of res for carry
+}
 
-// int CPU::ld_8(int dest, int src) {
-//     if (dest == 6) {
-//         set_hl(src);
-//         return 8;
-//     }
+/**
+ * 8-bit subtraction [SUB] [SBC]
+ * *** NEED TO ADD SUB HL and SBC HL ***
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 1 H C
+ * 
+ * @param value the byte to be subtracted from the accumulator (reg A) (usually a register, though can be imm value)
+ * @param carry whether or not to subtract the carry flag from result, true if SBC, false if SUB
+*/
+void CPU::sub_8(const Byte value, bool carry) {
+    // do math in 16-bit to check for carrys on bit [8]
+    uint16_t res = reg_A - value;
 
-//     if (src == 6) {
-//         reg(dest) = get_hl();
-//         return 8;
-//     }
-//     reg(dest) = reg(src);
-//     return 4;
-// }
+    if (carry) {
+        // update carry to the value stored in reg_F
+        carry = ((reg_F & FLAG_CARRY) == FLAG_CARRY) ? 1 : 0;
+        res -= carry;
+    }
 
-// int CPU::add_8(uint8_t value, bool carry) {
-//     .reg_A += value;
-//     if (carry) {
-//         .reg_A += (.reg_F & FLAG_CARRY) ? 1 : 0;
-//     }
+    bool half_carry = ((value & 0xF) + carry) > (reg_A & 0xF);   // check for borrows from bit [4]
+    // update carry (again) to whether a borrow occured from bit [8]
+    carry = ((value + carry) > reg_A);
 
-//     update_flag(FLAG_ZERO, reg_A == 0);
-//     update_flag(FLAG_SUB, false);
-//     update_flag(FLAG_HALF_CARRY, (((reg_A & 0xF) + (value & 0xF) & 0x10) == 0x10));
-//     update_flag(FLAG_CARRY, reg_A == 0x00);
+    reg_A = res & 0xFF;
 
-//     return hl ? 8 : 4;
-// }
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_SUB, true);
+    update_flag(FLAG_HALF_CARRY, half_carry);
+    update_flag(FLAG_CARRY, carry);
+}
 
-// int CPU::sub_8(int src, bool carry) {
-//     int val = 0;
-//     bool hl = false;
+/**
+ * 8-bit bitwise and [AND]
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 0 1 0
+ * 
+ * @param value the byte to be and'd with the accumulator (reg A) (usually a register, though can be imm value)
+*/
+void CPU::and_8(const Byte value) {
+    // line may cause issues:
+    reg_A &= value;
 
-//     if (src == 6) {
-//         val = get_hl();
-//         hl = true;
-//     } else {
-//         val = .reg(src);
-//     }
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, true);
+    update_flag(FLAG_CARRY, false);  
+}
 
-//     reg_A -= val;
-//     if (carry) {
-//         reg_A -= get_flag(CARRY);
-//     }
+/**
+ * 8-bit bitwise xor [XOR]
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 0 0 0
+ * 
+ * @param value the byte to be xor'd with the accumulator (reg A) (usually a register, though can be imm value)
+*/
+void CPU::xor_8(const Byte value) {
+    // line may cause issues:
+    reg_A ^= value;
 
-//     update_flag(ZERO, reg_A == 0);
-//     update_flag(SUB, true);
-//     update_flag(HALF_CARRY, (((reg_A & 0xF) - (val & 0xF) & 0x10) == 0x10));
-//     update_flag(CARRY, (reg_A >> 7) & 1);    // check if MSB is 1, indicating a negative result
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, false);
+}
 
-//     return hl ? 8 : 4;
-// }
+/**
+ * 8-bit bitwise or [OR]
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 0 0 0
+ * 
+ * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
+*/
+void CPU::or_8(const Byte value) {
+    // line may cause issues:
+    reg_A |= value;
 
-// int CPU::and_8(int src) {
-//     int val = 0;
-//     bool hl = false;
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, false);
+}
 
-//     if (src == 6) {
-//         val = get_hl();
-//         hl = true;
-//     } else {
-//         val = reg(src);
-//     }
+/**
+ * 8-bit compare [CP]
+ * --- NOT TESTED ---
+ * Z N H C
+ * 1 1 0 0
+ * 
+ * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
+*/
+void CPU::cp_8(const Byte value) {
+    // do math in 16-bit to check for carrys on bit [8]
+    uint16_t temp = reg_A - value;
 
-//     reg_A = .reg_A & val;
+    update_flag(FLAG_ZERO, (temp & 0xFF) == 0);
+    update_flag(FLAG_SUB, true);
+    update_flag(FLAG_HALF_CARRY, (value & 0xF) > (reg_A & 0xF));
+    update_flag(FLAG_CARRY, value > reg_A);
+}
 
-//     update_flag(ZERO, reg_A == 0);
-//     update_flag(SUB, false);
-//     update_flag(HALF_CARRY, true);
-//     update_flag(CARRY, false);
+/**
+ * 8-bit increment [INC]
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 0 H -
+ * 
+ * @param reg_value the register value to be incremented
+*/
+void CPU::inc_8(Byte &reg_value) {
+    bool half_carry = (reg_value & 0xF) == 0xF;
+    reg_value += 1;
 
-//     return hl ? 8 : 4;
-// }
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, half_carry);
+}
 
-// int CPU::xor_8(int src) {
-//     int val = 0;
-//     bool hl = false;
+/**
+ * 8-bit decrement [DEC]
+ * --- NOT TESTED ---
+ * Z N H C
+ * Z 1 H -
+ * 
+ * @param reg_value the register value to be decremented
+*/
+void CPU::dec_8(Byte &reg_value) {
+    bool half_carry = (reg_value & 0xF) == 0;
+    reg_value -= 1;
 
-//     if (src == 6) {
-//         val = get_hl();
-//         hl = true;
-//     } else {
-//         val = .reg(src);
-//     }
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_SUB, true);
+    update_flag(FLAG_HALF_CARRY, half_carry);
+}
 
-//     .reg_A = .reg_A ^ val;
+/**
+ * Complement Accumulator (register A) [CPL]
+ * --- NOT TESTED ---
+ * Z N H C
+ * - 1 1 -
+*/
+void CPU::cpl() {
+    reg_A = ~reg_A;
 
-//     update_flag(ZERO, .reg_A == 0);
-//     update_flag(SUB, false);
-//     update_flag(HALF_CARRY, false);
-//     update_flag(CARRY, false);
+    update_flag(FLAG_SUB, true);
+    update_flag(FLAG_HALF_CARRY, true);
+}
 
-//     return hl ? 8 : 4;
-// }
+/**
+ * Complement Carry Flag [CCF]
+ * --- NOT TESTED ---
+ * Z N H C
+ * - 0 0 C
+*/
+void CPU::ccf() {
+    bool old_val = ((reg_F & FLAG_CARRY) == FLAG_CARRY);
 
-// int CPU::or_8(int src) {
-//     int val = 0;
-//     bool hl = false;
-
-//     if (src == 6) {
-//         val = get_hl();
-//         hl = true;
-//     } else {
-//         val = .reg(src);
-//     }
-
-//     .reg_A = .reg_A | val;
-
-//     update_flag(ZERO, .reg_A == 0);
-//     update_flag(SUB, false);
-//     update_flag(HALF_CARRY, false);
-//     update_flag(CARRY, false);
-
-//     return hl ? 8 : 4;
-// }
-
-// // Compare - A - r8, but just set flags and throw away result
-// int CPU::cp_8(int src) {
-//     int val = 0;
-//     bool hl = false;
-
-//     if (src == 6) {
-//         val = get_hl();
-//         hl = true;
-//     } else {
-//         val = .reg(src);
-//     }
-
-//     int res = .reg_A - val;
-
-//     update_flag(ZERO, res == 0);
-//     update_flag(SUB, true);
-//     update_flag(HALF_CARRY, (((res & 0xF) - (val & 0xF) & 0x10) == 0x10));
-//     update_flag(CARRY, (res >> 7) & 1);    // check if MSB is 1, indicating a negative result
-
-//     return hl ? 8 : 4;
-// }
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, (1 - old_val));
+}

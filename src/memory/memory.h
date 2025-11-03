@@ -9,7 +9,7 @@
 
 
 typedef uint8_t Byte;
-typedef uint16_t Address;
+typedef uint16_t Address, Word;
 
 /*
 ROM bank 00------------------------0x0000 - 0x3FFF
@@ -53,7 +53,7 @@ const uint16_t HRAM_SIZE      = 0x007F;
     ** currently does not handle ERAM, ECHO RAM, OAM, I/O REGISTERS, and IE REGISTER
 
     ** TODO:
-        * 
+        * Make way to other sections of memory than ROM
 */
 class Memory {
     public:

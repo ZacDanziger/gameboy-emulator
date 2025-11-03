@@ -12,8 +12,6 @@ target_link_libraries(GTest::GTest INTERFACE gtest_main)
 
 add_executable(memory_test test_memory.cpp)
 
-find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
 target_link_libraries(memory_test
   PRIVATE
   GTest::GTest
@@ -21,5 +19,3 @@ target_link_libraries(memory_test
 )
 
 add_test(memory_gtests memory_test)
-
-include(GoogleTest)

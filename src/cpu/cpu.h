@@ -6,7 +6,6 @@
 class CPU {
     public:
         CPU();
-        CPU(const std::vector<uint8_t>& rom_data);
 
         int step();
 
@@ -14,53 +13,50 @@ class CPU {
         Memory _memory;
         
         // Gameboy's Eight 8-bit registers
-        uint8_t reg_A;
-        uint8_t reg_F;
-        uint8_t reg_B;
-        uint8_t reg_C;
-        uint8_t reg_D;
-        uint8_t reg_E;
-        uint8_t reg_H;
-        uint8_t reg_L;
+        Byte reg_A;   // Accumulator
+        Byte reg_F;   // Flags
+        Byte reg_B;
+        Byte reg_C;
+        Byte reg_D;
+        Byte reg_E;
+        Byte reg_H;
+        Byte reg_L;
 
-        // Stack Pointer and Program Counter
-        uint16_t reg_SP;
-        uint16_t reg_PC;
+        // 16-bit Stack Pointer and Program Counter
+        Word reg_SP;
+        Word reg_PC;
 
         const uint8_t FLAG_ZERO       = 0b10000000;
         const uint8_t FLAG_SUB        = 0b01000000;
         const uint8_t FLAG_HALF_CARRY = 0b00100000;
         const uint8_t FLAG_CARRY      = 0b00010000;
 
-        void handle_interrupts() {} // needs to be created
+        void handle_interrupts(); // needs to be created
 
-        uint8_t fetch();
-        int decode_execute(uint8_t opcode);
+        // Fetch -> Decode -> Execute cycle
+        Byte fetch();
+        int decode_execute(Byte opcode);
 
+        // Helper Functions
         void update_flag(uint8_t flag, bool new_val);
-
-        uint8_t get_hl();
-        void set_hl(int reg);
-
-        int parse_op_code;
-
-        // CPU control
-        // int nop() {}
-        // int halt() {}  // needs to be created
-        // int stop() {}  // needs to be created
+        Byte get_hl();
+        void set_hl(const Byte reg_value);
 
         // 8-bit transfer and I/O
-        int ld_8(uint8_t& dest, uint8_t value);
-        int ld_8(uint8_t& dest, uint16_t address);
-        int add_8(int reg, bool carry);
-        int sub_8(int reg, bool carry);
-        int and_8(int reg);
-        int xor_8(int reg);
-        int or_8(int reg);
-        int cp_8(int reg);
+        void ld_8(Byte &reg, Byte value);
+        void ld_8(Byte &reg, Address address);
+        void add_8(const Byte value, bool carry);
+        void sub_8(const Byte value, bool carry);
+        void and_8(const Byte value);
+        void xor_8(const Byte value);
+        void or_8(const Byte value);
+        void cp_8(const Byte value);
+        void inc_8(Byte &reg_value);
+        void dec_8(Byte &reg_value);
+        void scf();
+        void cpl();
+        void ccf();
         
-
-
 
 };
 
