@@ -59,7 +59,7 @@ class Memory {
     public:
         Memory();
 
-        Byte read(Address address);
+        Byte read(Address address) const;
         void write(Address address, Byte data);
 
         void load_rom(std::string file);

@@ -9,7 +9,7 @@ Memory::Memory() {
     _hram = {0};
 }
 
-Byte Memory::read(Address address) {
+Byte Memory::read(Address address) const {
     if (address < ROM_BANK_01_START) {
         return _rom_bank_00[address];
     }

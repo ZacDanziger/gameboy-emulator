@@ -20,8 +20,14 @@ CPU::CPU() :
     reg_E(0),
     reg_H(0),
     reg_L(0),
+    AF{&reg_A, &reg_F},
+    BC{&reg_B, &reg_C},
+    DE{&reg_D, &reg_E},
+    HL{&reg_H, &reg_L},
     reg_SP(0),
-    reg_PC(0) {} 
+    reg_PC(0) 
+{} 
+
 
 /**
  * Perform the fetch, decode, execute loop
@@ -35,6 +41,7 @@ int CPU::step() {
     return decode_execute(opcode);
 }
 
+
 /**
  * Fetch the next instruction and increment PC
  * 
@@ -44,6 +51,7 @@ Byte CPU::fetch() {
     return _memory.read(reg_PC++);
 }
 
+
 /**
  * Fetch the next 16 bits, in little endian format
  * 
@@ -51,8 +59,9 @@ Byte CPU::fetch() {
 */
 Word CPU::fetch16() {
     Byte low = fetch();
-    return ((low << 8) | fetch());
+    return ((fetch() << 8) | low);
 }
+
 
 /**
  * update flag to new_val
@@ -68,41 +77,47 @@ void CPU::update_flag(const uint8_t flag, bool new_val) {
     }
 }
 
-/**
- * Concatenate two 8-bit numbers into one 16-bit number
- * 
- * @param reg1 first register to concatenate
- * @param reg2 second register to concatenate
- * @return [reg1 | reg2]
-*/
-Word CPU::pair(const Byte reg1, const Byte reg2) {
-    return ((reg1 << 8) | reg2);
-}
 
 /**
- * Get the value in memory stored in [HL]
+ * read the value of the flag stored in register F
  * 
- * @return the value in memory[HL]
+ * @param flag the flag to be read
 */
-Byte CPU::get_hl() {
-    Address address =  pair(reg_H, reg_L);
-    return _memory.read(address);
+bool CPU::get_flag(const uint8_t flag) const {
+    return ((reg_F & flag) == flag);
 }
 
+
 /**
- * Update the value in memory stored in [HL]
+ * Get the 16-bit represtation of the pair
  * 
- * @param value the new value to be stored in memory[HL]
- */
-void CPU::set_hl(const Byte value) {
-    Address address = pair(reg_H, reg_L);
-    _memory.write(address, value);
+ * @return [reg_high | reg_low]
+*/
+Word CPU::get_pair(const Pair& pair) const {
+    return ((*(pair.reg_high) << 8) | *(pair.reg_low));
+}
+
+
+/**
+ * Update the value stored in pair to value
+ * reg_high = value[15:8]
+ * reg_low = value [7:0]
+ * 
+ * @param pair the pair to be updated
+ * @param value the new value to set the pair to
+*/
+void CPU::set_pair(const Pair &pair, const Word value) {
+    *(pair.reg_high) = (value >> 8);
+    *(pair.reg_low) = (value & 0xFF);
+}
+
+Byte CPU::read_hl() const {
+    return _memory.read(get_pair(HL));
 }
 
 /**
  * 8-bit load
  * dest = value
-
  * - - - -
  * 
  * @param dest the address of the destination register or location in memory
@@ -111,6 +126,7 @@ void CPU::set_hl(const Byte value) {
 void CPU::LD(Byte& dest, const Byte value) {
     dest = value;
 }
+
 
 /**
  * 8-bit load
@@ -124,6 +140,7 @@ void CPU::LD(Byte& dest, const Address address) {
     dest = _memory.read(address);
 }
 
+
 /**
  * 8-bit load
  * memory[address] = value
@@ -136,11 +153,28 @@ void CPU::LD(const Address address, const Byte value) {
     _memory.write(address, value);
 }
 
+
+/**
+ * 8-bit load high
+ * - - - -
+ * 
+ * @param value the value to load into the destination
+ * @param into_A true if loading memory value into A, false if loading A into memory
+*/
+void CPU::LDH(const Byte value, bool into_A) {
+    if (into_A) {
+        // memory[$FF00 + n] = reg_A
+        reg_A = _memory.read(IO_START + value);
+    } else {
+        // reg_A = memory[$FF00 + n]
+        _memory.write(IO_START + value, reg_A);
+    }
+}
+
+
 /**
  * 8-bit addition with and without carry
- * *** NEED TO ADD ADD HL and ADC HL ***
  * --- NOT TESTED ---
-
  * Z 0 H C
  * 
  * @param value the byte to be added to the accumulator (reg A) (usually a register, though can be imm value)
@@ -152,7 +186,7 @@ void CPU::ADD(const Byte value, bool carry) {
 
     if (carry) {
         // update carry to the value stored in reg_F
-        carry = ((reg_F & FLAG_CARRY) == FLAG_CARRY) ? 1 : 0;
+        carry = get_flag(FLAG_CARRY) ? 1 : 0;
         res += carry;
     }
 
@@ -168,9 +202,9 @@ void CPU::ADD(const Byte value, bool carry) {
     update_flag(FLAG_CARRY, (res >> 8) != 0);  // check bit [8] of res for carry
 }
 
+
 /**
  * 8-bit subtraction with and without carry
- * *** NEED TO ADD SUB HL and SBC HL ***
  * --- NOT TESTED ---
  * Z 1 H C
  * 
@@ -183,7 +217,7 @@ void CPU::SUB(const Byte value, bool carry) {
 
     if (carry) {
         // update carry to the value stored in reg_F
-        carry = ((reg_F & FLAG_CARRY) == FLAG_CARRY) ? 1 : 0;
+        carry = get_flag(FLAG_CARRY) ? 1 : 0;
         res -= carry;
     }
 
@@ -199,10 +233,10 @@ void CPU::SUB(const Byte value, bool carry) {
     update_flag(FLAG_CARRY, carry);
 }
 
+
 /**
  * 8-bit bitwise and
  * --- NOT TESTED ---
-
  * Z 0 1 0
  * 
  * @param value the byte to be and'd with the accumulator (reg A) (usually a register, though can be imm value)
@@ -217,10 +251,10 @@ void CPU::AND(const Byte value) {
     update_flag(FLAG_CARRY, false);  
 }
 
+
 /**
  * 8-bit bitwise xor
  * --- NOT TESTED ---
-
  * Z 0 0 0
  * 
  * @param value the byte to be xor'd with the accumulator (reg A) (usually a register, though can be imm value)
@@ -234,6 +268,7 @@ void CPU::XOR(const Byte value) {
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, false);
 }
+
 
 /**
  * 8-bit bitwise or
@@ -252,10 +287,11 @@ void CPU::OR(const Byte value) {
     update_flag(FLAG_CARRY, false);
 }
 
+
 /**
  * 8-bit compare
  * --- NOT TESTED ---
- * 1 1 0 0
+ * Z 1 H C
  * 
  * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
 */
@@ -269,10 +305,10 @@ void CPU::CP(const Byte value) {
     update_flag(FLAG_CARRY, value > reg_A);
 }
 
+
 /**
  * 8-bit increment
  * --- NOT TESTED ---
-
  * Z 0 H -
  * 
  * @param reg_value the register value to be incremented
@@ -285,6 +321,7 @@ void CPU::INC(Byte &reg_value) {
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
+
 
 /**
  * 8-bit decrement
@@ -301,6 +338,7 @@ void CPU::DEC(Byte &reg_value) {
     update_flag(FLAG_SUB, true);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
+
 
 /**
  * Set Carry Flag
@@ -324,15 +362,105 @@ void CPU::CPL() {
     update_flag(FLAG_HALF_CARRY, true);
 }
 
+
 /**
  * Complement Carry Flag
  * --- NOT TESTED ---
  * - 0 0 C
 */
 void CPU::CCF() {
-    bool old_val = ((reg_F & FLAG_CARRY) == FLAG_CARRY);
+    bool old_val = get_flag(FLAG_CARRY);
 
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, (1 - old_val));
+}
+
+
+/**
+ * Rotate Left, Register A
+ * (Both circular and non circular)
+ * (Why does this one have to be different?)
+ * 0 0 0 C 
+ * 
+ * @param circular true if opcode is RLCA, false if RLA
+*/
+void CPU::RLA(bool circular) {
+    bool bit_7 = (reg_A >> 7);
+    reg_A = (reg_A << 1);
+    if (circular) {
+        // RLCA
+        reg_A |= bit_7;
+    } else {
+        // RLA
+        reg_A |= get_flag(FLAG_CARRY);
+    }
+    
+
+    update_flag(FLAG_ZERO, false);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_7);
+}
+
+
+/**
+ * Rotate Left
+ * (Both circular and non circular)
+ * Z 0 0 C
+ * 
+ * @param reg the register to be rotated
+ * @param circular true if opcode is RLC, false if RL
+*/
+void CPU::RL(Byte &reg, bool circular) {
+    bool bit_7 = (reg >> 7);
+    reg = (reg << 1);
+    if (circular) {
+        // RLC
+        reg |= bit_7;
+    } else {
+        // RL
+        reg |= get_flag(FLAG_CARRY);
+    }
+
+    update_flag(FLAG_ZERO, (reg == 0));
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_7);
+}
+
+
+void CPU::RRA(bool circular) {
+    bool bit_0 = reg_A & 0b1;
+    reg_A = (reg_A >> 1);
+    if (circular) {
+        // RRCA
+        reg_A = (reg_A & ~(1 << 7) | (bit_0 << 7));
+    } else {
+        // RRA
+        reg_A = (reg_A & ~(1 << 7) | (get_flag(FLAG_CARRY) << 7));
+    }
+
+    update_flag(FLAG_ZERO, false);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_0);
+}
+
+
+void CPU::RR(Byte &reg, bool circular) {
+    bool bit_0 = reg & 0b1;
+    reg = (reg >> 1);
+    if (circular) {
+        // RRC
+        reg = (reg & ~(1 << 7) | (bit_0 << 7));
+    } else {
+        // RR
+        reg = (reg & ~(1 << 7) | (get_flag(FLAG_CARRY) << 7));
+    }
+
+    update_flag(FLAG_ZERO, (reg == 0));
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_0);
 }
