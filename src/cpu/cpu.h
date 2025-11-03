@@ -35,27 +35,43 @@ class CPU {
 
         // Fetch -> Decode -> Execute cycle
         Byte fetch();
+        Word fetch16();
         int decode_execute(Byte opcode);
 
         // Helper Functions
         void update_flag(uint8_t flag, bool new_val);
+        Word pair(const Byte reg1, const Byte reg2);
         Byte get_hl();
         void set_hl(const Byte reg_value);
 
-        // 8-bit transfer and I/O
-        void ld_8(Byte &reg, Byte value);
-        void ld_8(Byte &reg, Address address);
-        void add_8(const Byte value, bool carry);
-        void sub_8(const Byte value, bool carry);
-        void and_8(const Byte value);
-        void xor_8(const Byte value);
-        void or_8(const Byte value);
-        void cp_8(const Byte value);
-        void inc_8(Byte &reg_value);
-        void dec_8(Byte &reg_value);
-        void scf();
-        void cpl();
-        void ccf();
+        
+        
+        // Control Instructions
+
+        void nop();
+        
+        // 16-bit load and arithmetic
+
+        void ld(Word &dest, const Word value);
+        void inc(Word &reg_value);
+
+        // 8-bit load and arithmetic
+        
+        void LD(Byte &dest, const Byte value);
+        void LD(Byte &dest, const Address address);
+        void LD(const Address dest, const Byte value);
+        void LDH(Byte &dest, const Byte reg);
+        void ADD(const Byte value, bool carry);
+        void SUB(const Byte value, bool carry);
+        void AND(const Byte value);
+        void XOR(const Byte value);
+        void OR(const Byte value);
+        void CP(const Byte value);
+        void INC(Byte &reg_value);
+        void DEC(Byte &reg_value);
+        void SCF();
+        void CPL();
+        void CCF();
         
 
 };
