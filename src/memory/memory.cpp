@@ -38,15 +38,17 @@ Byte Memory::read(Address address) const {
 }
 
 void Memory::write(Address address, Byte data) {
-    if (address < ROM_BANK_01_START) {
-        _rom_bank_00[address] = data;
-        return;
-    }
-    if (address < VRAM_START) {
-        _rom_bank_01[address - ROM_BANK_01_START] = data;
-        return;
-    }
-    if (address < ERAM_START) {
+    // NO WRITING TO ROM!!!
+    // if (address < ROM_BANK_01_START) {
+    //     _rom_bank_00[address] = data;
+    //     return;
+    // }
+    // if (address < VRAM_START) {
+    //     _rom_bank_01[address - ROM_BANK_01_START] = data;
+    //     return;
+    // }
+
+    if (address < ERAM_START && address >= VRAM_START) {
         _vram[address - VRAM_START] = data;
         return;
     }

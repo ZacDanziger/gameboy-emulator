@@ -31,6 +31,7 @@ CPU::CPU() :
 
 /**
  * Perform the fetch, decode, execute loop
+ * --- NOT TESTED ---
  * 
  * @return the number of T-states taken in the loop (always some multiple of 4)
 */
@@ -44,6 +45,7 @@ int CPU::step() {
 
 /**
  * Fetch the next instruction and increment PC
+ * --- NOT TESTED ---
  * 
  * @return the value in memory[PC]
 */
@@ -54,6 +56,7 @@ Byte CPU::fetch() {
 
 /**
  * Fetch the next 16 bits, in little endian format
+ * --- NOT TESTED ---
  * 
  * @return [low | high]
 */
@@ -62,9 +65,20 @@ Word CPU::fetch16() {
     return ((fetch() << 8) | low);
 }
 
+/**
+ * read the value of the flag stored in register F
+ * --- NOT TESTED ---
+ * 
+ * @param flag the flag to be read
+*/
+bool CPU::get_flag(const uint8_t flag) const {
+    return ((reg_F & flag) == flag);
+}
+
 
 /**
  * update flag to new_val
+ * --- NOT TESTED ---
  * 
  * @param flag the flag to be updated
  * @param new_val the new value of the flag
@@ -79,17 +93,8 @@ void CPU::update_flag(const uint8_t flag, bool new_val) {
 
 
 /**
- * read the value of the flag stored in register F
- * 
- * @param flag the flag to be read
-*/
-bool CPU::get_flag(const uint8_t flag) const {
-    return ((reg_F & flag) == flag);
-}
-
-
-/**
  * Get the 16-bit represtation of the pair
+ * --- NOT TESTED ---
  * 
  * @return [reg_high | reg_low]
 */
@@ -102,6 +107,7 @@ Word CPU::get_pair(const Pair& pair) const {
  * Update the value stored in pair to value
  * reg_high = value[15:8]
  * reg_low = value [7:0]
+ * --- NOT TESTED ---
  * 
  * @param pair the pair to be updated
  * @param value the new value to set the pair to
@@ -110,14 +116,60 @@ void CPU::set_pair(const Pair &pair, const Word value) {
     *(pair.reg_high) = (value >> 8);
     *(pair.reg_low) = (value & 0xFF);
 }
-
+/***
+ * Get the value in memory stored in [HL]
+ * --- NOT TESTED ---
+ * 
+ * @return memory[HL]
+*/
 Byte CPU::read_hl() const {
     return _memory.read(get_pair(HL));
 }
 
+
+/**
+ * Complement Accumulator (register A)
+ * --- NOT TESTED ---
+ * - 1 1 -
+*/
+void CPU::CPL() {
+    reg_A = ~reg_A;
+
+    update_flag(FLAG_SUB, true);
+    update_flag(FLAG_HALF_CARRY, true);
+}
+
+
+/**
+ * Complement Carry Flag
+ * --- NOT TESTED ---
+ * - 0 0 C
+*/
+void CPU::CCF() {
+    bool old_val = get_flag(FLAG_CARRY);
+
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, (1 - old_val));
+}
+
+
+/**
+ * Set Carry Flag
+ * --- NOT TESTED ---
+ * - 0 0 1
+*/
+void CPU::SCF() {
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, true);
+}
+
+
 /**
  * 8-bit load
  * dest = value
+ * --- NOT TESTED ---
  * - - - -
  * 
  * @param dest the address of the destination register or location in memory
@@ -131,6 +183,7 @@ void CPU::LD(Byte& dest, const Byte value) {
 /**
  * 8-bit load
  * dest = memory[address]
+ * --- NOT TESTED ---
  * - - - -
  * 
  * @param dest the address of the destination register or location in memory
@@ -144,6 +197,7 @@ void CPU::LD(Byte& dest, const Address address) {
 /**
  * 8-bit load
  * memory[address] = value
+ * --- NOT TESTED ---
  * - - - -
  * 
  * @param address the address of the destination in memory
@@ -156,6 +210,7 @@ void CPU::LD(const Address address, const Byte value) {
 
 /**
  * 8-bit load high
+ * --- NOT TESTED ---
  * - - - -
  * 
  * @param value the value to load into the destination
@@ -169,6 +224,45 @@ void CPU::LDH(const Byte value, bool into_A) {
         // reg_A = memory[$FF00 + n]
         _memory.write(IO_START + value, reg_A);
     }
+}
+
+/***
+ * 16-bit load
+ * dest = value
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param dest the address of the 16-bit register to update
+ * @param value the value to load into the register
+*/
+void CPU::LD(Word& dest, const Word value) {
+    dest = value;
+}
+
+/***
+ * 16-bit load
+ * [high | low] = [value 15:8 | value 7:0]
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param pair the pair to be updated
+ * @param value the value to load into the pair
+*/
+void CPU::LD(Pair& pair, const Word value) {
+    set_pair(pair, value);
+}
+
+/***
+ * 16-bit load (write)
+ * memory[address] = SP[7:0], memory[address+1] = SP[15:8]
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param address the address in memory to hold least significant byte of SP
+*/
+void CPU::write_SP(const Address address) {
+    _memory.write(address, (reg_SP & 0xFF));        // low byte
+    _memory.write((address + 1), (reg_SP >> 8));    // high byte
 }
 
 
@@ -311,69 +405,155 @@ void CPU::CP(const Byte value) {
  * --- NOT TESTED ---
  * Z 0 H -
  * 
- * @param reg_value the register value to be incremented
+ * @param reg the register value to be incremented
 */
-void CPU::INC(Byte &reg_value) {
-    bool half_carry = (reg_value & 0xF) == 0xF;
-    reg_value += 1;
+void CPU::INC(Byte &reg) {
+    bool half_carry = (reg & 0xF) == 0xF;
+    reg += 1;
 
     update_flag(FLAG_ZERO, reg_A == 0);
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
+/**
+ * Increment value stored in memory[HL]
+ * --- NOT TESTED ---
+ * Z 0 H -
+ *
+*/
+void CPU::INC_HL() {
+    // Get memory[HL]
+    Byte value = _memory.read(get_pair(HL));
 
+    // Increment memory[HL] and set flags
+    INC(value);
+
+    // Update memory[HL] to incremented value
+    _memory.write(get_pair(HL), value);
+}
 
 /**
  * 8-bit decrement
  * --- NOT TESTED ---
  * Z 1 H -
  * 
- * @param reg_value the register value to be decremented
+ * @param reg the register value to be decremented
 */
-void CPU::DEC(Byte &reg_value) {
-    bool half_carry = (reg_value & 0xF) == 0;
-    reg_value -= 1;
+void CPU::DEC(Byte &reg) {
+    bool half_carry = (reg & 0xF) == 0;
+    reg -= 1;
 
     update_flag(FLAG_ZERO, reg_A == 0);
     update_flag(FLAG_SUB, true);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
 
-
-/**
- * Set Carry Flag
- * - 0 0 1
+/***
+ * Decrement value stored in memory[HL]
+ * --- NOT TESTED ---
+ * Z 1 H -
 */
-void CPU::SCF() {
-    update_flag(FLAG_SUB, false);
-    update_flag(FLAG_HALF_CARRY, false);
-    update_flag(FLAG_CARRY, true);
+void CPU::DEC_HL() {
+    // Get memory[HL]
+    Byte value = _memory.read(get_pair(HL));
+
+    // Decrement memory[HL] and set flags
+    DEC(value);
+
+    // Update memory[HL] to decremented value
+    _memory.write(get_pair(HL), value);
 }
 
 /**
- * Complement Accumulator (register A)
+ * 16-bit addition
  * --- NOT TESTED ---
- * - 1 1 -
+ * - 0 H C
+ * 
+ * @param value the word to add to HL
 */
-void CPU::CPL() {
-    reg_A = ~reg_A;
+void CPU::ADD(const Word value) {
+    Word old_val = get_pair(HL);
+    uint32_t res = old_val + value;
 
-    update_flag(FLAG_SUB, true);
-    update_flag(FLAG_HALF_CARRY, true);
-}
+    bool carry = (res >> 16) != 0;
+    bool half_carry = (((old_val & 0xFFF) + (value & 0xFFF)) > 0xFFF);
 
-
-/**
- * Complement Carry Flag
- * --- NOT TESTED ---
- * - 0 0 C
-*/
-void CPU::CCF() {
-    bool old_val = get_flag(FLAG_CARRY);
+    set_pair(HL, (res & 0xFFFF));
 
     update_flag(FLAG_SUB, false);
-    update_flag(FLAG_HALF_CARRY, false);
-    update_flag(FLAG_CARRY, (1 - old_val));
+    update_flag(FLAG_HALF_CARRY, half_carry);
+    update_flag(FLAG_CARRY, carry);
+}
+
+/**
+ * 16-bit addition
+ * Adds signed 8-bit imm value to SP
+ * --- NOT TESTED ---
+ * 0 0 H C
+*/
+void CPU::ADD() {
+    // Get signed one byte immediate value
+    int8_t imm = static_cast<int8_t>(fetch());
+    uint32_t res = static_cast<uint32_t>(reg_SP + imm);
+
+    bool carry = (res >> 16) & 0b1;
+    bool half_carry = (((imm & 0xF) + (reg_SP & 0xF)) > 0xF);
+
+    reg_SP = (res & 0xFF);
+
+    update_flag(FLAG_ZERO, false);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, half_carry);
+    update_flag(FLAG_CARRY, carry);
+}
+/***
+ * 16-bit increment
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param reg the 16-bit register to be incremented
+*/
+void CPU::INC(Word& reg) {
+    reg++;
+}
+
+/**
+ * 16-bit increment
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param pair the register pair to be incremented
+*/
+void CPU::INC(Pair& pair) {
+    (*(pair.reg_low))++;
+    if (*(pair.reg_low) == 0) {
+        (*(pair.reg_high))++;
+    }
+}
+
+/***
+ * 16-bit decrement
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param reg the 16-bit register to be decremented
+*/
+void CPU::DEC(Word& reg) {
+    reg--;
+}
+
+/***
+ * 16-bit decrement
+ * --- NOT TESTED ---
+ * - - - -
+ * 
+ * @param pair the register pair to be decremented
+*/
+void CPU::DEC(Pair& pair) {
+    (*(pair.reg_low))--;
+    if (*(pair.reg_low) == 0xFF) {
+        (*(pair.reg_high))--;
+    }
 }
 
 
@@ -381,6 +561,7 @@ void CPU::CCF() {
  * Rotate Left, Register A
  * (Both circular and non circular)
  * (Why does this one have to be different?)
+ * --- NOT TESTED ---
  * 0 0 0 C 
  * 
  * @param circular true if opcode is RLCA, false if RLA
@@ -407,6 +588,7 @@ void CPU::RLA(bool circular) {
 /**
  * Rotate Left
  * (Both circular and non circular)
+ * --- NOT TESTED ---
  * Z 0 0 C
  * 
  * @param reg the register to be rotated
@@ -430,6 +612,15 @@ void CPU::RL(Byte &reg, bool circular) {
 }
 
 
+/**
+ * Rotate Right, Register A
+ * (Both circular and non circular)
+ * (Why does this one have to be different?)
+ * --- NOT TESTED ---
+ * 0 0 0 C 
+ * 
+ * @param circular true if opcode is RRCA, false if RRA
+*/
 void CPU::RRA(bool circular) {
     bool bit_0 = reg_A & 0b1;
     reg_A = (reg_A >> 1);
@@ -448,6 +639,15 @@ void CPU::RRA(bool circular) {
 }
 
 
+/**
+ * Rotate Right
+ * (Both circular and non circular)
+ * --- NOT TESTED ---
+ * Z 0 0 C
+ * 
+ * @param reg the register to be rotated
+ * @param circular true if opcode is RRC, false if RR
+*/
 void CPU::RR(Byte &reg, bool circular) {
     bool bit_0 = reg & 0b1;
     reg = (reg >> 1);

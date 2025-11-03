@@ -10,8 +10,6 @@ class CPU {
         int step();
 
     private:
-
-
         Memory _memory;
 
         /**
@@ -46,7 +44,7 @@ class CPU {
         const uint8_t FLAG_HALF_CARRY = 0b00100000;
         const uint8_t FLAG_CARRY      = 0b00010000;
 
-        void handle_interrupts(); // needs to be created
+        void handle_interrupts(); // not implemented
 
         // Fetch -> Decode -> Execute cycle
         Byte fetch();
@@ -55,42 +53,69 @@ class CPU {
         int decode_execute_cb();
 
         // Helper Functions
-        void update_flag(const uint8_t flag, bool new_val);
         bool get_flag(const uint8_t flag) const;        
+        void update_flag(const uint8_t flag, bool new_val);
         Word get_pair(const Pair& pair) const;
         void set_pair(const Pair& pair, const Word value);
         Byte read_hl() const;
 
-        // Control Instructions
+        // Control and Miscellaneous Instructions
 
+        void SWAP();    // not implemented
+        void DAA();     // not implemented
+        void CPL();
+        void CCF();
+        void SCF();
+        void HALT();    // not implemented
+        void STOP();    // not implemented
+        void DI();      // not implemented
+        void EI();      // not implemented
 
-        // 8-bit load and arithmetic
+        // 8-bit loads
         
-        void LD(Byte& dest, const Byte value);
-        void LD(Byte& dest, const Address address);
-        void LD(const Address dest, const Byte value);
+        void LD(Byte& dest, const Byte value);          // dest <- value
+        void LD(Byte& dest, const Address address);     // dest <- memory[address]
+        void LD(const Address dest, const Byte value);  // memory[address] <- value
         void LDH(const Byte reg, bool into_A);
+
+        // 16-bit loads
+
+        void LD(Word& dest, const Word value);          // dest <- value
+        void LD(Pair& pair, const Word value);          // [high | low] <- [value 15:8 | value 7:0]
+        void write_SP(const Address address);
+        void PUSH(const Pair& pair);    // not implemented
+        void POP(Pair& pair);           // not implemented
+
+        // 8-bit arithmetic
+
         void ADD(const Byte value, bool carry);
         void SUB(const Byte value, bool carry);
         void AND(const Byte value);
         void XOR(const Byte value);
         void OR(const Byte value);
         void CP(const Byte value);
-        void INC(Byte& reg_value);
-        void DEC(Byte& reg_value);
-        void SCF();
-        void CPL();
-        void CCF();
+        void INC(Byte& reg);
+        void INC_HL();
+        void DEC(Byte& reg);
+        void DEC_HL();
+
+
+        // 16-bit arithmetic
+
+        void ADD(const Word value);     // HL += value
+        void ADD();                     // SP += e8
+        void INC(Word& reg);
+        void INC(Pair& pair);
+        void DEC(Word& reg);
+        void DEC(Pair& pair);
+
+
         void RLA(bool circular);
         void RL(Byte& reg, bool circular);
         void RRA(bool circular);
         void RR(Byte& reg, bool circular);
         
-        // 16-bit load and arithmetic
 
-        void LD(Word& dest, const Word value);
-        void INC(Word& reg_value);
-        void INC(Pair pair);
 
 };
 

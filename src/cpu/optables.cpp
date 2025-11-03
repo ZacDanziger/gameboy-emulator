@@ -11,72 +11,72 @@
 int CPU::decode_execute(Byte opcode) {
     switch(opcode) {
         case 0x00: { return 4; }                                   // NOP
-        case 0x01: {}                                              // LD BC, n16
+        case 0x01: { LD(BC, fetch16()); return 12; }               // B <- n16[15:8], C <- n16[7:0]
         case 0x02: { LD(get_pair(BC), reg_A); return 8; }          // memory[BC] <- A
-        case 0x03: {}                                              // INC BC
+        case 0x03: { INC(BC); return 8; }                          // INC BC++
         case 0x04: { INC(reg_B); return 4; }                       // B++
         case 0x05: { DEC(reg_B); return 4; }                       // B--
         case 0x06: { LD(reg_B, fetch()); return 8; }               // B <- n8
         case 0x07: { RLA(true); return 4; }                        // RLCA
-        case 0x08: {}   // LD [a16], SP
-        case 0x09: {}   // ADD HL, BC
+        case 0x08: { write_SP(fetch16()); return 20; }             // LD [a16], SP
+        case 0x09: { ADD(get_pair(BC)); return 8; }                // HL += BC
         case 0x0A: { LD(reg_A, get_pair(BC)); return 8; }          // A <- memory[BC]
-        case 0x0B: {}   // DEC BC
+        case 0x0B: { DEC(BC); return 8; }                          // BC--
         case 0x0C: { INC(reg_C); return 4; }                       // C++
         case 0x0D: { DEC(reg_C); return 4; }                       // C--
         case 0x0E: { LD(reg_C, fetch()); return 4; }               // C <- n8
         case 0x0F: { RRA(true); return 4; }                        // RRCA
 
         case 0x10: {}   // STOP (n8 ???)
-        case 0x11: {}   // LD DE, n16
+        case 0x11: { LD(DE, fetch16()); return 12; }               // D <- n16[15:8], E <- n16[7:0]
         case 0x12: { LD(get_pair(DE), reg_A); return 8; }          // memory[DE] <- A
-        case 0x13: {}   // INC DE
+        case 0x13: { INC(DE); return 8; }                          // DE++
         case 0x14: { INC(reg_D); return 4; }                       // D++
         case 0x15: { DEC(reg_D); return 4; }                       // D--
         case 0x16: { LD(reg_D, fetch()); return 8; }               // D <- n8
         case 0x17: { RLA(false); return 4; }                       // RLA
         case 0x18: {}   // JR e8
-        case 0x19: {}   // ADD HL, DE
+        case 0x19: { ADD(get_pair(DE)); return 8; }                // HL += DE
         case 0x1A: { LD(reg_A, get_pair(DE)); return 8; }          // A <- memory[DE]
-        case 0x1B: {}   // DEC DE
+        case 0x1B: { DEC(DE); return 8; }                          // DE--
         case 0x1C: { INC(reg_E); return 4; }                       // E++
         case 0x1D: { DEC(reg_E); return 4; }                       // E--
         case 0x1E: { LD(reg_E, fetch()); return 8; }               // E <- n8
         case 0x1F: { RRA(false); return 4; }                       // RRA
 
         case 0x20: {}   // JR NZ, e8
-        case 0x21: {}   // LD HL, n16
-        case 0x22: { _memory.write(get_pair(HL), reg_A); /* INCREMENT HL HERE*/ return 8; }    // LD [HL+], A ---------------
-        case 0x23: {}   // INC HL
+        case 0x21: { LD(HL, fetch16()); return 12; }               // LD HL, n16
+        case 0x22: { _memory.write(get_pair(HL), reg_A); INC(HL); return 8; }    // memory[HL++] <- A
+        case 0x23: { INC(HL); return 8; }                                // INC HL
         case 0x24: { INC(reg_H); return 4; }                             // H++
         case 0x25: { DEC(reg_H); return 4; }                             // H--
         case 0x26: { LD(reg_H, fetch()); return 8; }                     // H <- n8
         case 0x27: {}   // DAA
         case 0x28: {}   // JR Z, e8
-        case 0x29: {}   // ADD HL, HL
-        case 0x2A: { LD(reg_A, get_pair(HL)); /* DECREMENT HL HERE*/ return 8; }   // LD A, [HL+] ---------------
-        case 0x2B: {}   // DEC HL
+        case 0x29: { ADD(get_pair(HL)); return 8; }                      // ADD HL, HL
+        case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return 8; }       // A <- memory[HL++]
+        case 0x2B: { DEC(HL); return 8; }                                // HL--
         case 0x2C: { INC(reg_L); return 4; }                             // L++
         case 0x2D: { DEC(reg_L); return 4; }                             // L--
         case 0x2E: { LD(reg_L, fetch()); return 8; }                     // L <- n8
-        case 0x2F: { CPL(); return 4; }                                  // CPL
+        case 0x2F: { CPL(); return 4; }                                  // A <- ~A
 
         case 0x30: {}   // JR NC, e8
-        case 0x31: {}   //LD SP, n16
-        case 0x32: { _memory.write(get_pair(HL), reg_A); /* DECREMENT HL HERE*/ return 8; }    //LD [HL-], A ---------------
-        case 0x33: {}   // INC SP
-        case 0x34: {}   // INC [HL]
-        case 0x35: {}   // DEC [HL]
-        case 0x36: { _memory.write(get_pair(HL), fetch()); return 12; }                      // memory[HL] <- n8
-        case 0x37: { SCF(); return 4; } // SCF
+        case 0x31: { LD(reg_SP, fetch16()); return 12; }                 //LD SP, n16
+        case 0x32: { _memory.write(get_pair(HL), reg_A); DEC(HL); return 8; }    // memory[HL--] <- A
+        case 0x33: { INC(reg_SP); return 8; }                            // SP++
+        case 0x34: { INC_HL(); return 12; }                              // memory[HL]++
+        case 0x35: { DEC_HL(); return 12; }                              // memory[HL]--
+        case 0x36: { _memory.write(get_pair(HL), fetch()); return 12; }  // memory[HL] <- n8
+        case 0x37: { SCF(); return 4; }                                  // {Z N H C} = {- 0 0 1}
         case 0x38: {}   // JR C, e8
-        case 0x39: {}   // ADD HL, SP
-        case 0x3A: { LD(reg_A, get_pair(HL)); /* DECREMENT HL HERE*/ return 8; }   // LD A, [HL-] ---------------
-        case 0x3B: {}   // DEC SP
-        case 0x3C: { INC(reg_A); return 4; }                            // A++
-        case 0x3D: { DEC(reg_A); return 4; }                            // A--
-        case 0x3E: { LD(reg_A, fetch()); return 8; }                    // A <- n8
-        case 0x3F: { CCF(); return 4; }                                 // CCF
+        case 0x39: { ADD(reg_SP); return 8; }                            // HL += SP
+        case 0x3A: { LD(reg_A, get_pair(HL)); DEC(HL); return 8; }       // A <- memory[HL--]
+        case 0x3B: { DEC(reg_SP); return 8; }                            // SP--
+        case 0x3C: { INC(reg_A); return 4; }                             // A++
+        case 0x3D: { DEC(reg_A); return 4; }                             // A--
+        case 0x3E: { LD(reg_A, fetch()); return 8; }                     // A <- n8
+        case 0x3F: { CCF(); return 4; }                                  // CCF
 
         case 0x40: { return 4; }                                        // LD B, B - essentially a NOP
         case 0x41: { LD(reg_B, reg_C); return 4; }                      // B <- C
@@ -205,14 +205,14 @@ int CPU::decode_execute(Byte opcode) {
         case 0xB5: { OR(reg_L); return 4; }                             // A |= L
         case 0xB6: { OR(read_hl()); return 8; }                         // A |= memory[HL]
         case 0xB7: { OR(reg_A); return 4; }                             // A |= A
-        case 0xB8: { CP(reg_B); return 4; }
-        case 0xB9: { CP(reg_C); return 4; }
-        case 0xBA: { CP(reg_D); return 4; }
-        case 0xBB: { CP(reg_E); return 4; }
-        case 0xBC: { CP(reg_H); return 4; }
-        case 0xBD: { CP(reg_L); return 4; }
-        case 0xBE: { CP(read_hl()); return 8; }
-        case 0xBF: { CP(reg_A); return 4; }
+        case 0xB8: { CP(reg_B); return 4; }                             // Update flags for (A - B)
+        case 0xB9: { CP(reg_C); return 4; }                             // Update flags for (A - C)
+        case 0xBA: { CP(reg_D); return 4; }                             // Update flags for (A - D)
+        case 0xBB: { CP(reg_E); return 4; }                             // Update flags for (A - E)
+        case 0xBC: { CP(reg_H); return 4; }                             // Update flags for (A - H)
+        case 0xBD: { CP(reg_L); return 4; }                             // Update flags for (A - L)
+        case 0xBE: { CP(read_hl()); return 8; }                         // Update flags for (A - memory[HL])
+        case 0xBF: { CP(reg_A); return 4; }                             // Update flags for (A - A)
 
         case 0xC0: {}   // RET NZ
         case 0xC1: {}   // POP BC
@@ -258,7 +258,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xE7: {}   // RST $20
         case 0xE8: {}   // ADD SP, e8
         case 0xE9: {}   // JP HL
-        case 0xEA: {}   // LF [a16], A
+        case 0xEA: { LD(fetch16(), reg_A); return 16; }   // memory[n16] <- A
         case 0xEB: {}   // --- BAD ---
         case 0xEC: {}   // --- BAD ---
         case 0xED: {}   // --- BAD ---
