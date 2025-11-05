@@ -3,6 +3,7 @@ project(src)
 
 set (SourceFiles
     cpu/cpu.cpp
+    cpu/optables.cpp
     memory/memory.cpp
 )
 

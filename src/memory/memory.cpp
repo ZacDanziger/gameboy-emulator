@@ -8,6 +8,7 @@ Memory::Memory() {
     _wram_bank_01 = {0};
     _io_registers = {0};
     _hram = {0};
+    _IE_register = 0x00;
 }
 
 Byte Memory::read(Address address) const {
@@ -37,6 +38,10 @@ Byte Memory::read(Address address) const {
 
     if (address < IE_REGISTER) {
         return _hram[address - HRAM_START];
+    }
+
+    if (address == IE_REGISTER) {
+        return _IE_register;
     }
 
     throw std::runtime_error("Cannot read from that area of memory");
@@ -76,6 +81,11 @@ void Memory::write(Address address, Byte data) {
 
     if (address < IE_REGISTER) {
         _hram[address - HRAM_START] = data;
+        return;
+    }
+
+    if (address == IE_REGISTER) {
+        _IE_register = data;
         return;
     }
 

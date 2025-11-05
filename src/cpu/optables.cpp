@@ -281,6 +281,8 @@ int CPU::decode_execute(Byte opcode) {
         case 0xFD: {}   // --- BAD ---
         case 0xFE: { CP(fetch()); return 8; }   
         case 0xFF: {}   // RST $38
+
+        default: {throw std::runtime_error("Invalid Opcode"); }
     }
 }
 
@@ -544,5 +546,7 @@ int CPU::decode_execute_cb() {
         case 0xFD: {}
         case 0xFE: {}
         case 0xFF: {}
+
+        default: { throw std::runtime_error("Invalid Opcode"); }
     }
 }

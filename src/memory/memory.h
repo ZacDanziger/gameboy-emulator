@@ -52,8 +52,8 @@ const uint16_t HRAM_SIZE      = 0x007F;
 /**
  * Represents all memory in the gameboy
  * Byte-addressable 16-bit address size
- *      currently handles ROM, VRAM, WRAM, I/O REGISTERS, and HRAM
- *      currently does not handle ERAM, ECHO RAM, OAM, and IE REGISTER
+ *      currently handles ROM, VRAM, WRAM, I/O REGISTERS, HRAM, and IE REGISTER
+ *      currently does not handle ERAM, ECHO RAM, and OAM
  * TODO:
  *      Make way to load other sections of memory than ROM
 */
@@ -74,6 +74,7 @@ class Memory {
         std::array<Byte, WRAM_BANK_SIZE> _wram_bank_01;     // 0xD000 - 0xDFFF
         std::array<Byte, IO_REG_SIZE> _io_registers;        // 0xFF00 - 0xFF7F
         std::array<Byte, HRAM_SIZE> _hram;                  // 0xFF80 - 0xFFFE
+        Byte _IE_register;                                  // 0xFFFF
 };
 
 #endif // MEMORY_H

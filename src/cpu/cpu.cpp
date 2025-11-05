@@ -14,6 +14,7 @@
 CPU::CPU() : 
     _memory(), 
     reg_A(0),
+    reg_F(0),
     reg_B(0),
     reg_C(0),
     reg_D(0),
@@ -36,7 +37,7 @@ CPU::CPU() :
  * @return the number of T-states taken in the loop (always some multiple of 4)
 */
 int CPU::step() {
-    handle_interrupts();    // not created yet
+    // handle_interrupts();    // not created yet
 
     Byte opcode = fetch();
     return decode_execute(opcode);
@@ -45,7 +46,6 @@ int CPU::step() {
 
 /**
  * Fetch the next instruction and increment PC
- * --- NOT TESTED ---
  * 
  * @return the value in memory[PC]
 */
@@ -56,7 +56,6 @@ Byte CPU::fetch() {
 
 /**
  * Fetch the next 16 bits, in little endian format
- * --- NOT TESTED ---
  * 
  * @return [low | high]
 */
@@ -67,7 +66,6 @@ Word CPU::fetch16() {
 
 /**
  * read the value of the flag stored in register F
- * --- NOT TESTED ---
  * 
  * @param flag the flag to be read
 */
@@ -78,7 +76,6 @@ bool CPU::get_flag(const uint8_t flag) const {
 
 /**
  * update flag to new_val
- * --- NOT TESTED ---
  * 
  * @param flag the flag to be updated
  * @param new_val the new value of the flag
@@ -94,7 +91,6 @@ void CPU::update_flag(const uint8_t flag, bool new_val) {
 
 /**
  * Get the 16-bit represtation of the pair
- * --- NOT TESTED ---
  * 
  * @return [reg_high | reg_low]
 */
@@ -107,7 +103,6 @@ Word CPU::get_pair(const Pair& pair) const {
  * Update the value stored in pair to value
  * reg_high = value[15:8]
  * reg_low = value [7:0]
- * --- NOT TESTED ---
  * 
  * @param pair the pair to be updated
  * @param value the new value to set the pair to
@@ -169,7 +164,6 @@ void CPU::SCF() {
 /**
  * 8-bit load
  * dest = value
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param dest the address of the destination register or location in memory
@@ -183,7 +177,6 @@ void CPU::LD(Byte& dest, const Byte value) {
 /**
  * 8-bit load
  * dest = memory[address]
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param dest the address of the destination register or location in memory
@@ -197,7 +190,6 @@ void CPU::LD(Byte& dest, const Address address) {
 /**
  * 8-bit load
  * memory[address] = value
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param address the address of the destination in memory
@@ -210,7 +202,6 @@ void CPU::LD(const Address address, const Byte value) {
 
 /**
  * 8-bit load high
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param value the value to load into the destination
@@ -229,7 +220,6 @@ void CPU::LDH(const Byte value, bool into_A) {
 /***
  * 16-bit load
  * dest = value
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param dest the address of the 16-bit register to update
@@ -242,7 +232,6 @@ void CPU::LD(Word& dest, const Word value) {
 /***
  * 16-bit load
  * [high | low] = [value 15:8 | value 7:0]
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param pair the pair to be updated
@@ -255,7 +244,6 @@ void CPU::LD(Pair& pair, const Word value) {
 /***
  * 16-bit load (write)
  * memory[address] = SP[7:0], memory[address+1] = SP[15:8]
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param address the address in memory to hold least significant byte of SP
@@ -495,8 +483,8 @@ void CPU::ADD(const Word value) {
 */
 Word CPU::ADD() {
     // Get signed one byte immediate value
-    Byte imm = static_cast<Byte>(fetch());
-    uint32_t temp = static_cast<uint32_t>(reg_SP + imm);
+    int8_t imm = static_cast<int8_t>(fetch());
+    int32_t temp = static_cast<int32_t>(reg_SP) + imm;
 
     bool carry = (temp >> 16) & 0b1;
     bool half_carry = (((imm & 0xF) + (reg_SP & 0xF)) > 0xF);

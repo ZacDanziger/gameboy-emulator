@@ -43,6 +43,7 @@ TEST_F(MemoryTest, LoadROM) {
     }   
 }
 
+// NO WRITING TO RAM !!!
 
 // TEST_F(MemoryTest, HandlesWrite) {
 //     int index = std::rand() % ROM_BANK_SIZE;

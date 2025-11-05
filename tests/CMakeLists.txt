@@ -19,3 +19,13 @@ target_link_libraries(memory_test
 )
 
 add_test(memory_gtests memory_test)
+
+add_executable(cpu_test test_cpu.cpp)
+
+target_link_libraries(cpu_test
+  PRIVATE
+  GTest::GTest
+  src
+)
+
+add_test(cpu_gtests cpu_test)

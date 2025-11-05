@@ -4,6 +4,14 @@
 #include "../memory/memory.h"
 
 class CPU {
+    friend class CPUTest;
+    friend class CPUTest_TestConstructor_Test;
+    friend class CPUTest_TestFlags_Test;
+    friend class CPUTest_TestPair_Test;
+    friend class CPUTest_TestFetch_Test;
+    friend class CPUTest_TestLoads_Test;
+    friend class CPUTest_TestArithmetic_Test;
+
     public:
         CPU();
 
@@ -116,9 +124,6 @@ class CPU {
         void RL(Byte& reg, bool circular);
         void RRA(bool circular);
         void RR(Byte& reg, bool circular);
-        
-
-
 };
 
 #endif // CPU_H
