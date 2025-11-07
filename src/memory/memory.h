@@ -1,11 +1,11 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <array>
 #include <stdexcept>
-#include <fstream>
-// #include <iterator>
+#include <algorithm>
+#include "../utils/utils.h"
 
 
 typedef uint8_t Byte;
@@ -25,6 +25,8 @@ I/O Registers----------------------0xFF00 - 0xFF7F
 High RAM---------------------------0xFF80 - 0xFFFE
 Interrupt Enable Register----------0xFFFF
 */
+
+const Address ROM_BANK_00_START  = 0x0000;
 const Address ROM_BANK_01_START  = 0x4000;
 const Address VRAM_START         = 0x8000;
 const Address ERAM_START         = 0xA000;
@@ -32,7 +34,6 @@ const Address WRAM_BANK_00_START = 0xC000;
 const Address WRAM_BANK_01_START = 0xD000;
 const Address ECHO_START         = 0xE000;
 const Address OAM_START          = 0xFE00;
-const Address OAM_END            = 0xFE9F;
 const Address IO_START           = 0xFF00;
 const Address HRAM_START         = 0xFF80;
 const Address IE_REGISTER        = 0xFFFF;
@@ -43,6 +44,7 @@ WRAM size = 0xDFFF - 0xBFFF = 0x2000
 I/O size  = 0xFF7F - 0xFF00 = 0x0080
 HRAM size = 0xFFFE - 0xFF7F = 0x007F
 */
+
 const uint16_t ROM_BANK_SIZE  = 0x4000;
 const uint16_t VRAM_SIZE      = 0x2000;
 const uint16_t WRAM_BANK_SIZE = 0x1000;
@@ -64,8 +66,8 @@ class Memory {
         Byte read(Address address) const;
         void write(Address address, Byte data);
 
-        void load_rom(std::string file);
-    
+        void load(Address address, std::string file);
+
     private:
         std::array<Byte, ROM_BANK_SIZE> _rom_bank_00;       // 0x0000 - 0x3FFF
         std::array<Byte, ROM_BANK_SIZE> _rom_bank_01;       // 0x4000 - 0x7FFF

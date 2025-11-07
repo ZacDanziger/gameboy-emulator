@@ -31,16 +31,65 @@ class MemoryTest : public testing::Test {
 };
 
 
-TEST_F(MemoryTest, LoadROM) {
+TEST_F(MemoryTest, TestLoad) {
     create_data();
 
     EXPECT_NO_THROW(
-        _mem.load_rom("numbers.txt");
+        _mem.load(ROM_BANK_00_START, "numbers.txt");
     );
 
     for (int i = 0; i < ROM_BANK_SIZE; i++) {
         EXPECT_EQ(_data[i], _mem.read(i));
-    }   
+    }
+
+    EXPECT_NO_THROW(
+        _mem.load(ROM_BANK_01_START, "numbers.txt");
+    );
+
+    for (int i = 0; i < ROM_BANK_SIZE; i++) {
+        EXPECT_EQ(_data[i], _mem.read(i + ROM_BANK_01_START));
+    }
+
+    EXPECT_NO_THROW(
+        _mem.load(VRAM_START, "numbers.txt");
+    );
+
+    for (int i = 0; i < VRAM_SIZE; i++) {
+        EXPECT_EQ(_data[i], _mem.read(i + VRAM_START));
+    }
+
+    EXPECT_NO_THROW(
+        _mem.load(WRAM_BANK_00_START, "numbers.txt");
+    );
+
+    for (int i = 0; i < WRAM_BANK_SIZE; i++) {
+        EXPECT_EQ(_data[i], _mem.read(i + WRAM_BANK_00_START));
+    }
+
+    EXPECT_NO_THROW(
+        _mem.load(WRAM_BANK_01_START, "numbers.txt");
+    );
+
+    for (int i = 0; i < WRAM_BANK_SIZE; i++) {
+        EXPECT_EQ(_data[i], _mem.read(i + WRAM_BANK_01_START));
+    }
+
+    EXPECT_NO_THROW(
+        _mem.load(IO_START, "numbers.txt");
+    );
+
+    for (int i = 0; i < IO_REG_SIZE; i++) {
+        EXPECT_EQ(_data[i], _mem.read(i + IO_START));
+    }
+
+    EXPECT_NO_THROW(
+        _mem.load(HRAM_START, "numbers.txt");
+    );
+
+    for (int i = 0; i < HRAM_SIZE; i++) {
+        EXPECT_EQ(_data[i], _mem.read(i + HRAM_START));
+    }
+
 }
 
 // NO WRITING TO RAM !!!

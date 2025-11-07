@@ -161,11 +161,53 @@ TEST_F(CPUTest, TestArithmetic) {
     EXPECT_EQ(_cpu.reg_H, 0xDE);
     EXPECT_EQ(_cpu.reg_L, 0xAD);
 
-    // NEED DEBUGGER WORKING !!
     _cpu.reg_SP = 0xBEEF;
     _cpu._memory.write(_cpu.reg_PC, 0xEF);
-    EXPECT_EQ(_cpu.ADD(), 0xBEDE);
+    EXPECT_EQ(_cpu.ADD_SP(), 0xBEDE);
 
+    _cpu.INC(_cpu.reg_SP);
+    EXPECT_EQ(_cpu.reg_SP, 0xBEF0);
+
+    _cpu.reg_L = 0xFF;
+    _cpu.INC(_cpu.HL);
+    EXPECT_EQ(_cpu.get_pair(_cpu.HL), 0xDF00);
+
+    _cpu.DEC(_cpu.reg_SP);
+    EXPECT_EQ(_cpu.reg_SP, 0xBEEF);
+
+    _cpu.DEC(_cpu.HL);
+    EXPECT_EQ(_cpu.get_pair(_cpu.HL), 0xDEFF);
+}
+
+// NEED DEBUGGER WORKING
+TEST_F(CPUTest, TestRotates) {
+    _cpu.reg_A = 0x7F;
+    _cpu.RLA(true);
+    EXPECT_EQ(_cpu.reg_A, 0xFE) << "First 0xFE";
+
+    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.RLA(false);
+    EXPECT_EQ(_cpu.reg_A, 0xFD);
+
+    _cpu.RRA(true);
+    EXPECT_EQ(_cpu.reg_A, 0xFE) << "Second 0xFE";
+
+    _cpu.RRA(false);
+    EXPECT_EQ(_cpu.reg_A, 0xFF);
+
+    _cpu.reg_B = 0x7F;
+    _cpu.RL(_cpu.reg_B, true);
+    EXPECT_EQ(_cpu.reg_A, 0xFE);
+
+    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.RL(_cpu.reg_B, false);
+    EXPECT_EQ(_cpu.reg_A, 0xFD);
+
+    _cpu.RR(_cpu.reg_B, true);
+    EXPECT_EQ(_cpu.reg_A, 0xFE);
+
+    _cpu.RR(_cpu.reg_B, false);
+    EXPECT_EQ(_cpu.reg_A, 0xFF);
 }
 
 int main(int argc, char **argv) {

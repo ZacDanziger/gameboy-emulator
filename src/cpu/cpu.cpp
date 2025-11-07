@@ -113,7 +113,6 @@ void CPU::set_pair(const Pair &pair, const Word value) {
 }
 /***
  * Get the value in memory stored in [HL]
- * --- NOT TESTED ---
  * 
  * @return memory[HL]
 */
@@ -121,7 +120,16 @@ Byte CPU::read_hl() const {
     return _memory.read(get_pair(HL));
 }
 
-
+/**
+ * Swap the upper and lower nibbles of the Byte passed in (usually a register)
+ * --- NOT TESTED ---
+ * 
+ * @param value the address of the Byte to be swapped
+ * 
+*/
+void CPU::SWAP(Byte& value) {
+    value = ((value & 0x0F) << 4) | ((value & 0xF0) >> 4);
+}
 /**
  * Complement Accumulator (register A)
  * --- NOT TESTED ---
@@ -256,7 +264,6 @@ void CPU::write_SP(const Address address) {
 
 /**
  * 8-bit addition with and without carry
- * --- NOT TESTED ---
  * Z 0 H C
  * 
  * @param value the byte to be added to the accumulator (reg A) (usually a register, though can be imm value)
@@ -287,7 +294,6 @@ void CPU::ADD(const Byte value, bool carry) {
 
 /**
  * 8-bit subtraction with and without carry
- * --- NOT TESTED ---
  * Z 1 H C
  * 
  * @param value the byte to be subtracted from the accumulator (reg A) (usually a register, though can be imm value)
@@ -318,7 +324,6 @@ void CPU::SUB(const Byte value, bool carry) {
 
 /**
  * 8-bit bitwise and
- * --- NOT TESTED ---
  * Z 0 1 0
  * 
  * @param value the byte to be and'd with the accumulator (reg A) (usually a register, though can be imm value)
@@ -336,7 +341,6 @@ void CPU::AND(const Byte value) {
 
 /**
  * 8-bit bitwise xor
- * --- NOT TESTED ---
  * Z 0 0 0
  * 
  * @param value the byte to be xor'd with the accumulator (reg A) (usually a register, though can be imm value)
@@ -354,7 +358,6 @@ void CPU::XOR(const Byte value) {
 
 /**
  * 8-bit bitwise or
- * --- NOT TESTED ---
  * Z 0 0 0
  * 
  * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
@@ -372,7 +375,6 @@ void CPU::OR(const Byte value) {
 
 /**
  * 8-bit compare
- * --- NOT TESTED ---
  * Z 1 H C
  * 
  * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
@@ -390,7 +392,6 @@ void CPU::CP(const Byte value) {
 
 /**
  * 8-bit increment
- * --- NOT TESTED ---
  * Z 0 H -
  * 
  * @param reg the register value to be incremented
@@ -405,7 +406,6 @@ void CPU::INC(Byte &reg) {
 }
 /**
  * Increment value stored in memory[HL]
- * --- NOT TESTED ---
  * Z 0 H -
  *
 */
@@ -422,7 +422,6 @@ void CPU::INC_HL() {
 
 /**
  * 8-bit decrement
- * --- NOT TESTED ---
  * Z 1 H -
  * 
  * @param reg the register value to be decremented
@@ -438,7 +437,6 @@ void CPU::DEC(Byte &reg) {
 
 /***
  * Decrement value stored in memory[HL]
- * --- NOT TESTED ---
  * Z 1 H -
 */
 void CPU::DEC_HL() {
@@ -454,7 +452,6 @@ void CPU::DEC_HL() {
 
 /**
  * 16-bit addition
- * --- NOT TESTED ---
  * - 0 H C
  * 
  * @param value the word to add to HL
@@ -476,20 +473,18 @@ void CPU::ADD(const Word value) {
 /**
  * 16-bit addition
  * Adds signed 8-bit imm value to SP
- * --- NOT TESTED ---
  * 0 0 H C
  * 
  * @return SP + e8
 */
-Word CPU::ADD() {
+Word CPU::ADD_SP() {
     // Get signed one byte immediate value
-    int8_t imm = static_cast<int8_t>(fetch());
-    int32_t temp = static_cast<int32_t>(reg_SP) + imm;
+    int16_t imm = (int16_t)(int8_t)(fetch());
+    Word res = (Word)((int16_t)(reg_SP) + imm);
 
-    bool carry = (temp >> 16) & 0b1;
-    bool half_carry = (((imm & 0xF) + (reg_SP & 0xF)) > 0xF);
+    bool carry = (res & 0xFF) < (reg_SP & 0xFF);
+    bool half_carry = (res & 0xF) < (reg_SP & 0xF);
 
-    Word res = static_cast<Word>(temp & 0xFF);
 
     update_flag(FLAG_ZERO, false);
     update_flag(FLAG_SUB, false);
@@ -500,7 +495,6 @@ Word CPU::ADD() {
 }
 /***
  * 16-bit increment
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param reg the 16-bit register to be incremented
@@ -511,7 +505,6 @@ void CPU::INC(Word& reg) {
 
 /**
  * 16-bit increment
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param pair the register pair to be incremented
@@ -525,7 +518,6 @@ void CPU::INC(Pair& pair) {
 
 /***
  * 16-bit decrement
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param reg the 16-bit register to be decremented
@@ -536,7 +528,6 @@ void CPU::DEC(Word& reg) {
 
 /***
  * 16-bit decrement
- * --- NOT TESTED ---
  * - - - -
  * 
  * @param pair the register pair to be decremented
@@ -559,8 +550,8 @@ void CPU::DEC(Pair& pair) {
  * @param circular true if opcode is RLCA, false if RLA
 */
 void CPU::RLA(bool circular) {
-    bool bit_7 = (reg_A >> 7);
-    reg_A = (reg_A << 1);
+    bool bit_7 = ((reg_A & 0x80) >> 7);
+    reg_A = ((reg_A & 0x7F) << 1);
     if (circular) {
         // RLCA
         reg_A |= bit_7;

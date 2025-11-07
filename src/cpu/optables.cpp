@@ -256,7 +256,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xE5: {}   // PUSH HL
         case 0xE6: { AND(fetch()); return 8; }      // A &= n8
         case 0xE7: {}   // RST $20
-        case 0xE8: { reg_SP = ADD(); return 16; }   // SP += e8
+        case 0xE8: { reg_SP = ADD_SP(); return 16; }   // SP += e8
         case 0xE9: {}   // JP HL
         case 0xEA: { LD(fetch16(), reg_A); return 16; }   // memory[n16] <- A
         case 0xEB: {}   // --- BAD ---
@@ -273,7 +273,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xF5: {}   // PUSH AF
         case 0xF6: { OR(fetch()); return 8; }   // A |= n8
         case 0xF7: {}   // RST $30
-        case 0xF8: { LD(HL, ADD()); return 12; }   // HL <- SP + e8
+        case 0xF8: { LD(HL, ADD_SP()); return 12; }   // HL <- SP + e8
         case 0xF9: { LD(reg_SP, get_pair(HL)); return 8; }   // LD SP, HL
         case 0xFA: { LD(reg_A, fetch16()); return 16; }   // A <- memory[n16]
         case 0xFB: {}   // EI

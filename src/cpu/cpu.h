@@ -11,6 +11,7 @@ class CPU {
     friend class CPUTest_TestFetch_Test;
     friend class CPUTest_TestLoads_Test;
     friend class CPUTest_TestArithmetic_Test;
+    friend class CPUTest_TestRotates_Test;
 
     public:
         CPU();
@@ -20,9 +21,7 @@ class CPU {
     private:
         Memory _memory;
 
-        /**
-         * Pair of 8-bit registers
-        */
+        // Pair of 8-bit registers
         struct Pair {
             Byte *reg_high;
             Byte *reg_low;
@@ -71,7 +70,7 @@ class CPU {
 
         // Control and Miscellaneous Instructions
 
-        void SWAP();    // not implemented
+        void SWAP(Byte& value);
         void DAA();     // not implemented
         void CPL();
         void CCF();
@@ -113,7 +112,7 @@ class CPU {
         // 16-bit arithmetic
 
         void ADD(const Word value);     // HL += value
-        Word ADD();                     // SP + e8 
+        Word ADD_SP();                     // SP + e8 
         void INC(Word& reg);
         void INC(Pair& pair);
         void DEC(Word& reg);
