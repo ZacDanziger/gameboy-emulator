@@ -6,27 +6,28 @@
  * H - Half-Carry Flag
  * C - Carry Flag
  * 
- * 0 - unset
+ * 0 - reset
  * 1 - set
  * - - no change
 */
 
 CPU::CPU() : 
     _memory(), 
-    reg_A(0),
-    reg_F(0),
-    reg_B(0),
-    reg_C(0),
-    reg_D(0),
-    reg_E(0),
-    reg_H(0),
-    reg_L(0),
+    reg_A(0x01),
+    reg_F(0x00),
+    reg_B(0x00),
+    reg_C(0x14),
+    reg_D(0x00),
+    reg_E(0x00),
+    reg_H(0xC0),
+    reg_L(0x60),
     AF{&reg_A, &reg_F},
     BC{&reg_B, &reg_C},
     DE{&reg_D, &reg_E},
     HL{&reg_H, &reg_L},
-    reg_SP(0),
-    reg_PC(0) 
+    reg_PC(0x0100), 
+    reg_SP(0xFFFE),
+    interrupts_enabled(false)
 {} 
 
 
@@ -57,7 +58,7 @@ Byte CPU::fetch() {
 /**
  * Fetch the next 16 bits, in little endian format
  * 
- * @return [low | high]
+ * @return [mem[SP+1] | mem[SP]]
 */
 Word CPU::fetch16() {
     Byte low = fetch();
@@ -111,6 +112,8 @@ void CPU::set_pair(const Pair &pair, const Word value) {
     *(pair.reg_high) = (value >> 8);
     *(pair.reg_low) = (value & 0xFF);
 }
+
+
 /***
  * Get the value in memory stored in [HL]
  * 
@@ -120,8 +123,10 @@ Byte CPU::read_hl() const {
     return _memory.read(get_pair(HL));
 }
 
+
 /**
  * Swap the upper and lower nibbles of the Byte passed in (usually a register)
+ * Z 0 0 0
  * --- NOT TESTED ---
  * 
  * @param value the address of the Byte to be swapped
@@ -129,7 +134,24 @@ Byte CPU::read_hl() const {
 */
 void CPU::SWAP(Byte& value) {
     value = ((value & 0x0F) << 4) | ((value & 0xF0) >> 4);
+
+    update_flag(FLAG_ZERO, value == 0x00);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, false);
 }
+
+/**
+ * Swap the upper and lower nibbles of memory[HL]
+ * Z 0 0 0
+ * --- NOT TESTED ---
+*/
+void CPU::SWAP_HL() {
+    Byte value = read_hl();
+    SWAP(value);
+    LD(get_pair(HL), value);
+}
+
 /**
  * Complement Accumulator (register A)
  * --- NOT TESTED ---
@@ -145,7 +167,6 @@ void CPU::CPL() {
 
 /**
  * Complement Carry Flag
- * --- NOT TESTED ---
  * - 0 0 C
 */
 void CPU::CCF() {
@@ -159,13 +180,169 @@ void CPU::CCF() {
 
 /**
  * Set Carry Flag
- * --- NOT TESTED ---
  * - 0 0 1
 */
 void CPU::SCF() {
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, true);
+}
+
+/**
+ * Disable interrupts
+ * - - - -
+*/
+void CPU::DI() {
+    interrupts_enabled = false;
+}
+
+/**
+ * Enable interrupts
+ * - - - -
+*/
+void CPU::EI() {
+    interrupts_enabled = true;
+}
+
+/**
+ * Unconditional Jump - PC = value
+ * - - - -
+ * --- NOT TESTED ---
+ * 
+ * @param value the address in memory to jump PC to
+*/
+void CPU::JP(const Word value) {
+    reg_PC = value;
+}
+
+
+/**
+ * Relative Jump - PC += (signed) imm value
+ * - - - -
+ * --- NOT TESTED ---
+*/
+void CPU::JR() {
+    int16_t imm = (int16_t)(int8_t)(fetch());
+    reg_PC = (Word)((int16_t)(reg_PC) + imm);
+}
+
+/**
+ * Push PC onto stack and set PC = imm16
+ * - - - -
+ * --- NOT TESTED ---
+*/
+void CPU::CALL() {
+    PUSH_PC();
+    reg_PC = fetch16();
+}
+
+/**
+ * Reset, pushing PC onto the stack and jumping to 0x0000 + offset
+ * 
+ * @param offset the 8-bit representation of the address to jump PC to
+*/
+void CPU::RST(const Byte offset) {
+    PUSH_PC();
+    reg_PC = 0x0000 + offset;
+}
+/**
+ * Return (pop PC from the stack)
+ * - - - -
+ * --- NOT TESTED ---
+*/
+void CPU::RET() {
+    reg_SP++;
+    Byte low = _memory.read(reg_SP);
+    reg_SP++;
+    reg_PC = ((_memory.read(reg_SP) << 8) | low);
+}
+
+
+/**
+ * Check whether bit[pos] has been set, update Z to match
+ * Z 0 1 -
+ * --- NOT TESTED ---
+ * 
+ * @param pos the bit position to check, in range [0, 7]
+ * @param reg the register to check the bit of
+*/
+void CPU::BIT(int pos, Byte reg) {
+    if (pos < 0 || pos > 7) {
+        throw std::runtime_error("Invalid bit position");
+    }
+
+    bool set = (reg & (1 << pos)) == (1 << pos);
+
+    update_flag(FLAG_ZERO, set);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, true);
+}
+
+/**
+ * Sets registers's bit[pos] 
+ * - - - -
+ * --- NOT TESTED ---
+ * 
+ * @param pos the bit position to check, in range [0, 7]
+ * @param reg the register to set the bit of
+*/
+void CPU::SET(int pos, Byte& reg) {
+    if (pos < 0 || pos > 7) {
+        throw std::runtime_error("Invalid bit position");
+    }
+
+    reg |= (1 << pos);
+}
+
+/**
+ * Set memory[HL]'s bit[pos]
+ * - - - -
+ * --- NOT TESTED ---
+ * 
+ * @param pos the bit position to set in memory[HL]
+*/
+void CPU::SET_HL(int pos) {
+    if (pos < 0 || pos > 7) {
+        throw std::runtime_error("Invalid bit position");
+    }
+
+    Byte value = read_hl();
+    SET(pos, value);
+    LD(get_pair(HL), value);
+}
+
+
+/**
+ * Resets register's bit[pos]
+ * - - - -
+ * --- NOT TESTED ---
+ * 
+ * @param pos the bit position to check, in range [0, 7]
+ * @param reg the register to reset the bit of
+*/
+void CPU::RES(int pos, Byte& reg) {
+    if (pos < 0 || pos > 7) {
+        throw std::runtime_error("Invalid bit position");
+    }
+
+    reg &= ~(1 << pos);
+}
+
+/**
+ * Reset memory[HL]'s bit[pos]
+ * - - - -
+ * --- NOT TESTED ---
+ * 
+ * @param pos the bit position to reset in memory[HL]
+*/
+void CPU::RES_HL(int pos) {
+    if (pos < 0 || pos > 7) {
+        throw std::runtime_error("Invalid bit position");
+    }
+
+    Byte value = read_hl();
+    RES(pos, value);
+    LD(get_pair(HL), value);
 }
 
 
@@ -261,6 +438,36 @@ void CPU::write_SP(const Address address) {
     _memory.write((address + 1), (reg_SP >> 8));    // high byte
 }
 
+/***
+ * --- NOT TESTED ---
+*/
+void CPU::PUSH(const Pair& pair) {
+    reg_SP--;
+    _memory.write(reg_SP, *(pair.reg_high));
+    reg_SP--;
+    _memory.write(reg_SP, *(pair.reg_low));
+}
+
+/***
+ * --- NOT TESTED ---
+*/
+void CPU::PUSH_PC() {
+    reg_SP--;
+    _memory.write(reg_SP, (reg_PC >> 8));   // high byte
+    reg_SP--;
+    _memory.write(reg_SP, (reg_PC & 0xFF));   // low byte
+}
+
+/***
+ * --- NOT TESTED ---
+*/
+void CPU::POP(Pair& pair) {
+    reg_SP++;
+    *(pair.reg_low) = _memory.read(reg_SP);
+    reg_SP++;
+    *(pair.reg_high) = _memory.read(reg_SP);
+}
+
 
 /**
  * 8-bit addition with and without carry
@@ -329,7 +536,6 @@ void CPU::SUB(const Byte value, bool carry) {
  * @param value the byte to be and'd with the accumulator (reg A) (usually a register, though can be imm value)
 */
 void CPU::AND(const Byte value) {
-    // line may cause issues:
     reg_A &= value;
 
     update_flag(FLAG_ZERO, reg_A == 0);
@@ -346,7 +552,6 @@ void CPU::AND(const Byte value) {
  * @param value the byte to be xor'd with the accumulator (reg A) (usually a register, though can be imm value)
 */
 void CPU::XOR(const Byte value) {
-    // line may cause issues:
     reg_A ^= value;
 
     update_flag(FLAG_ZERO, reg_A == 0);
@@ -363,7 +568,6 @@ void CPU::XOR(const Byte value) {
  * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
 */
 void CPU::OR(const Byte value) {
-    // line may cause issues:
     reg_A |= value;
 
     update_flag(FLAG_ZERO, reg_A == 0);
@@ -404,6 +608,8 @@ void CPU::INC(Byte &reg) {
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
+
+
 /**
  * Increment value stored in memory[HL]
  * Z 0 H -
@@ -420,6 +626,7 @@ void CPU::INC_HL() {
     _memory.write(get_pair(HL), value);
 }
 
+
 /**
  * 8-bit decrement
  * Z 1 H -
@@ -434,6 +641,7 @@ void CPU::DEC(Byte &reg) {
     update_flag(FLAG_SUB, true);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
+
 
 /***
  * Decrement value stored in memory[HL]
@@ -450,13 +658,14 @@ void CPU::DEC_HL() {
     _memory.write(get_pair(HL), value);
 }
 
+
 /**
- * 16-bit addition
+ * 16-bit addition to HL pair
  * - 0 H C
  * 
  * @param value the word to add to HL
 */
-void CPU::ADD(const Word value) {
+void CPU::ADD_HL(const Word value) {
     Word old_val = get_pair(HL);
     uint32_t res = old_val + value;
 
@@ -469,6 +678,7 @@ void CPU::ADD(const Word value) {
     update_flag(FLAG_HALF_CARRY, half_carry);
     update_flag(FLAG_CARRY, carry);
 }
+
 
 /**
  * 16-bit addition
@@ -493,6 +703,8 @@ Word CPU::ADD_SP() {
 
     return res;
 }
+
+
 /***
  * 16-bit increment
  * - - - -
@@ -511,7 +723,7 @@ void CPU::INC(Word& reg) {
 */
 void CPU::INC(Pair& pair) {
     (*(pair.reg_low))++;
-    if (*(pair.reg_low) == 0) {
+    if (*(pair.reg_low) == 0x00) {
         (*(pair.reg_high))++;
     }
 }
@@ -544,7 +756,6 @@ void CPU::DEC(Pair& pair) {
  * Rotate Left, Register A
  * (Both circular and non circular)
  * (Why does this one have to be different?)
- * --- NOT TESTED ---
  * 0 0 0 C 
  * 
  * @param circular true if opcode is RLCA, false if RLA
@@ -571,7 +782,6 @@ void CPU::RLA(bool circular) {
 /**
  * Rotate Left
  * (Both circular and non circular)
- * --- NOT TESTED ---
  * Z 0 0 C
  * 
  * @param reg the register to be rotated
@@ -594,12 +804,24 @@ void CPU::RL(Byte &reg, bool circular) {
     update_flag(FLAG_CARRY, bit_7);
 }
 
+/**
+ * Rotate memory[HL] Left
+ * Z 0 0 C
+ * --- NOT TESTED ---
+ * 
+ * @param circular true for RLC, false for RL
+*/
+void CPU::RL_HL(bool circular) {
+    Byte value = read_hl();
+    RL(value, circular);
+    LD(get_pair(HL), value);
+}
+
 
 /**
  * Rotate Right, Register A
  * (Both circular and non circular)
  * (Why does this one have to be different?)
- * --- NOT TESTED ---
  * 0 0 0 C 
  * 
  * @param circular true if opcode is RRCA, false if RRA
@@ -625,7 +847,6 @@ void CPU::RRA(bool circular) {
 /**
  * Rotate Right
  * (Both circular and non circular)
- * --- NOT TESTED ---
  * Z 0 0 C
  * 
  * @param reg the register to be rotated
@@ -646,4 +867,110 @@ void CPU::RR(Byte &reg, bool circular) {
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, bit_0);
+}
+
+/**
+ * Rotate memory[HL] right
+ * Z 0 0 C
+ * --- NOT TESTED ---
+ * 
+ * @param circular true for RRC, false for RR
+*/
+void CPU::RR_HL(bool circular) {
+    Byte value = read_hl();
+    RL(value, circular);
+    LD(get_pair(HL), value);
+}
+
+/**
+ * Shift reg Left Arithmetically
+ * C <- b7 <- ... <- b0 <- 0
+ * Z 0 0 C
+ * --- NOT TESTED ---
+ * 
+ * @param reg the register containing the value to shift
+*/
+void CPU::SLA(Byte& reg) {
+    bool bit_7 = (reg >> 7);
+    reg = (reg << 1);
+
+    update_flag(FLAG_ZERO, reg == 0x00);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_7);
+}
+
+/**
+ * Shift memory[HL] Left Arithmetically
+ * Z 0 0 C
+ * --- NOT TESTED ---
+*/
+void CPU::SLA_HL() {
+    Byte value = read_hl();
+    SLA(value);
+    LD(get_pair(HL), value);
+}
+
+
+/**
+ * Shift reg Right Arithmetically
+ * b7 -> ... -> b0 -> C (b7 stays the same)
+ * Z 0 0 C
+ * --- NOT TESTED ---
+ * 
+ * @param reg the register containing the value to shift
+*/
+void CPU::SRA(Byte& reg) {
+    bool bit_0 = reg & 0b1;
+    bool bit_7 = (reg >> 7);
+    reg = (reg >> 1);
+    reg |= (bit_7 << 7);
+
+    update_flag(FLAG_ZERO, reg == 0x00);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_0);
+}
+
+
+/**
+ * Shift memory[HL] Right Arithmetically
+ * Z 0 0 C
+ * --- NOT TESTED ---
+*/
+void CPU::SRA_HL() {
+    Byte value = read_hl();
+    SRA(value);
+    LD(get_pair(HL), value);
+}
+
+
+/**
+ * Shift reg Right Logically
+ * 0 -> b7 -> ... -> b0 -> C
+ * Z 0 0 C
+ * --- NOT TESTED ---
+ * 
+ * @param reg the register containing the value to shift
+*/
+void CPU::SRL(Byte& reg) {
+    bool bit_0 = reg & 0b1;
+    reg = (reg >> 1);
+
+    update_flag(FLAG_ZERO, reg == 0x00);
+    update_flag(FLAG_SUB, false);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, bit_0);
+}
+
+
+/**
+ * Shift memory[HL] Right Logically
+ * Z 0 0 C
+ * --- NOT TESTED ---
+*/
+void CPU::SRL_HL() {
+    Byte value = read_hl();
+    SRL(value);
+    LD(get_pair(HL), value);
 }

@@ -57,7 +57,6 @@ const uint16_t HRAM_SIZE      = 0x007F;
  *      currently handles ROM, VRAM, WRAM, I/O REGISTERS, HRAM, and IE REGISTER
  *      currently does not handle ERAM, ECHO RAM, and OAM
  * TODO:
- *      Make way to load other sections of memory than ROM
 */
 class Memory {
     public:

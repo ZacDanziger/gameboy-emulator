@@ -30,21 +30,21 @@ TEST_F(CPUTest, TestConstructor) {
 }
 
 TEST_F(CPUTest, TestFlags) {
-    _cpu.update_flag(_cpu.FLAG_ZERO, true);
+    _cpu.update_flag(FLAG_ZERO, true);
     EXPECT_EQ(_cpu.reg_F, 0x80);
 
-    _cpu.update_flag(_cpu.FLAG_SUB, true);
+    _cpu.update_flag(FLAG_SUB, true);
     EXPECT_EQ(_cpu.reg_F, 0xC0);
 
-    _cpu.update_flag(_cpu.FLAG_HALF_CARRY, true);
+    _cpu.update_flag(FLAG_HALF_CARRY, true);
     EXPECT_EQ(_cpu.reg_F, 0xE0);
 
-    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.update_flag(FLAG_CARRY, true);
     EXPECT_EQ(_cpu.reg_F, 0xF0);
 
-    EXPECT_EQ(_cpu.get_flag(_cpu.FLAG_ZERO), true);
-    _cpu.update_flag(_cpu.FLAG_ZERO, false);
-    EXPECT_NE(_cpu.get_flag(_cpu.FLAG_ZERO), true);
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), true);
+    _cpu.update_flag(FLAG_ZERO, false);
+    EXPECT_NE(_cpu.get_flag(FLAG_ZERO), true);
 }
 
 TEST_F(CPUTest, TestPair) {
@@ -114,21 +114,21 @@ TEST_F(CPUTest, TestArithmetic) {
     _cpu.ADD(_cpu.reg_B, false);
     EXPECT_EQ(_cpu.reg_A, _cpu.reg_B);
 
-    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.update_flag(FLAG_CARRY, true);
 
     _cpu.ADD(_cpu.reg_B, true);
     EXPECT_EQ(_cpu.reg_A, 0x03);
     
     _cpu.SUB(_cpu.reg_D, false);
     EXPECT_EQ(_cpu.reg_A, 0);
-    EXPECT_EQ(_cpu.get_flag(_cpu.FLAG_SUB), true);
-    EXPECT_EQ(_cpu.get_flag(_cpu.FLAG_ZERO), true);
+    EXPECT_EQ(_cpu.get_flag(FLAG_SUB), true);
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), true);
     
-    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.update_flag(FLAG_CARRY, true);
     _cpu.SUB(_cpu.reg_E, true);
     EXPECT_EQ(_cpu.reg_A, 0xFB);
-    EXPECT_EQ(_cpu.get_flag(_cpu.FLAG_HALF_CARRY), true);
-    EXPECT_EQ(_cpu.get_flag(_cpu.FLAG_CARRY), true);
+    EXPECT_EQ(_cpu.get_flag(FLAG_HALF_CARRY), true);
+    EXPECT_EQ(_cpu.get_flag(FLAG_CARRY), true);
 
     _cpu.AND(0x02);
     EXPECT_EQ(_cpu.reg_A, 0x02);
@@ -139,10 +139,10 @@ TEST_F(CPUTest, TestArithmetic) {
     _cpu.OR(_cpu.reg_E);
     EXPECT_EQ(_cpu.reg_A, 0x05);
 
-    EXPECT_NE(_cpu.get_flag(_cpu.FLAG_SUB), true);
+    EXPECT_NE(_cpu.get_flag(FLAG_SUB), true);
     _cpu.CP(_cpu.reg_H);
     EXPECT_EQ(_cpu.reg_A, 0x05);
-    EXPECT_EQ(_cpu.get_flag(_cpu.FLAG_SUB), true);
+    EXPECT_EQ(_cpu.get_flag(FLAG_SUB), true);
 
     _cpu.INC(_cpu.reg_A);
     EXPECT_EQ(_cpu.reg_A, 0x06);
@@ -157,7 +157,7 @@ TEST_F(CPUTest, TestArithmetic) {
     _cpu.DEC(_cpu.reg_A);
     EXPECT_EQ(_cpu.reg_A, 0x05);
 
-    _cpu.ADD(0x0EAD);
+    _cpu.ADD_HL(0x0EAD);
     EXPECT_EQ(_cpu.reg_H, 0xDE);
     EXPECT_EQ(_cpu.reg_L, 0xAD);
 
@@ -179,35 +179,34 @@ TEST_F(CPUTest, TestArithmetic) {
     EXPECT_EQ(_cpu.get_pair(_cpu.HL), 0xDEFF);
 }
 
-// NEED DEBUGGER WORKING
 TEST_F(CPUTest, TestRotates) {
     _cpu.reg_A = 0x7F;
     _cpu.RLA(true);
-    EXPECT_EQ(_cpu.reg_A, 0xFE) << "First 0xFE";
+    EXPECT_EQ(_cpu.reg_A, 0xFE);
 
-    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.update_flag(FLAG_CARRY, true);
     _cpu.RLA(false);
     EXPECT_EQ(_cpu.reg_A, 0xFD);
 
     _cpu.RRA(true);
-    EXPECT_EQ(_cpu.reg_A, 0xFE) << "Second 0xFE";
+    EXPECT_EQ(_cpu.reg_A, 0xFE);
 
     _cpu.RRA(false);
     EXPECT_EQ(_cpu.reg_A, 0xFF);
 
     _cpu.reg_B = 0x7F;
     _cpu.RL(_cpu.reg_B, true);
-    EXPECT_EQ(_cpu.reg_A, 0xFE);
+    EXPECT_EQ(_cpu.reg_B, 0xFE);
 
-    _cpu.update_flag(_cpu.FLAG_CARRY, true);
+    _cpu.update_flag(FLAG_CARRY, true);
     _cpu.RL(_cpu.reg_B, false);
-    EXPECT_EQ(_cpu.reg_A, 0xFD);
+    EXPECT_EQ(_cpu.reg_B, 0xFD);
 
     _cpu.RR(_cpu.reg_B, true);
-    EXPECT_EQ(_cpu.reg_A, 0xFE);
+    EXPECT_EQ(_cpu.reg_B, 0xFE);
 
     _cpu.RR(_cpu.reg_B, false);
-    EXPECT_EQ(_cpu.reg_A, 0xFF);
+    EXPECT_EQ(_cpu.reg_B, 0xFF);
 }
 
 int main(int argc, char **argv) {

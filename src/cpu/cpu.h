@@ -3,6 +3,11 @@
 
 #include "../memory/memory.h"
 
+const uint8_t FLAG_ZERO       = 0b10000000;
+const uint8_t FLAG_SUB        = 0b01000000;
+const uint8_t FLAG_HALF_CARRY = 0b00100000;
+const uint8_t FLAG_CARRY      = 0b00010000;
+
 class CPU {
     friend class CPUTest;
     friend class CPUTest_TestConstructor_Test;
@@ -46,22 +51,22 @@ class CPU {
         Word reg_SP;
         Word reg_PC;
 
-        const uint8_t FLAG_ZERO       = 0b10000000;
-        const uint8_t FLAG_SUB        = 0b01000000;
-        const uint8_t FLAG_HALF_CARRY = 0b00100000;
-        const uint8_t FLAG_CARRY      = 0b00010000;
+        bool interrupts_enabled;
+
+        constexpr static std::array<Byte, 8> interrupt_vector{
+            0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38
+        };
+
 
         void handle_interrupts(); // not implemented
 
         // Fetch -> Decode -> Execute cycle
-
         Byte fetch();
         Word fetch16();
         int decode_execute(Byte opcode);
         int decode_execute_cb();
 
         // Helper Functions
-
         bool get_flag(const uint8_t flag) const;        
         void update_flag(const uint8_t flag, bool new_val);
         Word get_pair(const Pair& pair) const;
@@ -69,34 +74,44 @@ class CPU {
         Byte read_hl() const;
 
         // Control and Miscellaneous Instructions
-
         void SWAP(Byte& value);
+        void SWAP_HL();
         void DAA();     // not implemented
         void CPL();
         void CCF();
         void SCF();
         void HALT();    // not implemented
         void STOP();    // not implemented
-        void DI();      // not implemented
-        void EI();      // not implemented
+        void DI();
+        void EI();
+        void JP(const Word value);
+        void JR();
+        void CALL();
+        void RST(const Byte offset);
+        void RET();
+
+        // Bit Operations
+        void BIT(int pos, const Byte reg);
+        void SET(int pos, Byte& reg);
+        void SET_HL(int pos);
+        void RES(int pos, Byte& reg);
+        void RES_HL(int pos);
 
         // 8-bit loads
-        
         void LD(Byte& dest, const Byte value);          // dest <- value
         void LD(Byte& dest, const Address address);     // dest <- memory[address]
         void LD(const Address dest, const Byte value);  // memory[address] <- value
         void LDH(const Byte reg, bool into_A);
 
         // 16-bit loads
-
         void LD(Word& dest, const Word value);          // dest <- value
         void LD(Pair& pair, const Word value);          // [high | low] <- [value 15:8 | value 7:0]
         void write_SP(const Address address);
-        void PUSH(const Pair& pair);    // not implemented
-        void POP(Pair& pair);           // not implemented
+        void PUSH(const Pair& pair);
+        void PUSH_PC();
+        void POP(Pair& pair);
 
         // 8-bit arithmetic
-
         void ADD(const Byte value, bool carry);
         void SUB(const Byte value, bool carry);
         void AND(const Byte value);
@@ -108,21 +123,27 @@ class CPU {
         void DEC(Byte& reg);
         void DEC_HL();
 
-
         // 16-bit arithmetic
-
-        void ADD(const Word value);     // HL += value
-        Word ADD_SP();                     // SP + e8 
+        void ADD_HL(const Word value);
+        Word ADD_SP();
         void INC(Word& reg);
         void INC(Pair& pair);
         void DEC(Word& reg);
         void DEC(Pair& pair);
 
-
+        // Rotates and Shifts
         void RLA(bool circular);
         void RL(Byte& reg, bool circular);
+        void RL_HL(bool circular);
         void RRA(bool circular);
         void RR(Byte& reg, bool circular);
+        void RR_HL(bool circular);
+        void SLA(Byte& reg);    // not implemented
+        void SLA_HL();
+        void SRA(Byte& reg);    // not implemented
+        void SRA_HL();
+        void SRL(Byte& reg);    // not implemented
+        void SRL_HL();
 };
 
 #endif // CPU_H
