@@ -7,8 +7,7 @@
     * Handle Echo RAM
     * Handle Object Attribute Memory
 * CPU
-    * Implement Jumps / Calls
-    * Implement CB opcodes
+    * Implement STOP
 
 
 ## Things I Had to Learn to Use

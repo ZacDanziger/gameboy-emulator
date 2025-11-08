@@ -1,6 +1,6 @@
 #include "cpu.h"
 
-/**
+/*
  * Z - Zero Flag
  * N - Subtraction Flag
  * H - Half-Carry Flag
@@ -11,25 +11,35 @@
  * - - no change
 */
 
-CPU::CPU() : 
+CPU::CPU() : // register values hardcoded for testing change back later
     _memory(), 
     reg_A(0x01),
-    reg_F(0x00),
+    reg_F(0xB0),
     reg_B(0x00),
-    reg_C(0x14),
+    reg_C(0x13),
     reg_D(0x00),
-    reg_E(0x00),
-    reg_H(0xC0),
-    reg_L(0x60),
+    reg_E(0xD8),
+    reg_H(0x01),
+    reg_L(0x4D),
     AF{&reg_A, &reg_F},
     BC{&reg_B, &reg_C},
     DE{&reg_D, &reg_E},
     HL{&reg_H, &reg_L},
-    reg_PC(0x0100), 
     reg_SP(0xFFFE),
-    interrupts_enabled(false)
-{} 
+    reg_PC(0x0100), 
+    interrupts_enabled(false),
+    is_halted(false)
+{
+    std::ofstream os("logfile.txt");
+    os.close();
+} 
 
+/**
+ * Only loads ROM BANK 00 right now
+*/
+void CPU::load(const std::string& filename) {
+    _memory.load(ROM_BANK_00_START, filename);
+}
 
 /**
  * Perform the fetch, decode, execute loop
@@ -39,11 +49,38 @@ CPU::CPU() :
 */
 int CPU::step() {
     // handle_interrupts();    // not created yet
+    if(is_halted) {
+        return 0;
+    }
 
     Byte opcode = fetch();
-    return decode_execute(opcode);
+    int t_states = decode_execute(opcode);
+    write_registers();
+
+    return t_states;
 }
 
+void CPU::write_registers() {
+    std::stringstream output;
+
+    output << "A:" << std::hex << std::setw(2) << static_cast<int>(reg_A)
+           << " F:" << std::hex << std::setw(2) << static_cast<int>(reg_F)
+           << " B:" << std::hex << std::setw(2) << static_cast<int>(reg_B)
+           << " C:" << std::hex << std::setw(2) << static_cast<int>(reg_C)
+           << " D:" << std::hex << std::setw(2) << static_cast<int>(reg_D)
+           << " E:" << std::hex << std::setw(2) << static_cast<int>(reg_E)
+           << " H:" << std::hex << std::setw(2) << static_cast<int>(reg_H)
+           << " L:" << std::hex << std::setw(2) << static_cast<int>(reg_L)
+           << " SP: " << std::hex << std::setw(4) << static_cast<int>(reg_SP)
+           << " PC: " << std::hex << std::setw(4) << static_cast<int>(reg_PC)
+           << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC))
+           << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+1))
+           << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+2))
+           << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+3))
+           << '\n';
+
+    write_line("logfile.txt", output.str());
+}
 
 /**
  * Fetch the next instruction and increment PC
@@ -127,7 +164,6 @@ Byte CPU::read_hl() const {
 /**
  * Swap the upper and lower nibbles of the Byte passed in (usually a register)
  * Z 0 0 0
- * --- NOT TESTED ---
  * 
  * @param value the address of the Byte to be swapped
  * 
@@ -144,7 +180,6 @@ void CPU::SWAP(Byte& value) {
 /**
  * Swap the upper and lower nibbles of memory[HL]
  * Z 0 0 0
- * --- NOT TESTED ---
 */
 void CPU::SWAP_HL() {
     Byte value = read_hl();
@@ -152,9 +187,46 @@ void CPU::SWAP_HL() {
     LD(get_pair(HL), value);
 }
 
+
+/**
+ * Decimal Adjust Accumulator
+ * Z - 0 C
+*/
+void CPU::DAA() {
+    Byte adjust = 0x00;
+    bool sub = get_flag(FLAG_SUB);
+    bool carry = false;
+
+    if (sub) {
+        if (get_flag(FLAG_HALF_CARRY)) {
+            adjust += 0x06;
+        }
+        if (get_flag(FLAG_CARRY)) {
+            adjust += 0x60;
+            carry = true;
+        }
+
+        reg_A -= adjust;
+    } else {
+        if (get_flag(FLAG_HALF_CARRY) || ((reg_A & 0xF) > 0x9)) {
+            adjust += 0x06;
+        }
+        if (get_flag(FLAG_CARRY) || (reg_A > 0x99)) {
+            adjust += 0x60;
+            carry = true;
+        }
+
+        reg_A += adjust;
+    }
+
+    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_HALF_CARRY, false);
+    update_flag(FLAG_CARRY, carry);
+}
+
+
 /**
  * Complement Accumulator (register A)
- * --- NOT TESTED ---
  * - 1 1 -
 */
 void CPU::CPL() {
@@ -188,6 +260,14 @@ void CPU::SCF() {
     update_flag(FLAG_CARRY, true);
 }
 
+
+/**
+ * Halts the program, still listening for interrupts
+ * - - - -
+*/
+void CPU::HALT() {
+    is_halted = true;
+}
 /**
  * Disable interrupts
  * - - - -
@@ -207,29 +287,26 @@ void CPU::EI() {
 /**
  * Unconditional Jump - PC = value
  * - - - -
- * --- NOT TESTED ---
  * 
- * @param value the address in memory to jump PC to
+ * @param address the address in memory to jump PC to
 */
-void CPU::JP(const Word value) {
-    reg_PC = value;
+void CPU::JP(const Address address) {
+    reg_PC = address;
 }
 
 
 /**
  * Relative Jump - PC += (signed) imm value
  * - - - -
- * --- NOT TESTED ---
 */
 void CPU::JR() {
     int16_t imm = (int16_t)(int8_t)(fetch());
-    reg_PC = (Word)((int16_t)(reg_PC) + imm);
+    reg_PC = (Word)((int16_t)(reg_PC - 1) + imm);   // subtract one to account for fetch's + 1
 }
 
 /**
  * Push PC onto stack and set PC = imm16
  * - - - -
- * --- NOT TESTED ---
 */
 void CPU::CALL() {
     PUSH_PC();
@@ -245,23 +322,23 @@ void CPU::RST(const Byte offset) {
     PUSH_PC();
     reg_PC = 0x0000 + offset;
 }
+
+
 /**
  * Return (pop PC from the stack)
  * - - - -
- * --- NOT TESTED ---
 */
 void CPU::RET() {
-    reg_SP++;
     Byte low = _memory.read(reg_SP);
     reg_SP++;
     reg_PC = ((_memory.read(reg_SP) << 8) | low);
+    reg_SP++;
 }
 
 
 /**
  * Check whether bit[pos] has been set, update Z to match
  * Z 0 1 -
- * --- NOT TESTED ---
  * 
  * @param pos the bit position to check, in range [0, 7]
  * @param reg the register to check the bit of
@@ -271,7 +348,7 @@ void CPU::BIT(int pos, Byte reg) {
         throw std::runtime_error("Invalid bit position");
     }
 
-    bool set = (reg & (1 << pos)) == (1 << pos);
+    bool set = ((reg & (1 << pos)) == (1 << pos));
 
     update_flag(FLAG_ZERO, set);
     update_flag(FLAG_SUB, false);
@@ -281,7 +358,6 @@ void CPU::BIT(int pos, Byte reg) {
 /**
  * Sets registers's bit[pos] 
  * - - - -
- * --- NOT TESTED ---
  * 
  * @param pos the bit position to check, in range [0, 7]
  * @param reg the register to set the bit of
@@ -297,7 +373,6 @@ void CPU::SET(int pos, Byte& reg) {
 /**
  * Set memory[HL]'s bit[pos]
  * - - - -
- * --- NOT TESTED ---
  * 
  * @param pos the bit position to set in memory[HL]
 */
@@ -315,7 +390,6 @@ void CPU::SET_HL(int pos) {
 /**
  * Resets register's bit[pos]
  * - - - -
- * --- NOT TESTED ---
  * 
  * @param pos the bit position to check, in range [0, 7]
  * @param reg the register to reset the bit of
@@ -331,7 +405,6 @@ void CPU::RES(int pos, Byte& reg) {
 /**
  * Reset memory[HL]'s bit[pos]
  * - - - -
- * --- NOT TESTED ---
  * 
  * @param pos the bit position to reset in memory[HL]
 */
@@ -439,7 +512,10 @@ void CPU::write_SP(const Address address) {
 }
 
 /***
- * --- NOT TESTED ---
+ * Push pair onto the stack
+ * - - - -
+ * 
+ * @param pair the pair to be pushed to the stack
 */
 void CPU::PUSH(const Pair& pair) {
     reg_SP--;
@@ -449,7 +525,8 @@ void CPU::PUSH(const Pair& pair) {
 }
 
 /***
- * --- NOT TESTED ---
+ * Push PC onto the stack, little-endian
+ * - - - -
 */
 void CPU::PUSH_PC() {
     reg_SP--;
@@ -459,13 +536,16 @@ void CPU::PUSH_PC() {
 }
 
 /***
- * --- NOT TESTED ---
+ * Pop pair from the stack
+ * - - - -
+ * 
+ * @param pair the pair to be popped from the stack
 */
 void CPU::POP(Pair& pair) {
-    reg_SP++;
     *(pair.reg_low) = _memory.read(reg_SP);
     reg_SP++;
     *(pair.reg_high) = _memory.read(reg_SP);
+    reg_SP++;
 }
 
 
@@ -807,7 +887,6 @@ void CPU::RL(Byte &reg, bool circular) {
 /**
  * Rotate memory[HL] Left
  * Z 0 0 C
- * --- NOT TESTED ---
  * 
  * @param circular true for RLC, false for RL
 */
@@ -872,7 +951,6 @@ void CPU::RR(Byte &reg, bool circular) {
 /**
  * Rotate memory[HL] right
  * Z 0 0 C
- * --- NOT TESTED ---
  * 
  * @param circular true for RRC, false for RR
 */
@@ -886,7 +964,6 @@ void CPU::RR_HL(bool circular) {
  * Shift reg Left Arithmetically
  * C <- b7 <- ... <- b0 <- 0
  * Z 0 0 C
- * --- NOT TESTED ---
  * 
  * @param reg the register containing the value to shift
 */
@@ -903,7 +980,6 @@ void CPU::SLA(Byte& reg) {
 /**
  * Shift memory[HL] Left Arithmetically
  * Z 0 0 C
- * --- NOT TESTED ---
 */
 void CPU::SLA_HL() {
     Byte value = read_hl();
@@ -916,7 +992,6 @@ void CPU::SLA_HL() {
  * Shift reg Right Arithmetically
  * b7 -> ... -> b0 -> C (b7 stays the same)
  * Z 0 0 C
- * --- NOT TESTED ---
  * 
  * @param reg the register containing the value to shift
 */
@@ -936,7 +1011,6 @@ void CPU::SRA(Byte& reg) {
 /**
  * Shift memory[HL] Right Arithmetically
  * Z 0 0 C
- * --- NOT TESTED ---
 */
 void CPU::SRA_HL() {
     Byte value = read_hl();
@@ -949,7 +1023,6 @@ void CPU::SRA_HL() {
  * Shift reg Right Logically
  * 0 -> b7 -> ... -> b0 -> C
  * Z 0 0 C
- * --- NOT TESTED ---
  * 
  * @param reg the register containing the value to shift
 */
@@ -967,7 +1040,6 @@ void CPU::SRL(Byte& reg) {
 /**
  * Shift memory[HL] Right Logically
  * Z 0 0 C
- * --- NOT TESTED ---
 */
 void CPU::SRL_HL() {
     Byte value = read_hl();

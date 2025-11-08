@@ -5,7 +5,7 @@ class CPUTest : public testing::Test {
     protected:
         CPU _cpu;
 
-        CPUTest() : _cpu() {
+        CPUTest() {
             _cpu.reg_B = 0x01;
             _cpu.reg_C = 0x02;
             _cpu.reg_D = 0x03;
@@ -30,6 +30,8 @@ TEST_F(CPUTest, TestConstructor) {
 }
 
 TEST_F(CPUTest, TestFlags) {
+    _cpu.reg_F = 0;
+
     _cpu.update_flag(FLAG_ZERO, true);
     EXPECT_EQ(_cpu.reg_F, 0x80);
 
@@ -109,8 +111,8 @@ TEST_F(CPUTest, TestLoads) {
 }
 
 TEST_F(CPUTest, TestArithmetic) {
-    EXPECT_EQ(_cpu.reg_F, 0);
-
+    _cpu.set_pair(_cpu.AF, 0);
+    
     _cpu.ADD(_cpu.reg_B, false);
     EXPECT_EQ(_cpu.reg_A, _cpu.reg_B);
 
@@ -207,6 +209,122 @@ TEST_F(CPUTest, TestRotates) {
 
     _cpu.RR(_cpu.reg_B, false);
     EXPECT_EQ(_cpu.reg_B, 0xFF);
+
+    _cpu.reg_C = 0xFE;
+    _cpu.SLA(_cpu.reg_C);
+    EXPECT_EQ(_cpu.reg_C, 0xFC);
+
+    _cpu.LD(_cpu.get_pair(_cpu.HL), 0xFE);
+    _cpu.SLA_HL();
+    EXPECT_EQ(_cpu.read_hl(), 0xFC);
+
+    _cpu.SRA(_cpu.reg_C);
+    EXPECT_EQ(_cpu.reg_C, 0xFE);
+
+    _cpu.SRA_HL();
+    EXPECT_EQ(_cpu.read_hl(), 0xFE);
+
+    _cpu.SRL(_cpu.reg_C);
+    EXPECT_EQ(_cpu.reg_C, 0x7F);
+
+    _cpu.SRL_HL();
+    EXPECT_EQ(_cpu.read_hl(), 0x7F);
+}
+
+TEST_F(CPUTest, TestBitOps) {
+    _cpu.reg_A = 0x10;
+    _cpu.BIT(4, _cpu.reg_A);
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), true);
+
+    _cpu.BIT(3, _cpu.reg_A);
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), false);
+
+    _cpu.SET(3, _cpu.reg_A);
+    _cpu.BIT(3, _cpu.reg_A);
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), true);
+
+    _cpu.RES(3, _cpu.reg_A);
+    _cpu.BIT(3, _cpu.reg_A);
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), false);
+
+    _cpu.LD(_cpu.get_pair(_cpu.HL), 0x10);
+    _cpu.SET_HL(3);
+    _cpu.BIT(3, _cpu.read_hl());
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), true);
+
+    _cpu.RES_HL(3);
+    _cpu.BIT(3, _cpu.read_hl());
+    EXPECT_EQ(_cpu.get_flag(FLAG_ZERO), false);
+}
+
+TEST_F(CPUTest, TestJumps) {
+    EXPECT_NE(_cpu.reg_PC, WRAM_BANK_01_START);
+    _cpu.JP(WRAM_BANK_01_START);
+    EXPECT_EQ(_cpu.reg_PC, WRAM_BANK_01_START);
+
+
+    _cpu.LD(WRAM_BANK_01_START, 0xFF);  // -1
+    _cpu.JR();
+    EXPECT_EQ(_cpu.reg_PC, 0xCFFF);
+
+    _cpu.reg_SP = 0xFFFE;
+    _cpu.LD(0xCFFF, 0xC0);
+    _cpu.CALL();
+    EXPECT_EQ(_cpu.reg_PC, 0xFFC0);
+    EXPECT_EQ(_cpu._memory.read(_cpu.reg_SP), 0xFF);
+    EXPECT_EQ(_cpu._memory.read(_cpu.reg_SP + 1), 0xCF);
+    _cpu.RET();
+    EXPECT_EQ(_cpu.reg_PC, 0xCFFF);
+
+    _cpu.RST(_cpu.interrupt_vector[1]);
+    EXPECT_EQ(_cpu.reg_PC, 0x0008);
+    EXPECT_EQ(_cpu.reg_SP, 0xFFFC);
+    _cpu.RET();
+    EXPECT_EQ(_cpu.reg_PC, 0xCFFF);
+}
+
+TEST_F(CPUTest, TestMisc) {
+    _cpu.reg_A = 0xFE;
+    _cpu.SWAP(_cpu.reg_A);
+    EXPECT_EQ(_cpu.reg_A, 0xEF);
+
+    _cpu.LD(_cpu.get_pair(_cpu.HL), 0xFE);
+    _cpu.SWAP_HL();
+    EXPECT_EQ(_cpu.read_hl(), 0xEF);
+
+    _cpu.reg_F = 0;
+    _cpu.reg_A = 0x42;
+    _cpu.DAA();
+    EXPECT_EQ(_cpu.reg_A, 0x42);
+
+    _cpu.reg_A = 0xA1;
+    _cpu.DAA();
+    EXPECT_EQ(_cpu.reg_A, 0x01);
+    EXPECT_TRUE(_cpu.get_flag(FLAG_CARRY));
+
+    _cpu.update_flag(FLAG_CARRY, false);
+    _cpu.reg_A = 0x9B;
+    _cpu.DAA();
+    EXPECT_EQ(_cpu.reg_A, 0x01);
+    EXPECT_TRUE(_cpu.get_flag(FLAG_CARRY));
+
+    _cpu.CPL();
+    EXPECT_EQ(_cpu.reg_A, 0xFE);
+
+    _cpu.reg_SP = 0xFFFE;
+    _cpu.reg_F = 0x80;
+    _cpu.PUSH(_cpu.AF);
+    EXPECT_EQ(_cpu._memory.read(_cpu.reg_SP), _cpu.reg_F);
+    EXPECT_EQ(_cpu._memory.read(_cpu.reg_SP + 1), _cpu.reg_A);
+
+    _cpu.set_pair(_cpu.AF, 0x00);
+    _cpu.POP(_cpu.AF);
+    EXPECT_EQ(_cpu.reg_A, 0xFE);
+    EXPECT_EQ(_cpu.reg_F, 0x80);
+}
+
+TEST_F(CPUTest, BlarggROMTests) {
+
 }
 
 int main(int argc, char **argv) {

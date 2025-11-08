@@ -18,38 +18,15 @@ Memory::Memory() {
  * @param address the address to be read
 */
 Byte Memory::read(Address address) const {
-    if (address < ROM_BANK_01_START) {
-        return _rom_bank_00[address];
-    }
-
-    if (address < VRAM_START) {
-        return _rom_bank_01[address - ROM_BANK_01_START];
-    }
-
-    if (address < ERAM_START) {
-        return _vram[address - VRAM_START];
-    }
-
-    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) {
-        return _wram_bank_00[address - WRAM_BANK_00_START];
-    }
-
-    if (address < ECHO_START) {
-        return _wram_bank_01[address - WRAM_BANK_01_START];
-    }
-
-    if (address >= IO_START && address < HRAM_START) {
-        return _io_registers[address - IO_START];
-    }
-
-    if (address < IE_REGISTER) {
-        return _hram[address - HRAM_START];
-    }
-
-    if (address == IE_REGISTER) {
-        return _IE_register;
-    }
-
+    if (address == 0xFF44) { return 0x90; }  // hardcoded for testing - take out later
+    if (address < ROM_BANK_01_START) { return _rom_bank_00[address]; }
+    if (address < VRAM_START) { return _rom_bank_01[address - ROM_BANK_01_START]; }
+    if (address < ERAM_START) { return _vram[address - VRAM_START]; }
+    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) { return _wram_bank_00[address - WRAM_BANK_00_START]; }
+    if (address < ECHO_START) { return _wram_bank_01[address - WRAM_BANK_01_START]; }
+    if (address >= IO_START && address < HRAM_START) { return _io_registers[address - IO_START]; }
+    if (address < IE_REGISTER) { return _hram[address - HRAM_START]; }
+    if (address == IE_REGISTER) { return _IE_register; }
     throw std::runtime_error("Cannot read from that area of memory");
 }
 
@@ -72,36 +49,12 @@ void Memory::write(Address address, Byte data) {
     //     return;
     // }
 
-    if (address < ERAM_START && address >= VRAM_START) {
-        _vram[address - VRAM_START] = data;
-        return;
-    }
-
-    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) {
-        _wram_bank_00[address - WRAM_BANK_00_START] = data;
-        return;
-    }
-
-    if (address < ECHO_START) {
-        _wram_bank_01[address - WRAM_BANK_01_START] = data;
-        return;
-    }
-
-    if (address >= IO_START && address < HRAM_START) {
-        _io_registers[address - IO_START] = data;
-        return;
-    }
-
-    if (address < IE_REGISTER) {
-        _hram[address - HRAM_START] = data;
-        return;
-    }
-
-    if (address == IE_REGISTER) {
-        _IE_register = data;
-        return;
-    }
-
+    if (address < ERAM_START && address >= VRAM_START) { _vram[address - VRAM_START] = data; return; }
+    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) { _wram_bank_00[address - WRAM_BANK_00_START] = data; return; }
+    if (address < ECHO_START) { _wram_bank_01[address - WRAM_BANK_01_START] = data; return; }
+    if (address >= IO_START && address < HRAM_START) { _io_registers[address - IO_START] = data; return; }
+    if (address < IE_REGISTER) { _hram[address - HRAM_START] = data; return; }
+    if (address == IE_REGISTER) { _IE_register = data; return; }
     throw std::runtime_error("Cannot write to that area of memory");
 }
 
@@ -109,20 +62,20 @@ void Memory::write(Address address, Byte data) {
  * Writes the data from a file to one of the sections of memory. 
  * 
  * @param address 16-bit address that needs to be one of the starting addresses defined in memory.h
- * @param file the filename containing the data to be read from
+ * @param filename the filename containing the data to be read from
 */
-void Memory::load(Address address, std::string file) {
+void Memory::load(Address address, const std::string& filename) {
     switch (address) {
-        case ROM_BANK_00_START:     { std::copy_n(read_file(file).begin(), ROM_BANK_SIZE, _rom_bank_00.begin()); return; }
-        case ROM_BANK_01_START:     { std::copy_n(read_file(file).begin(), ROM_BANK_SIZE, _rom_bank_01.begin()); return; }
-        case VRAM_START:            { std::copy_n(read_file(file).begin(), VRAM_SIZE, _vram.begin()); return; }
+        case ROM_BANK_00_START:     { std::copy_n(read_file(filename).begin(), ROM_BANK_SIZE, _rom_bank_00.begin()); return; }
+        case ROM_BANK_01_START:     { std::copy_n(read_file(filename).begin(), ROM_BANK_SIZE, _rom_bank_01.begin()); return; }
+        case VRAM_START:            { std::copy_n(read_file(filename).begin(), VRAM_SIZE, _vram.begin()); return; }
         case ERAM_START:            { throw std::runtime_error("Cannot load External RAM"); }
-        case WRAM_BANK_00_START:    { std::copy_n(read_file(file).begin(), WRAM_BANK_SIZE, _wram_bank_00.begin()); return; }
-        case WRAM_BANK_01_START:    { std::copy_n(read_file(file).begin(), WRAM_BANK_SIZE, _wram_bank_01.begin()); return; }
+        case WRAM_BANK_00_START:    { std::copy_n(read_file(filename).begin(), WRAM_BANK_SIZE, _wram_bank_00.begin()); return; }
+        case WRAM_BANK_01_START:    { std::copy_n(read_file(filename).begin(), WRAM_BANK_SIZE, _wram_bank_01.begin()); return; }
         case ECHO_START:            { throw std::runtime_error("Cannot load Echo RAM"); }
         case OAM_START:             { throw std::runtime_error("Cannot load OAM"); }
-        case IO_START:              { std::copy_n(read_file(file).begin(), IO_REG_SIZE, _io_registers.begin()); return; }
-        case HRAM_START:            { std::copy_n(read_file(file).begin(), HRAM_SIZE, _hram.begin()); return; }
+        case IO_START:              { std::copy_n(read_file(filename).begin(), IO_REG_SIZE, _io_registers.begin()); return; }
+        case HRAM_START:            { std::copy_n(read_file(filename).begin(), HRAM_SIZE, _hram.begin()); return; }
         default:                    { throw std::runtime_error("Cannot load to that address."); }
     };
     

@@ -9,8 +9,9 @@
 */
 
 /**
+ * Matches opcode to operation and executes that operation
  * 
- * 
+ * @param opcode an 8-bit opcode to be executed
  * @return the number of t-states taken to execute the command
 */
 int CPU::decode_execute(Byte opcode) {
@@ -56,7 +57,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0x24: { INC(reg_H); return 4; }                                    // H++
         case 0x25: { DEC(reg_H); return 4; }                                    // H--
         case 0x26: { LD(reg_H, fetch()); return 8; }                            // H <- n8
-        case 0x27: {}   // DAA
+        case 0x27: { DAA(); return 4; }                                         // DAA
         case 0x28: { if(get_flag(FLAG_ZERO)) {JR(); return 12;} return 8; }     // JR Z, e8
         case 0x29: { ADD_HL(get_pair(HL)); return 8; }                          // ADD HL, HL
         case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return 8; }              // A <- memory[HL++]
@@ -140,7 +141,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0x73: { LD(get_pair(HL), reg_E); return 8; }               // memory[HL] <- E
         case 0x74: { LD(get_pair(HL), reg_H); return 8; }               // memory[HL] <- H
         case 0x75: { LD(get_pair(HL), reg_L); return 8; }               // memory[HL] <- L
-        case 0x76: {}   // HALT
+        case 0x76: { HALT(); return 4; }                                // HALT
         case 0x77: { LD(get_pair(HL), reg_A); return 8; }               // memory[HL] <- A
         case 0x78: { LD(reg_A, reg_B); return 4; }                      // A <- B
         case 0x79: { LD(reg_A, reg_C); return 4; }                      // A <- C
@@ -484,7 +485,7 @@ int CPU::decode_execute_cb() {
         case 0xAB: { RES(5, reg_E); return 8; }
         case 0xAC: { RES(5, reg_H); return 8; }
         case 0xAD: { RES(5, reg_L); return 8; }
-        case 0xAE: { RES_HL(5); return 8; }
+        case 0xAE: { RES_HL(5); return 16; }
         case 0xAF: { RES(5, reg_A); return 8; }
 
         case 0xB0: { RES(6, reg_B); return 8; }
@@ -493,7 +494,7 @@ int CPU::decode_execute_cb() {
         case 0xB3: { RES(6, reg_E); return 8; }
         case 0xB4: { RES(6, reg_H); return 8; }
         case 0xB5: { RES(6, reg_L); return 8; }
-        case 0xB6: { RES_HL(6); return 8; }
+        case 0xB6: { RES_HL(6); return 16; }
         case 0xB7: { RES(6, reg_A); return 8; }
         case 0xB8: { RES(7, reg_B); return 8; }
         case 0xB9: { RES(7, reg_C); return 8; }

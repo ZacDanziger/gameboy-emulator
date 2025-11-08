@@ -34,6 +34,10 @@ class MemoryTest : public testing::Test {
 TEST_F(MemoryTest, TestLoad) {
     create_data();
 
+    EXPECT_THROW(
+        _mem.load(ROM_BANK_00_START, "bumbers.txt"), std::runtime_error
+    );
+
     EXPECT_NO_THROW(
         _mem.load(ROM_BANK_00_START, "numbers.txt");
     );

@@ -64,8 +64,7 @@ class Memory {
 
         Byte read(Address address) const;
         void write(Address address, Byte data);
-
-        void load(Address address, std::string file);
+        void load(Address address, const std::string& filename);
 
     private:
         std::array<Byte, ROM_BANK_SIZE> _rom_bank_00;       // 0x0000 - 0x3FFF
