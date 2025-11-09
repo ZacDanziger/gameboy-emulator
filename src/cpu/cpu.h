@@ -3,6 +3,10 @@
 
 #include "../memory/memory.h"
 #include <sstream>
+#include <iostream>
+
+// Set to true in debugging mode
+const bool DEBUG = true;
 
 const uint8_t FLAG_ZERO       = 0b10000000;
 const uint8_t FLAG_SUB        = 0b01000000;
@@ -10,27 +14,20 @@ const uint8_t FLAG_HALF_CARRY = 0b00100000;
 const uint8_t FLAG_CARRY      = 0b00010000;
 
 class CPU {
-    // REALLY UGLY - FIND A BETTER WAY
-    friend class CPUTest;
-    friend class CPUTest_TestConstructor_Test;
-    friend class CPUTest_TestFlags_Test;
-    friend class CPUTest_TestPair_Test;
-    friend class CPUTest_TestFetch_Test;
-    friend class CPUTest_TestLoads_Test;
-    friend class CPUTest_TestArithmetic_Test;
-    friend class CPUTest_TestRotates_Test;
-    friend class CPUTest_TestBitOps_Test;
-    friend class CPUTest_TestJumps_Test;
-    friend class CPUTest_TestMisc_Test;
-
     public:
         CPU();
 
-        void load(const std::string& filename);
+        void load(const Address address, const std::string& filename);
+        void load_rom(const std::string& filename);
         int step();
         void write_registers();
+        void set_logfile_suffix(const std::string suffix);
+
+        bool is_halted() { return halted; }
 
     private:
+        std::string _logfile;
+
         Memory _memory;
 
         // Pair of 8-bit registers
@@ -58,11 +55,16 @@ class CPU {
         Word reg_SP;
         Word reg_PC;
 
-        bool interrupts_enabled;
-        bool is_halted;
+        bool interrupts_enabled;    // IME
+        bool halted;
 
-        constexpr static Byte interrupt_vector[8]{
-            0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38
+        constexpr static Byte interrupt_vector[13]{
+            0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38, // IVT[0:7] - Various resets
+            0x40,   // IVT[8]  - V Blank
+            0x48,   // IVT[9]  - LCD
+            0x50,   // IVT[10] - Timer 
+            0x58,   // IVT[11] - Serial
+            0x60    // IVT[12] - Joypad
         };
 
 
@@ -100,10 +102,14 @@ class CPU {
         // Jumps and Calls
 
         void JP(const Address address);
+        bool JP_COND(const uint16_t flag, bool set);
         void JR();
+        bool JR_COND(const uint16_t flag, bool set);
         void CALL();
+        bool CALL_COND(const uint16_t flag, bool set);
         void RST(const Byte offset);
         void RET();
+        bool RET_COND(const uint16_t flag, bool set);
 
         // Bit Operations
 

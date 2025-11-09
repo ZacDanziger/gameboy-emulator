@@ -28,40 +28,126 @@ CPU::CPU() : // register values hardcoded for testing change back later
     reg_SP(0xFFFE),
     reg_PC(0x0100), 
     interrupts_enabled(false),
-    is_halted(false)
-{
-    std::ofstream os("logfile.txt");
+    halted(false),
+    _logfile("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/logfile") // get rid of when done with gameboy-doctor
+{} 
+
+void CPU::set_logfile_suffix(const std::string suffix) {
+    _logfile += (suffix + ".txt"); 
+
+    // clear logfile.txt
+    std::ofstream os(_logfile, std::ios::trunc);
     os.close();
-} 
+}
 
 /**
- * Only loads ROM BANK 00 right now
+ * Loads the data in a file to the section of memory starting at address
+ * 
+ * @param address one of the starting addresses of a section of memory defined in memory.h
+ * @param filename the file containing the data to load in
 */
-void CPU::load(const std::string& filename) {
-    _memory.load(ROM_BANK_00_START, filename);
+void CPU::load(const Address address, const std::string& filename) {
+    _memory.load(address, filename);
+}
+
+void CPU::load_rom(const std::string& filename) {
+    _memory.load_rom(filename);
 }
 
 /**
  * Perform the fetch, decode, execute loop
- * --- NOT TESTED ---
  * 
- * @return the number of T-states taken in the loop (always some multiple of 4)
+ * @return the number of m-cycles taken in the loop
 */
 int CPU::step() {
-    // handle_interrupts();    // not created yet
-    if(is_halted) {
-        return 0;
+    if(halted) {
+        // wait for an interrupt to be pending (need to implement HALT bug)
+        while (!(_memory.read(IE_REGISTER) & _memory.read(IF_REGISTER))) {}
+        // no longer halted
+        halted = false;
     }
+
+    handle_interrupts();    // not created yet
 
     Byte opcode = fetch();
     int t_states = decode_execute(opcode);
     write_registers();
 
+    // check 
+    if(_memory.read(0xFF02) == 0x81) {
+        Byte c = _memory.read(0xFF01);
+        std::cout << c << std::endl;
+        _memory.write(0xFF02, 0x00);
+    }
+
     return t_states;
 }
 
+/**
+ * NOT FINISHED
+ * Handle interrupts
+*/
+void CPU::handle_interrupts() {
+    // check that interrupts are enabled
+    if (!interrupts_enabled) {
+        return;
+    }
+
+    Byte ie_register = _memory.read(IE_REGISTER);
+    Byte if_register = _memory.read(IF_REGISTER);
+
+    //check that the specific interrupts that are enabled are requesting an interrupt
+    if  (!(ie_register & if_register)) {
+        return;
+    }
+
+    interrupts_enabled = false;
+
+    //V-Blank interrupt
+    if ((ie_register & 0x01) & (if_register & 0x01)) {
+        RST(interrupt_vector[8]);
+        if_register &= ~0x01;
+        _memory.write(IF_REGISTER, if_register);
+    }
+
+    // LCD interrupt
+    if ((ie_register & 0x02) & (if_register & 0x02)) {
+        RST(interrupt_vector[9]);
+        if_register &= ~0x02;
+        _memory.write(IF_REGISTER, if_register);
+    }
+
+    // Timer interrupt
+    if ((ie_register & 0x04) & (if_register & 0x04)) {
+        RST(interrupt_vector[10]);
+        if_register &= ~0x04;
+        _memory.write(IF_REGISTER, if_register);
+    }
+
+    // Serial Interrupt
+    if ((ie_register & 0x08) & (if_register & 0x08)) {
+        RST(interrupt_vector[11]);
+        if_register &= ~0x08;
+        _memory.write(IF_REGISTER, if_register);
+    }
+
+    // Joypad Interrupt
+    if ((ie_register & 0x10) & (if_register & 0x10)) {
+        RST(interrupt_vector[12]);
+        if_register &= ~0x10;
+        _memory.write(IF_REGISTER, if_register);
+    }
+}
+
+// For debugging purposes -- gameboy-doctor
 void CPU::write_registers() {
+    if (!DEBUG) {
+        return;
+    }
+
     std::stringstream output;
+
+    output << std::hex << std::setfill('0');
 
     output << "A:" << std::hex << std::setw(2) << static_cast<int>(reg_A)
            << " F:" << std::hex << std::setw(2) << static_cast<int>(reg_F)
@@ -71,15 +157,15 @@ void CPU::write_registers() {
            << " E:" << std::hex << std::setw(2) << static_cast<int>(reg_E)
            << " H:" << std::hex << std::setw(2) << static_cast<int>(reg_H)
            << " L:" << std::hex << std::setw(2) << static_cast<int>(reg_L)
-           << " SP: " << std::hex << std::setw(4) << static_cast<int>(reg_SP)
-           << " PC: " << std::hex << std::setw(4) << static_cast<int>(reg_PC)
+           << " SP:" << std::hex << std::setw(4) << static_cast<int>(reg_SP)
+           << " PC:" << std::hex << std::setw(4) << static_cast<int>(reg_PC)
            << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC))
            << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+1))
            << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+2))
            << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+3))
            << '\n';
 
-    write_line("logfile.txt", output.str());
+    write_line("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/logfile.txt", output.str());
 }
 
 /**
@@ -266,8 +352,10 @@ void CPU::SCF() {
  * - - - -
 */
 void CPU::HALT() {
-    is_halted = true;
+    halted = true;
 }
+
+
 /**
  * Disable interrupts
  * - - - -
@@ -276,6 +364,7 @@ void CPU::DI() {
     interrupts_enabled = false;
 }
 
+
 /**
  * Enable interrupts
  * - - - -
@@ -283,6 +372,7 @@ void CPU::DI() {
 void CPU::EI() {
     interrupts_enabled = true;
 }
+
 
 /**
  * Unconditional Jump - PC = value
@@ -294,6 +384,16 @@ void CPU::JP(const Address address) {
     reg_PC = address;
 }
 
+bool CPU::JP_COND(const uint16_t flag, bool set) {
+    if (get_flag(flag) == set) {
+        JP(fetch16());
+        return true;
+    }
+
+    // Account for the two bytes that would have been imm16
+    reg_PC += 2;
+    return false;
+}
 
 /**
  * Relative Jump - PC += (signed) imm value
@@ -301,18 +401,46 @@ void CPU::JP(const Address address) {
 */
 void CPU::JR() {
     int16_t imm = (int16_t)(int8_t)(fetch());
-    reg_PC = (Word)((int16_t)(reg_PC - 1) + imm);   // subtract one to account for fetch's + 1
+    reg_PC = (Word)((int16_t)(reg_PC) + imm);
 }
+
+
+bool CPU::JR_COND(const uint16_t flag, bool set) {
+    if (get_flag(flag) == set) {
+        JR();
+        return true;
+    }
+
+    // Account for the byte that would have been (signed) imm8
+    reg_PC += 1;
+    return false;
+}
+
 
 /**
  * Push PC onto stack and set PC = imm16
  * - - - -
 */
-void CPU::CALL() {
+void CPU::CALL() {  
+    // + and - 2 to account for the 2 bytes read in that are imm16, not instructions
+    reg_PC += 2;
     PUSH_PC();
+    reg_PC -= 2;
+
     reg_PC = fetch16();
 }
 
+
+bool CPU::CALL_COND(const uint16_t flag, bool set) {
+    if (get_flag(flag) == set) {
+        CALL();
+        return true;
+    }
+
+    // Account for the two bytes that would have been imm16
+    reg_PC += 2;
+    return false;
+}
 /**
  * Reset, pushing PC onto the stack and jumping to 0x0000 + offset
  * 
@@ -333,6 +461,15 @@ void CPU::RET() {
     reg_SP++;
     reg_PC = ((_memory.read(reg_SP) << 8) | low);
     reg_SP++;
+}
+
+bool CPU::RET_COND(const uint16_t flag, bool set) {
+    if (get_flag(flag) == set) {
+        RET();
+        return true;
+    }
+
+    return false;
 }
 
 
@@ -684,7 +821,7 @@ void CPU::INC(Byte &reg) {
     bool half_carry = (reg & 0xF) == 0xF;
     reg += 1;
 
-    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_ZERO, reg == 0);
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }
@@ -717,7 +854,7 @@ void CPU::DEC(Byte &reg) {
     bool half_carry = (reg & 0xF) == 0;
     reg -= 1;
 
-    update_flag(FLAG_ZERO, reg_A == 0);
+    update_flag(FLAG_ZERO, reg == 0);
     update_flag(FLAG_SUB, true);
     update_flag(FLAG_HALF_CARRY, half_carry);
 }

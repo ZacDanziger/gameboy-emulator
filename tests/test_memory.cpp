@@ -83,7 +83,7 @@ TEST_F(MemoryTest, TestLoad) {
     );
 
     for (int i = 0; i < IO_REG_SIZE; i++) {
-        EXPECT_EQ(_data[i], _mem.read(i + IO_START));
+        EXPECT_EQ(_data[i], _mem.read(i + IO_START)) << "at index " << i;
     }
 
     EXPECT_NO_THROW(

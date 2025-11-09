@@ -5,6 +5,7 @@
 #include <array>
 #include <stdexcept>
 #include <algorithm>
+#include <span>
 #include "../utils/utils.h"
 
 
@@ -36,6 +37,14 @@ const Address ECHO_START         = 0xE000;
 const Address OAM_START          = 0xFE00;
 const Address IO_START           = 0xFF00;
 const Address HRAM_START         = 0xFF80;
+
+// Registers
+
+const Address DIV_REGISTER       = 0xFF04;
+const Address TIMA_REGISTER      = 0xFF05;
+const Address TMA_REGISTER       = 0xFF06;
+const Address TAC_REGISTER       = 0xFF07;
+const Address IF_REGISTER        = 0xFF0F;
 const Address IE_REGISTER        = 0xFFFF;
 
 /*
@@ -62,9 +71,10 @@ class Memory {
     public:
         Memory();
 
-        Byte read(Address address) const;
-        void write(Address address, Byte data);
-        void load(Address address, const std::string& filename);
+        Byte read(const Address address) const;
+        void write(const Address address, const Byte data);
+        void load(const Address address, const std::string& filename);
+        void load_rom(const std::string& filename);
 
     private:
         std::array<Byte, ROM_BANK_SIZE> _rom_bank_00;       // 0x0000 - 0x3FFF
@@ -75,6 +85,8 @@ class Memory {
         std::array<Byte, IO_REG_SIZE> _io_registers;        // 0xFF00 - 0xFF7F
         std::array<Byte, HRAM_SIZE> _hram;                  // 0xFF80 - 0xFFFE
         Byte _IE_register;                                  // 0xFFFF
+
+        std::pair<Byte*, size_t> resolve_region(const Address address);
 };
 
 #endif // MEMORY_H

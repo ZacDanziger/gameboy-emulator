@@ -65,19 +65,46 @@ void Memory::write(Address address, Byte data) {
  * @param filename the filename containing the data to be read from
 */
 void Memory::load(Address address, const std::string& filename) {
-    switch (address) {
-        case ROM_BANK_00_START:     { std::copy_n(read_file(filename).begin(), ROM_BANK_SIZE, _rom_bank_00.begin()); return; }
-        case ROM_BANK_01_START:     { std::copy_n(read_file(filename).begin(), ROM_BANK_SIZE, _rom_bank_01.begin()); return; }
-        case VRAM_START:            { std::copy_n(read_file(filename).begin(), VRAM_SIZE, _vram.begin()); return; }
-        case ERAM_START:            { throw std::runtime_error("Cannot load External RAM"); }
-        case WRAM_BANK_00_START:    { std::copy_n(read_file(filename).begin(), WRAM_BANK_SIZE, _wram_bank_00.begin()); return; }
-        case WRAM_BANK_01_START:    { std::copy_n(read_file(filename).begin(), WRAM_BANK_SIZE, _wram_bank_01.begin()); return; }
-        case ECHO_START:            { throw std::runtime_error("Cannot load Echo RAM"); }
-        case OAM_START:             { throw std::runtime_error("Cannot load OAM"); }
-        case IO_START:              { std::copy_n(read_file(filename).begin(), IO_REG_SIZE, _io_registers.begin()); return; }
-        case HRAM_START:            { std::copy_n(read_file(filename).begin(), HRAM_SIZE, _hram.begin()); return; }
-        default:                    { throw std::runtime_error("Cannot load to that address."); }
-    };
-    
+    std::vector<Byte> data = read_file(filename);
+    auto [backing_array, max_size] = resolve_region(address);
+    size_t size = std::min(data.size(), max_size);
+
+    std::copy_n(data.begin(), size, backing_array);
+}
+
+/**
+ * Writes the data in a file to both ROM banks.
+ * There must be more than 0x8000 bytes of data in the file or an error will be thrown
+ * 
+ * @param filename the filename containing the data to be read from
+*/
+void Memory::load_rom(const std::string& filename) {
+    std::vector<Byte> data = read_file(filename);
+
+    if (data.size() < 0x8000) {
+        throw std::runtime_error("ROM too small (< 32 KB).");
+    }
+
+    std::copy_n(data.begin(), ROM_BANK_SIZE, _rom_bank_00.begin());
+    std::copy_n(data.begin() + ROM_BANK_SIZE, ROM_BANK_SIZE, _rom_bank_01.begin());
+}
+
+/**
+ * Given one of the starting addresses of a memory region, return that memory region
+ * 
+ * @param address one of the starting addresses of valid memory regions
+ * @return a pair containing a reference to the backing array of the memory region as well as its size
+*/
+std::pair<Byte*, size_t> Memory::resolve_region(const Address address) {
+    switch(address) {
+        case ROM_BANK_00_START:  { return {_rom_bank_00.data(), ROM_BANK_SIZE}; }
+        case ROM_BANK_01_START:  { return {_rom_bank_01.data(), ROM_BANK_SIZE}; }
+        case VRAM_START:         { return {_vram.data(), VRAM_SIZE}; }
+        case WRAM_BANK_00_START: { return {_wram_bank_00.data(), WRAM_BANK_SIZE}; }
+        case WRAM_BANK_01_START: { return {_wram_bank_01.data(), WRAM_BANK_SIZE}; }
+        case IO_START:           { return {_io_registers.data(), IO_REG_SIZE}; }
+        case HRAM_START:         { return {_hram.data(), HRAM_SIZE}; }
+        default: { throw std::runtime_error("Unsupported load address"); }
+    }
 }
 
