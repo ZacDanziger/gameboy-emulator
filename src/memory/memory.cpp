@@ -11,6 +11,7 @@ Memory::Memory() {
     _IE_register = 0x00;
 }
 
+
 /**
  * Read memory[address]
  * Cannot read from ERAM, Echo RAM, or OAM
@@ -29,6 +30,7 @@ Byte Memory::read(Address address) const {
     if (address == IE_REGISTER) { return _IE_register; }
     throw std::runtime_error("Cannot read from that area of memory");
 }
+
 
 /**
  * Write to memory[address]
@@ -49,6 +51,7 @@ void Memory::write(Address address, Byte data) {
     //     return;
     // }
 
+    if (address == DIV_REGISTER) {data = 0x00; }    // writing any value to DIV resets it to 0x00
     if (address < ERAM_START && address >= VRAM_START) { _vram[address - VRAM_START] = data; return; }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) { _wram_bank_00[address - WRAM_BANK_00_START] = data; return; }
     if (address < ECHO_START) { _wram_bank_01[address - WRAM_BANK_01_START] = data; return; }
@@ -58,8 +61,11 @@ void Memory::write(Address address, Byte data) {
     throw std::runtime_error("Cannot write to that area of memory");
 }
 
+
 /**
- * Writes the data from a file to one of the sections of memory. 
+ * Writes the data from a file to one of the sections of memory.
+ * If the size of the data in bytes is larger than the size of the array only the first
+ *     n bytes are read in, where n = the size of the array
  * 
  * @param address 16-bit address that needs to be one of the starting addresses defined in memory.h
  * @param filename the filename containing the data to be read from
@@ -71,6 +77,7 @@ void Memory::load(Address address, const std::string& filename) {
 
     std::copy_n(data.begin(), size, backing_array);
 }
+
 
 /**
  * Writes the data in a file to both ROM banks.
@@ -88,6 +95,7 @@ void Memory::load_rom(const std::string& filename) {
     std::copy_n(data.begin(), ROM_BANK_SIZE, _rom_bank_00.begin());
     std::copy_n(data.begin() + ROM_BANK_SIZE, ROM_BANK_SIZE, _rom_bank_01.begin());
 }
+
 
 /**
  * Given one of the starting addresses of a memory region, return that memory region

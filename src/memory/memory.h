@@ -40,12 +40,14 @@ const Address HRAM_START         = 0xFF80;
 
 // Registers
 
-const Address DIV_REGISTER       = 0xFF04;
-const Address TIMA_REGISTER      = 0xFF05;
-const Address TMA_REGISTER       = 0xFF06;
-const Address TAC_REGISTER       = 0xFF07;
-const Address IF_REGISTER        = 0xFF0F;
-const Address IE_REGISTER        = 0xFFFF;
+const Address SB_REGISTER        = 0xFF01;  // serial transfer data
+const Address SC_REGISTER        = 0xFF02;  // serial transfer control
+const Address DIV_REGISTER       = 0xFF04;  // divider register
+const Address TIMA_REGISTER      = 0xFF05;  // timer counter
+const Address TMA_REGISTER       = 0xFF06;  // timer modulo
+const Address TAC_REGISTER       = 0xFF07;  // timer control
+const Address IF_REGISTER        = 0xFF0F;  // interrupt flag
+const Address IE_REGISTER        = 0xFFFF;  // interrupt enable
 
 /*
 VRAM size = 0x9FFF - 0x7FFF = 0x2000

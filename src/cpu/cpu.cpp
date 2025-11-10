@@ -1,16 +1,5 @@
 #include "cpu.h"
 
-/*
- * Z - Zero Flag
- * N - Subtraction Flag
- * H - Half-Carry Flag
- * C - Carry Flag
- * 
- * 0 - reset
- * 1 - set
- * - - no change
-*/
-
 CPU::CPU() : // register values hardcoded for testing change back later
     _memory(), 
     reg_A(0x01),
@@ -32,30 +21,9 @@ CPU::CPU() : // register values hardcoded for testing change back later
     _logfile("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/logfile") // get rid of when done with gameboy-doctor
 {} 
 
-void CPU::set_logfile_suffix(const std::string suffix) {
-    _logfile += (suffix + ".txt"); 
-
-    // clear logfile.txt
-    std::ofstream os(_logfile, std::ios::trunc);
-    os.close();
-}
 
 /**
- * Loads the data in a file to the section of memory starting at address
- * 
- * @param address one of the starting addresses of a section of memory defined in memory.h
- * @param filename the file containing the data to load in
-*/
-void CPU::load(const Address address, const std::string& filename) {
-    _memory.load(address, filename);
-}
-
-void CPU::load_rom(const std::string& filename) {
-    _memory.load_rom(filename);
-}
-
-/**
- * Perform the fetch, decode, execute loop
+ * Perform one cycle of the fetch, decode, execute loop
  * 
  * @return the number of m-cycles taken in the loop
 */
@@ -67,7 +35,7 @@ int CPU::step() {
         halted = false;
     }
 
-    handle_interrupts();    // not created yet
+    handle_interrupts();
 
     Byte opcode = fetch();
     int t_states = decode_execute(opcode);
@@ -82,6 +50,37 @@ int CPU::step() {
 
     return t_states;
 }
+
+
+/**
+ * Loads the data in a file to the section of memory starting at address
+ * 
+ * @param address one of the starting addresses of a section of memory defined in memory.h
+ * @param filename the file containing the data to load in
+*/
+void CPU::load(const Address address, const std::string& filename) {
+    _memory.load(address, filename);
+}
+
+
+/**
+ * Load the data in a file to both ROM banks, contiguously
+ * 
+ * @param filename the file containing the data to load in
+*/
+void CPU::load_rom(const std::string& filename) {
+    _memory.load_rom(filename);
+}
+
+
+void CPU::set_logfile_suffix(const std::string suffix) {
+    _logfile += (suffix + ".txt"); 
+
+    // clear logfile.txt
+    std::ofstream os(_logfile, std::ios::trunc);
+    os.close();
+}
+
 
 /**
  * NOT FINISHED
@@ -108,6 +107,7 @@ void CPU::handle_interrupts() {
         RST(interrupt_vector[8]);
         if_register &= ~0x01;
         _memory.write(IF_REGISTER, if_register);
+        return;
     }
 
     // LCD interrupt
@@ -115,6 +115,7 @@ void CPU::handle_interrupts() {
         RST(interrupt_vector[9]);
         if_register &= ~0x02;
         _memory.write(IF_REGISTER, if_register);
+        return;
     }
 
     // Timer interrupt
@@ -122,6 +123,7 @@ void CPU::handle_interrupts() {
         RST(interrupt_vector[10]);
         if_register &= ~0x04;
         _memory.write(IF_REGISTER, if_register);
+        return;
     }
 
     // Serial Interrupt
@@ -129,6 +131,7 @@ void CPU::handle_interrupts() {
         RST(interrupt_vector[11]);
         if_register &= ~0x08;
         _memory.write(IF_REGISTER, if_register);
+        return;
     }
 
     // Joypad Interrupt
@@ -136,6 +139,7 @@ void CPU::handle_interrupts() {
         RST(interrupt_vector[12]);
         if_register &= ~0x10;
         _memory.write(IF_REGISTER, if_register);
+        return;
     }
 }
 
@@ -165,7 +169,7 @@ void CPU::write_registers() {
            << "," << std::hex << std::setw(2) << static_cast<int>(_memory.read(reg_PC+3))
            << '\n';
 
-    write_line("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/logfile.txt", output.str());
+    write_line(_logfile, output.str());
 }
 
 /**
@@ -245,6 +249,19 @@ void CPU::set_pair(const Pair &pair, const Word value) {
 Byte CPU::read_hl() const {
     return _memory.read(get_pair(HL));
 }
+
+
+/* --------------------
+ * Z - Zero Flag
+ * N - Subtraction Flag
+ * H - Half-Carry Flag
+ * C - Carry Flag
+ * 
+ * 0 - reset
+ * 1 - set
+ * - - no change
+ * ---------------------
+*/ 
 
 
 /**
@@ -375,7 +392,7 @@ void CPU::EI() {
 
 
 /**
- * Unconditional Jump - PC = value
+ * Jump -> PC = value
  * - - - -
  * 
  * @param address the address in memory to jump PC to
@@ -384,7 +401,17 @@ void CPU::JP(const Address address) {
     reg_PC = address;
 }
 
-bool CPU::JP_COND(const uint16_t flag, bool set) {
+
+/**
+ * Conditional Jump - check that flag is either set or unset, depending on set param
+ *     if yes, then JP(imm16), otherwise increment PC by 2 and return
+ * - - - -
+ * 
+ * @param flag the flag to check the value of in Register F
+ * @param set the boolean value to check the flag against
+ * @return true if a jump occured, false otherwise
+*/
+bool CPU::JP_IF(const uint16_t flag, bool set) {
     if (get_flag(flag) == set) {
         JP(fetch16());
         return true;
@@ -395,8 +422,9 @@ bool CPU::JP_COND(const uint16_t flag, bool set) {
     return false;
 }
 
+
 /**
- * Relative Jump - PC += (signed) imm value
+ * Relative Jump -> PC += (signed) imm value
  * - - - -
 */
 void CPU::JR() {
@@ -405,7 +433,16 @@ void CPU::JR() {
 }
 
 
-bool CPU::JR_COND(const uint16_t flag, bool set) {
+/**
+ * Conditional Relative Jump - check that flag is either set or unset, depending on set param
+ *     if yes, then JR(), otherwise increment PC by 1 and return
+ * - - - -
+ * 
+ * @param flag the flag to check the value of in Register F
+ * @param set the boolean value to check the flag against
+ * @return true if a jump occured, false otherwise
+*/
+bool CPU::JR_IF(const uint16_t flag, bool set) {
     if (get_flag(flag) == set) {
         JR();
         return true;
@@ -431,7 +468,16 @@ void CPU::CALL() {
 }
 
 
-bool CPU::CALL_COND(const uint16_t flag, bool set) {
+/**
+ * Conditional Call - check that flag is either set or unset, depending on set param
+ *     if yes, then CALL(), otherwise increment PC by 2 and return
+ * - - - -
+ * 
+ * @param flag the flag to check the value of in Register F
+ * @param set the boolean value to check the flag against
+ * @return true if a call occured, false otherwise
+*/
+bool CPU::CALL_IF(const uint16_t flag, bool set) {
     if (get_flag(flag) == set) {
         CALL();
         return true;
@@ -463,7 +509,16 @@ void CPU::RET() {
     reg_SP++;
 }
 
-bool CPU::RET_COND(const uint16_t flag, bool set) {
+/**
+ * Conditional Return - check that flag is either set or unset, depending on set param
+ *     if yes, then RET(), otherwise return
+ * - - - -
+ * 
+ * @param flag the flag to check the value of in Register F
+ * @param set the boolean value to check the flag against
+ * @return true if a return occured, false otherwise
+*/
+bool CPU::RET_IF(const uint16_t flag, bool set) {
     if (get_flag(flag) == set) {
         RET();
         return true;
@@ -496,7 +551,7 @@ void CPU::BIT(int pos, Byte reg) {
  * Sets registers's bit[pos] 
  * - - - -
  * 
- * @param pos the bit position to check, in range [0, 7]
+ * @param pos the bit position to set, in range [0, 7]
  * @param reg the register to set the bit of
 */
 void CPU::SET(int pos, Byte& reg) {
@@ -528,7 +583,7 @@ void CPU::SET_HL(int pos) {
  * Resets register's bit[pos]
  * - - - -
  * 
- * @param pos the bit position to check, in range [0, 7]
+ * @param pos the bit position to reset, in range [0, 7]
  * @param reg the register to reset the bit of
 */
 void CPU::RES(int pos, Byte& reg) {
@@ -661,6 +716,7 @@ void CPU::PUSH(const Pair& pair) {
     _memory.write(reg_SP, *(pair.reg_low));
 }
 
+
 /***
  * Push PC onto the stack, little-endian
  * - - - -
@@ -672,8 +728,9 @@ void CPU::PUSH_PC() {
     _memory.write(reg_SP, (reg_PC & 0xFF));   // low byte
 }
 
+
 /***
- * Pop pair from the stack
+ * Pop pair from the stack, little-endian
  * - - - -
  * 
  * @param pair the pair to be popped from the stack
@@ -932,6 +989,7 @@ void CPU::INC(Word& reg) {
     reg++;
 }
 
+
 /**
  * 16-bit increment
  * - - - -
@@ -945,6 +1003,7 @@ void CPU::INC(Pair& pair) {
     }
 }
 
+
 /***
  * 16-bit decrement
  * - - - -
@@ -954,6 +1013,7 @@ void CPU::INC(Pair& pair) {
 void CPU::DEC(Word& reg) {
     reg--;
 }
+
 
 /***
  * 16-bit decrement
@@ -1020,6 +1080,7 @@ void CPU::RL(Byte &reg, bool circular) {
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, bit_7);
 }
+
 
 /**
  * Rotate memory[HL] Left
@@ -1097,6 +1158,7 @@ void CPU::RR_HL(bool circular) {
     LD(get_pair(HL), value);
 }
 
+
 /**
  * Shift reg Left Arithmetically
  * C <- b7 <- ... <- b0 <- 0
@@ -1113,6 +1175,7 @@ void CPU::SLA(Byte& reg) {
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, bit_7);
 }
+
 
 /**
  * Shift memory[HL] Left Arithmetically

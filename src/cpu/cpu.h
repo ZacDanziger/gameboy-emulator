@@ -17,13 +17,17 @@ class CPU {
     public:
         CPU();
 
+        int step();
+
         void load(const Address address, const std::string& filename);
         void load_rom(const std::string& filename);
-        int step();
+        
+        bool is_halted() { return halted; }
+
+        //Debugging functions - get rid of when not needed
         void write_registers();
         void set_logfile_suffix(const std::string suffix);
 
-        bool is_halted() { return halted; }
 
     private:
         std::string _logfile;
@@ -102,14 +106,14 @@ class CPU {
         // Jumps and Calls
 
         void JP(const Address address);
-        bool JP_COND(const uint16_t flag, bool set);
+        bool JP_IF(const uint16_t flag, bool set);
         void JR();
-        bool JR_COND(const uint16_t flag, bool set);
+        bool JR_IF(const uint16_t flag, bool set);
         void CALL();
-        bool CALL_COND(const uint16_t flag, bool set);
+        bool CALL_IF(const uint16_t flag, bool set);
         void RST(const Byte offset);
         void RET();
-        bool RET_COND(const uint16_t flag, bool set);
+        bool RET_IF(const uint16_t flag, bool set);
 
         // Bit Operations
 

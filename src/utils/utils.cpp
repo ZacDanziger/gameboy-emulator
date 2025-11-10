@@ -29,6 +29,13 @@ std::vector<uint8_t> read_file(const std::string& filename) {
     return data;
 }
 
+
+/**
+ * Append a line to an output file
+ * 
+ * @param filename the file to append to
+ * @param line the line to append
+*/
 void write_line(const std::string& filename, const std::string& line) {
     std::ofstream outfile(filename, std::fstream::app);
 

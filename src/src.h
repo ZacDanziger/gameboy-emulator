@@ -5,5 +5,6 @@
 
 #include "cpu/cpu.h"
 #include "memory/memory.h"
+#include "emulator/emulator.h"
 
 #endif // SRC_H

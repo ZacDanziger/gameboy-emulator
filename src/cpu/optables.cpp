@@ -16,286 +16,286 @@
 */
 int CPU::decode_execute(Byte opcode) {
     switch(opcode) {
-        case 0x00: { return 1; }                                   // NOP
-        case 0x01: { LD(BC, fetch16()); return 3; }                // B <- n16[15:8], C <- n16[7:0]
-        case 0x02: { LD(get_pair(BC), reg_A); return 2; }          // memory[BC] <- A
-        case 0x03: { INC(BC); return 2; }                          // INC BC++
-        case 0x04: { INC(reg_B); return 1; }                       // B++
-        case 0x05: { DEC(reg_B); return 1; }                       // B--
-        case 0x06: { LD(reg_B, fetch()); return 2; }               // B <- n8
-        case 0x07: { RLA(true); return 1; }                        // RLCA
-        case 0x08: { write_SP(fetch16()); return 5; }              // LD [a16], SP
-        case 0x09: { ADD_HL(get_pair(BC)); return 2; }             // HL += BC
-        case 0x0A: { LD(reg_A, get_pair(BC)); return 2; }          // A <- memory[BC]
-        case 0x0B: { DEC(BC); return 2; }                          // BC--
-        case 0x0C: { INC(reg_C); return 1; }                       // C++
-        case 0x0D: { DEC(reg_C); return 1; }                       // C--
-        case 0x0E: { LD(reg_C, fetch()); return 1; }               // C <- n8
-        case 0x0F: { RRA(true); return 1; }                        // RRCA
+        case 0x00: { return 1; }                                      // NOP
+        case 0x01: { LD(BC, fetch16()); return 3; }                   // B <- n16[15:8], C <- n16[7:0]
+        case 0x02: { LD(get_pair(BC), reg_A); return 2; }             // memory[BC] <- A
+        case 0x03: { INC(BC); return 2; }                             // INC BC++
+        case 0x04: { INC(reg_B); return 1; }                          // B++
+        case 0x05: { DEC(reg_B); return 1; }                          // B--
+        case 0x06: { LD(reg_B, fetch()); return 2; }                  // B <- n8
+        case 0x07: { RLA(true); return 1; }                           // RLCA
+        case 0x08: { write_SP(fetch16()); return 5; }                 // memory[n16] <- SP[7:0], memory[n16+1] <- SP[15:8]
+        case 0x09: { ADD_HL(get_pair(BC)); return 2; }                // HL += BC
+        case 0x0A: { LD(reg_A, get_pair(BC)); return 2; }             // A <- memory[BC]
+        case 0x0B: { DEC(BC); return 2; }                             // BC--
+        case 0x0C: { INC(reg_C); return 1; }                          // C++
+        case 0x0D: { DEC(reg_C); return 1; }                          // C--
+        case 0x0E: { LD(reg_C, fetch()); return 1; }                  // C <- n8
+        case 0x0F: { RRA(true); return 1; }                           // RRCA
 
         case 0x10: {}   // STOP (n8 ???)
-        case 0x11: { LD(DE, fetch16()); return 3; }                // D <- n16[15:8], E <- n16[7:0]
-        case 0x12: { LD(get_pair(DE), reg_A); return 2; }          // memory[DE] <- A
-        case 0x13: { INC(DE); return 2; }                          // DE++
-        case 0x14: { INC(reg_D); return 1; }                       // D++
-        case 0x15: { DEC(reg_D); return 1; }                       // D--
-        case 0x16: { LD(reg_D, fetch()); return 2; }               // D <- n8
-        case 0x17: { RLA(false); return 1; }                       // RLA
-        case 0x18: { JR(); return 3; }                             // SP += e8
-        case 0x19: { ADD_HL(get_pair(DE)); return 2; }             // HL += DE
-        case 0x1A: { LD(reg_A, get_pair(DE)); return 2; }          // A <- memory[DE]
-        case 0x1B: { DEC(DE); return 2; }                          // DE--
-        case 0x1C: { INC(reg_E); return 1; }                       // E++
-        case 0x1D: { DEC(reg_E); return 1; }                       // E--
-        case 0x1E: { LD(reg_E, fetch()); return 2; }               // E <- n8
-        case 0x1F: { RRA(false); return 1; }                       // RRA
+        case 0x11: { LD(DE, fetch16()); return 3; }                   // D <- n16[15:8], E <- n16[7:0]
+        case 0x12: { LD(get_pair(DE), reg_A); return 2; }             // memory[DE] <- A
+        case 0x13: { INC(DE); return 2; }                             // DE++
+        case 0x14: { INC(reg_D); return 1; }                          // D++
+        case 0x15: { DEC(reg_D); return 1; }                          // D--
+        case 0x16: { LD(reg_D, fetch()); return 2; }                  // D <- n8
+        case 0x17: { RLA(false); return 1; }                          // RLA
+        case 0x18: { JR(); return 3; }                                // SP += e8
+        case 0x19: { ADD_HL(get_pair(DE)); return 2; }                // HL += DE
+        case 0x1A: { LD(reg_A, get_pair(DE)); return 2; }             // A <- memory[DE]
+        case 0x1B: { DEC(DE); return 2; }                             // DE--
+        case 0x1C: { INC(reg_E); return 1; }                          // E++
+        case 0x1D: { DEC(reg_E); return 1; }                          // E--
+        case 0x1E: { LD(reg_E, fetch()); return 2; }                  // E <- n8
+        case 0x1F: { RRA(false); return 1; }                          // RRA
 
-        case 0x20: { return (JR_COND(FLAG_ZERO, false)) ? 3 : 2; }              // JR NZ, e8
-        case 0x21: { LD(HL, fetch16()); return 3; }                             // LD HL, n16
-        case 0x22: { LD(get_pair(HL), reg_A); INC(HL); return 2; }              // memory[HL++] <- A
-        case 0x23: { INC(HL); return 2; }                                       // INC HL
-        case 0x24: { INC(reg_H); return 1; }                                    // H++
-        case 0x25: { DEC(reg_H); return 1; }                                    // H--
-        case 0x26: { LD(reg_H, fetch()); return 2; }                            // H <- n8
-        case 0x27: { DAA(); return 1; }                                         // DAA
-        case 0x28: { return (JR_COND(FLAG_ZERO, true)) ? 3 : 2; }               // JR Z, e8
-        case 0x29: { ADD_HL(get_pair(HL)); return 2; }                          // ADD HL, HL
-        case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return 2; }              // A <- memory[HL++]
-        case 0x2B: { DEC(HL); return 2; }                                       // HL--
-        case 0x2C: { INC(reg_L); return 1; }                                    // L++
-        case 0x2D: { DEC(reg_L); return 1; }                                    // L--
-        case 0x2E: { LD(reg_L, fetch()); return 2; }                            // L <- n8
-        case 0x2F: { CPL(); return 1; }                                         // A <- ~A
+        case 0x20: { return (JR_IF(FLAG_ZERO, false)) ? 3 : 2; }      // JR NZ, e8
+        case 0x21: { LD(HL, fetch16()); return 3; }                   // LD HL, n16
+        case 0x22: { LD(get_pair(HL), reg_A); INC(HL); return 2; }    // memory[HL++] <- A
+        case 0x23: { INC(HL); return 2; }                             // INC HL
+        case 0x24: { INC(reg_H); return 1; }                          // H++
+        case 0x25: { DEC(reg_H); return 1; }                          // H--
+        case 0x26: { LD(reg_H, fetch()); return 2; }                  // H <- n8
+        case 0x27: { DAA(); return 1; }                               // DAA
+        case 0x28: { return (JR_IF(FLAG_ZERO, true)) ? 3 : 2; }       // JR Z, e8
+        case 0x29: { ADD_HL(get_pair(HL)); return 2; }                // ADD HL, HL
+        case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return 2; }    // A <- memory[HL++]
+        case 0x2B: { DEC(HL); return 2; }                             // HL--
+        case 0x2C: { INC(reg_L); return 1; }                          // L++
+        case 0x2D: { DEC(reg_L); return 1; }                          // L--
+        case 0x2E: { LD(reg_L, fetch()); return 2; }                  // L <- n8
+        case 0x2F: { CPL(); return 1; }                               // A <- ~A
 
-        case 0x30: { return (JR_COND(FLAG_CARRY, false)) ? 3 : 2; }             // JR NC, e8
-        case 0x31: { LD(reg_SP, fetch16()); return 3; }                         // LD SP, n16
-        case 0x32: { LD(get_pair(HL), reg_A); DEC(HL); return 2; }              // memory[HL--] <- A
-        case 0x33: { INC(reg_SP); return 2; }                                   // SP++
-        case 0x34: { INC_HL(); return 3; }                                      // memory[HL]++
-        case 0x35: { DEC_HL(); return 3; }                                      // memory[HL]--
-        case 0x36: { LD(get_pair(HL), fetch()); return 3; }                     // memory[HL] <- n8
-        case 0x37: { SCF(); return 1; }                                         // {Z N H C} = {- 0 0 1}
-        case 0x38: { return (JR_COND(FLAG_CARRY, true)) ? 3 : 2; }              // JR C, e8
-        case 0x39: { ADD_HL(reg_SP); return 2; }                                // HL += SP
-        case 0x3A: { LD(reg_A, get_pair(HL)); DEC(HL); return 2; }              // A <- memory[HL--]
-        case 0x3B: { DEC(reg_SP); return 2; }                                   // SP--
-        case 0x3C: { INC(reg_A); return 1; }                                    // A++
-        case 0x3D: { DEC(reg_A); return 1; }                                    // A--
-        case 0x3E: { LD(reg_A, fetch()); return 2; }                            // A <- n8
-        case 0x3F: { CCF(); return 1; }                                         // CCF
+        case 0x30: { return (JR_IF(FLAG_CARRY, false)) ? 3 : 2; }     // JR NC, e8
+        case 0x31: { LD(reg_SP, fetch16()); return 3; }               // LD SP, n16
+        case 0x32: { LD(get_pair(HL), reg_A); DEC(HL); return 2; }    // memory[HL--] <- A
+        case 0x33: { INC(reg_SP); return 2; }                         // SP++
+        case 0x34: { INC_HL(); return 3; }                            // memory[HL]++
+        case 0x35: { DEC_HL(); return 3; }                            // memory[HL]--
+        case 0x36: { LD(get_pair(HL), fetch()); return 3; }           // memory[HL] <- n8
+        case 0x37: { SCF(); return 1; }                               // {Z N H C} = {- 0 0 1}
+        case 0x38: { return (JR_IF(FLAG_CARRY, true)) ? 3 : 2; }      // JR C, e8
+        case 0x39: { ADD_HL(reg_SP); return 2; }                      // HL += SP
+        case 0x3A: { LD(reg_A, get_pair(HL)); DEC(HL); return 2; }    // A <- memory[HL--]
+        case 0x3B: { DEC(reg_SP); return 2; }                         // SP--
+        case 0x3C: { INC(reg_A); return 1; }                          // A++
+        case 0x3D: { DEC(reg_A); return 1; }                          // A--
+        case 0x3E: { LD(reg_A, fetch()); return 2; }                  // A <- n8
+        case 0x3F: { CCF(); return 1; }                               // CCF
 
-        case 0x40: { return 1; }                                                // LD B, B - essentially a NOP
-        case 0x41: { LD(reg_B, reg_C); return 1; }                              // B <- C
-        case 0x42: { LD(reg_B, reg_D); return 1; }                              // B <- D
-        case 0x43: { LD(reg_B, reg_E); return 1; }                              // B <- E
-        case 0x44: { LD(reg_B, reg_H); return 1; }                              // B <- H
-        case 0x45: { LD(reg_B, reg_L); return 1; }                              // B <- L
-        case 0x46: { LD(reg_B, get_pair(HL)); return 2; }                       // B <- memory[HL]
-        case 0x47: { LD(reg_B, reg_A); return 1; }                              // B <- A
-        case 0x48: { LD(reg_C, reg_B); return 1; }                              // C <- B
-        case 0x49: { return 1; }                                                // LD C, C - essentially a NOP
-        case 0x4A: { LD(reg_C, reg_D); return 1; }                              // C <- D
-        case 0x4B: { LD(reg_C, reg_E); return 1; }                              // C <- E
-        case 0x4C: { LD(reg_C, reg_H); return 1; }                              // C <- H
-        case 0x4D: { LD(reg_C, reg_L); return 1; }                              // C <- L
-        case 0x4E: { LD(reg_C, get_pair(HL)); return 2; }                       // C <- memory[HL]
-        case 0x4F: { LD(reg_C, reg_A); return 1; }                              // C <- A
+        case 0x40: { return 1; }                                      // LD B, B - essentially a NOP
+        case 0x41: { LD(reg_B, reg_C); return 1; }                    // B <- C
+        case 0x42: { LD(reg_B, reg_D); return 1; }                    // B <- D
+        case 0x43: { LD(reg_B, reg_E); return 1; }                    // B <- E
+        case 0x44: { LD(reg_B, reg_H); return 1; }                    // B <- H
+        case 0x45: { LD(reg_B, reg_L); return 1; }                    // B <- L
+        case 0x46: { LD(reg_B, get_pair(HL)); return 2; }             // B <- memory[HL]
+        case 0x47: { LD(reg_B, reg_A); return 1; }                    // B <- A
+        case 0x48: { LD(reg_C, reg_B); return 1; }                    // C <- B
+        case 0x49: { return 1; }                                      // LD C, C - essentially a NOP
+        case 0x4A: { LD(reg_C, reg_D); return 1; }                    // C <- D
+        case 0x4B: { LD(reg_C, reg_E); return 1; }                    // C <- E
+        case 0x4C: { LD(reg_C, reg_H); return 1; }                    // C <- H
+        case 0x4D: { LD(reg_C, reg_L); return 1; }                    // C <- L
+        case 0x4E: { LD(reg_C, get_pair(HL)); return 2; }             // C <- memory[HL]
+        case 0x4F: { LD(reg_C, reg_A); return 1; }                    // C <- A
 
-        case 0x50: { LD(reg_D, reg_B); return 1; }                              // D <- B
-        case 0x51: { LD(reg_D, reg_C); return 1; }                              // D <- C
-        case 0x52: { return 1; }                                                // LD D, D - essentially a NOP
-        case 0x53: { LD(reg_D, reg_E); return 1; }                              // D <- E
-        case 0x54: { LD(reg_D, reg_H); return 1; }                              // D <- H
-        case 0x55: { LD(reg_D, reg_L); return 1; }                              // D <- L
-        case 0x56: { LD(reg_D, get_pair(HL)); return 2; }                       // D <- memory[HL]
-        case 0x57: { LD(reg_D, reg_A); return 1; }                              // D <- A
-        case 0x58: { LD(reg_E, reg_B); return 1; }                              // E <- B
-        case 0x59: { LD(reg_E, reg_C); return 1; }                              // E <- C
-        case 0x5A: { LD(reg_E, reg_D); return 1; }                              // E <- D
-        case 0x5B: {return 1; }                                                 // LD E, E - essentially a NOP
-        case 0x5C: { LD(reg_E, reg_H); return 1; }                              // E <- H
-        case 0x5D: { LD(reg_E, reg_L); return 1; }                              // E <- L
-        case 0x5E: { LD(reg_E, get_pair(HL)); return 2; }                       // E <- memory[HL]
-        case 0x5F: { LD(reg_E, reg_A); return 1; }                              // E <- A
+        case 0x50: { LD(reg_D, reg_B); return 1; }                    // D <- B
+        case 0x51: { LD(reg_D, reg_C); return 1; }                    // D <- C
+        case 0x52: { return 1; }                                      // LD D, D - essentially a NOP
+        case 0x53: { LD(reg_D, reg_E); return 1; }                    // D <- E
+        case 0x54: { LD(reg_D, reg_H); return 1; }                    // D <- H
+        case 0x55: { LD(reg_D, reg_L); return 1; }                    // D <- L
+        case 0x56: { LD(reg_D, get_pair(HL)); return 2; }             // D <- memory[HL]
+        case 0x57: { LD(reg_D, reg_A); return 1; }                    // D <- A
+        case 0x58: { LD(reg_E, reg_B); return 1; }                    // E <- B
+        case 0x59: { LD(reg_E, reg_C); return 1; }                    // E <- C
+        case 0x5A: { LD(reg_E, reg_D); return 1; }                    // E <- D
+        case 0x5B: {return 1; }                                       // LD E, E - essentially a NOP
+        case 0x5C: { LD(reg_E, reg_H); return 1; }                    // E <- H
+        case 0x5D: { LD(reg_E, reg_L); return 1; }                    // E <- L
+        case 0x5E: { LD(reg_E, get_pair(HL)); return 2; }             // E <- memory[HL]
+        case 0x5F: { LD(reg_E, reg_A); return 1; }                    // E <- A
 
-        case 0x60: { LD(reg_H, reg_B); return 1; }                              // H <- B
-        case 0x61: { LD(reg_H, reg_C); return 1; }                              // H <- C
-        case 0x62: { LD(reg_H, reg_D); return 1; }                              // H <- D
-        case 0x63: { LD(reg_H, reg_E); return 1; }                              // H <- E
-        case 0x64: { return 1; }                                                // LD H, H - essentially a NOP
-        case 0x65: { LD(reg_H, reg_L); return 1; }                              // H <- L
-        case 0x66: { LD(reg_H, get_pair(HL)); return 2; }                       // H <- memory[HL]
-        case 0x67: { LD(reg_H, reg_A); return 1; }                              // H <- A
-        case 0x68: { LD(reg_L, reg_B); return 1; }                              // L <- B
-        case 0x69: { LD(reg_L, reg_C); return 1; }                              // L <- C
-        case 0x6A: { LD(reg_L, reg_D); return 1; }                              // L <- D
-        case 0x6B: { LD(reg_L, reg_E); return 1; }                              // L <- E
-        case 0x6C: { LD(reg_L, reg_H); return 1; }                              // L <- H
-        case 0x6D: { LD(reg_L, reg_L); return 1; }                              // L <- L
-        case 0x6E: { LD(reg_L, get_pair(HL)); return 2; }                       // L <- memory[HL]
-        case 0x6F: { LD(reg_L, reg_A); return 1; }                              // L <- A
+        case 0x60: { LD(reg_H, reg_B); return 1; }                    // H <- B
+        case 0x61: { LD(reg_H, reg_C); return 1; }                    // H <- C
+        case 0x62: { LD(reg_H, reg_D); return 1; }                    // H <- D
+        case 0x63: { LD(reg_H, reg_E); return 1; }                    // H <- E
+        case 0x64: { return 1; }                                      // LD H, H - essentially a NOP
+        case 0x65: { LD(reg_H, reg_L); return 1; }                    // H <- L
+        case 0x66: { LD(reg_H, get_pair(HL)); return 2; }             // H <- memory[HL]
+        case 0x67: { LD(reg_H, reg_A); return 1; }                    // H <- A
+        case 0x68: { LD(reg_L, reg_B); return 1; }                    // L <- B
+        case 0x69: { LD(reg_L, reg_C); return 1; }                    // L <- C
+        case 0x6A: { LD(reg_L, reg_D); return 1; }                    // L <- D
+        case 0x6B: { LD(reg_L, reg_E); return 1; }                    // L <- E
+        case 0x6C: { LD(reg_L, reg_H); return 1; }                    // L <- H
+        case 0x6D: { LD(reg_L, reg_L); return 1; }                    // L <- L
+        case 0x6E: { LD(reg_L, get_pair(HL)); return 2; }             // L <- memory[HL]
+        case 0x6F: { LD(reg_L, reg_A); return 1; }                    // L <- A
 
-        case 0x70: { LD(get_pair(HL), reg_B); return 2; }               // memory[HL] <- B
-        case 0x71: { LD(get_pair(HL), reg_C); return 2; }               // memory[HL] <- C
-        case 0x72: { LD(get_pair(HL), reg_D); return 2; }               // memory[HL] <- D
-        case 0x73: { LD(get_pair(HL), reg_E); return 2; }               // memory[HL] <- E
-        case 0x74: { LD(get_pair(HL), reg_H); return 2; }               // memory[HL] <- H
-        case 0x75: { LD(get_pair(HL), reg_L); return 2; }               // memory[HL] <- L
-        case 0x76: { HALT(); return 1; }                                // HALT
-        case 0x77: { LD(get_pair(HL), reg_A); return 2; }               // memory[HL] <- A
-        case 0x78: { LD(reg_A, reg_B); return 1; }                      // A <- B
-        case 0x79: { LD(reg_A, reg_C); return 1; }                      // A <- C
-        case 0x7A: { LD(reg_A, reg_D); return 1; }                      // A <- D
-        case 0x7B: { LD(reg_A, reg_E); return 1; }                      // A <- E
-        case 0x7C: { LD(reg_A, reg_H); return 1; }                      // A <- H
-        case 0x7D: { LD(reg_A, reg_L); return 1; }                      // A <- L
-        case 0x7E: { LD(reg_A, get_pair(HL)); return 2; }               // A <- memory[HL]
-        case 0x7F: { return 1; }                                        // LD A, A - essentially a NOP
+        case 0x70: { LD(get_pair(HL), reg_B); return 2; }             // memory[HL] <- B
+        case 0x71: { LD(get_pair(HL), reg_C); return 2; }             // memory[HL] <- C
+        case 0x72: { LD(get_pair(HL), reg_D); return 2; }             // memory[HL] <- D
+        case 0x73: { LD(get_pair(HL), reg_E); return 2; }             // memory[HL] <- E
+        case 0x74: { LD(get_pair(HL), reg_H); return 2; }             // memory[HL] <- H
+        case 0x75: { LD(get_pair(HL), reg_L); return 2; }             // memory[HL] <- L
+        case 0x76: { HALT(); return 1; }                              // HALT
+        case 0x77: { LD(get_pair(HL), reg_A); return 2; }             // memory[HL] <- A
+        case 0x78: { LD(reg_A, reg_B); return 1; }                    // A <- B
+        case 0x79: { LD(reg_A, reg_C); return 1; }                    // A <- C
+        case 0x7A: { LD(reg_A, reg_D); return 1; }                    // A <- D
+        case 0x7B: { LD(reg_A, reg_E); return 1; }                    // A <- E
+        case 0x7C: { LD(reg_A, reg_H); return 1; }                    // A <- H
+        case 0x7D: { LD(reg_A, reg_L); return 1; }                    // A <- L
+        case 0x7E: { LD(reg_A, get_pair(HL)); return 2; }             // A <- memory[HL]
+        case 0x7F: { return 1; }                                      // LD A, A - essentially a NOP
 
-        case 0x80: { ADD(reg_B, false); return 1; }                     // A += B
-        case 0x81: { ADD(reg_C, false); return 1; }                     // A += C
-        case 0x82: { ADD(reg_D, false); return 1; }                     // A += D
-        case 0x83: { ADD(reg_E, false); return 1; }                     // A += E
-        case 0x84: { ADD(reg_H, false); return 1; }                     // A += H
-        case 0x85: { ADD(reg_L, false); return 1; }                     // A += L
-        case 0x86: { ADD(read_hl(), false); return 2; }                 // A += memory[HL]
-        case 0x87: { ADD(reg_A, false); return 1; }                     // A += A
-        case 0x88: { ADD(reg_B, true); return 1; }                      // A += (B + carry)
-        case 0x89: { ADD(reg_C, true); return 1; }                      // A += (C + carry)
-        case 0x8A: { ADD(reg_D, true); return 1; }                      // A += (D + carry)
-        case 0x8B: { ADD(reg_E, true); return 1; }                      // A += (E + carry)
-        case 0x8C: { ADD(reg_H, true); return 1; }                      // A += (H + carry)
-        case 0x8D: { ADD(reg_L, true); return 1; }                      // A += (L + carry)
-        case 0x8E: { ADD(read_hl(), true); return 2; }                  // A += (memory[HL] + carry)
-        case 0x8F: { ADD(reg_A, true); return 1; }                      // A += (A + carry)
+        case 0x80: { ADD(reg_B, false); return 1; }                   // A += B
+        case 0x81: { ADD(reg_C, false); return 1; }                   // A += C
+        case 0x82: { ADD(reg_D, false); return 1; }                   // A += D
+        case 0x83: { ADD(reg_E, false); return 1; }                   // A += E
+        case 0x84: { ADD(reg_H, false); return 1; }                   // A += H
+        case 0x85: { ADD(reg_L, false); return 1; }                   // A += L
+        case 0x86: { ADD(read_hl(), false); return 2; }               // A += memory[HL]
+        case 0x87: { ADD(reg_A, false); return 1; }                   // A += A
+        case 0x88: { ADD(reg_B, true); return 1; }                    // A += (B + carry)
+        case 0x89: { ADD(reg_C, true); return 1; }                    // A += (C + carry)
+        case 0x8A: { ADD(reg_D, true); return 1; }                    // A += (D + carry)
+        case 0x8B: { ADD(reg_E, true); return 1; }                    // A += (E + carry)
+        case 0x8C: { ADD(reg_H, true); return 1; }                    // A += (H + carry)
+        case 0x8D: { ADD(reg_L, true); return 1; }                    // A += (L + carry)
+        case 0x8E: { ADD(read_hl(), true); return 2; }                // A += (memory[HL] + carry)
+        case 0x8F: { ADD(reg_A, true); return 1; }                    // A += (A + carry)
 
-        case 0x90: { SUB(reg_B, false); return 1; }                     // A -= B
-        case 0x91: { SUB(reg_C, false); return 1; }                     // A -= C
-        case 0x92: { SUB(reg_D, false); return 1; }                     // A -= D
-        case 0x93: { SUB(reg_E, false); return 1; }                     // A -= E
-        case 0x94: { SUB(reg_H, false); return 1; }                     // A -= H
-        case 0x95: { SUB(reg_L, false); return 1; }                     // A -= L
-        case 0x96: { SUB(read_hl(), false); return 2; }                 // A -= memory[HL]
-        case 0x97: { SUB(reg_A, false); return 1; }                     // A -= A
-        case 0x98: { SUB(reg_B, true); return 1; }                      // A -= (B + carry)
-        case 0x99: { SUB(reg_C, true); return 1; }                      // A -= (C + carry)
-        case 0x9A: { SUB(reg_D, true); return 1; }                      // A -= (D + carry)
-        case 0x9B: { SUB(reg_E, true); return 1; }                      // A -= (E + carry)
-        case 0x9C: { SUB(reg_H, true); return 1; }                      // A -= (H + carry)
-        case 0x9D: { SUB(reg_L, true); return 1; }                      // A -= (L + carry)
-        case 0x9E: { SUB(read_hl(), true); return 2; }                  // A -= (memory[HL] + carry)
-        case 0x9F: { SUB(reg_A, true); return 1; }                      // A -= (A + carry)
+        case 0x90: { SUB(reg_B, false); return 1; }                   // A -= B
+        case 0x91: { SUB(reg_C, false); return 1; }                   // A -= C
+        case 0x92: { SUB(reg_D, false); return 1; }                   // A -= D
+        case 0x93: { SUB(reg_E, false); return 1; }                   // A -= E
+        case 0x94: { SUB(reg_H, false); return 1; }                   // A -= H
+        case 0x95: { SUB(reg_L, false); return 1; }                   // A -= L
+        case 0x96: { SUB(read_hl(), false); return 2; }               // A -= memory[HL]
+        case 0x97: { SUB(reg_A, false); return 1; }                   // A -= A
+        case 0x98: { SUB(reg_B, true); return 1; }                    // A -= (B + carry)
+        case 0x99: { SUB(reg_C, true); return 1; }                    // A -= (C + carry)
+        case 0x9A: { SUB(reg_D, true); return 1; }                    // A -= (D + carry)
+        case 0x9B: { SUB(reg_E, true); return 1; }                    // A -= (E + carry)
+        case 0x9C: { SUB(reg_H, true); return 1; }                    // A -= (H + carry)
+        case 0x9D: { SUB(reg_L, true); return 1; }                    // A -= (L + carry)
+        case 0x9E: { SUB(read_hl(), true); return 2; }                // A -= (memory[HL] + carry)
+        case 0x9F: { SUB(reg_A, true); return 1; }                    // A -= (A + carry)
 
-        case 0xA0: { AND(reg_B); return 1; }                            // A &= B
-        case 0xA1: { AND(reg_C); return 1; }                            // A &= C
-        case 0xA2: { AND(reg_D); return 1; }                            // A &= D
-        case 0xA3: { AND(reg_E); return 1; }                            // A &= E
-        case 0xA4: { AND(reg_H); return 1; }                            // A &= H
-        case 0xA5: { AND(reg_L); return 1; }                            // A &= L
-        case 0xA6: { AND(read_hl()); return 2; }                        // A &= memory[HL]
-        case 0xA7: { AND(reg_A); return 1; }                            // A &= A
-        case 0xA8: { XOR(reg_B); return 1; }                            // A ^= B
-        case 0xA9: { XOR(reg_C); return 1; }                            // A ^= C
-        case 0xAA: { XOR(reg_D); return 1; }                            // A ^= D
-        case 0xAB: { XOR(reg_E); return 1; }                            // A ^= E
-        case 0xAC: { XOR(reg_H); return 1; }                            // A ^= H
-        case 0xAD: { XOR(reg_L); return 1; }                            // A ^= L
-        case 0xAE: { XOR(read_hl()); return 2; }                        // A ^= memory[HL]
-        case 0xAF: { XOR(reg_A); return 1; }                            // A ^= A
+        case 0xA0: { AND(reg_B); return 1; }                          // A &= B
+        case 0xA1: { AND(reg_C); return 1; }                          // A &= C
+        case 0xA2: { AND(reg_D); return 1; }                          // A &= D
+        case 0xA3: { AND(reg_E); return 1; }                          // A &= E
+        case 0xA4: { AND(reg_H); return 1; }                          // A &= H
+        case 0xA5: { AND(reg_L); return 1; }                          // A &= L
+        case 0xA6: { AND(read_hl()); return 2; }                      // A &= memory[HL]
+        case 0xA7: { AND(reg_A); return 1; }                          // A &= A
+        case 0xA8: { XOR(reg_B); return 1; }                          // A ^= B
+        case 0xA9: { XOR(reg_C); return 1; }                          // A ^= C
+        case 0xAA: { XOR(reg_D); return 1; }                          // A ^= D
+        case 0xAB: { XOR(reg_E); return 1; }                          // A ^= E
+        case 0xAC: { XOR(reg_H); return 1; }                          // A ^= H
+        case 0xAD: { XOR(reg_L); return 1; }                          // A ^= L
+        case 0xAE: { XOR(read_hl()); return 2; }                      // A ^= memory[HL]
+        case 0xAF: { XOR(reg_A); return 1; }                          // A ^= A
 
-        case 0xB0: { OR(reg_B); return 1; }                             // A |= B
-        case 0xB1: { OR(reg_C); return 1; }                             // A |= C
-        case 0xB2: { OR(reg_D); return 1; }                             // A |= D
-        case 0xB3: { OR(reg_E); return 1; }                             // A |= E
-        case 0xB4: { OR(reg_H); return 1; }                             // A |= H
-        case 0xB5: { OR(reg_L); return 1; }                             // A |= L
-        case 0xB6: { OR(read_hl()); return 2; }                         // A |= memory[HL]
-        case 0xB7: { OR(reg_A); return 1; }                             // A |= A
-        case 0xB8: { CP(reg_B); return 1; }                             // Update flags for (A - B)
-        case 0xB9: { CP(reg_C); return 1; }                             // Update flags for (A - C)
-        case 0xBA: { CP(reg_D); return 1; }                             // Update flags for (A - D)
-        case 0xBB: { CP(reg_E); return 1; }                             // Update flags for (A - E)
-        case 0xBC: { CP(reg_H); return 1; }                             // Update flags for (A - H)
-        case 0xBD: { CP(reg_L); return 1; }                             // Update flags for (A - L)
-        case 0xBE: { CP(read_hl()); return 2; }                         // Update flags for (A - memory[HL])
-        case 0xBF: { CP(reg_A); return 1; }                             // Update flags for (A - A)
+        case 0xB0: { OR(reg_B); return 1; }                           // A |= B
+        case 0xB1: { OR(reg_C); return 1; }                           // A |= C
+        case 0xB2: { OR(reg_D); return 1; }                           // A |= D
+        case 0xB3: { OR(reg_E); return 1; }                           // A |= E
+        case 0xB4: { OR(reg_H); return 1; }                           // A |= H
+        case 0xB5: { OR(reg_L); return 1; }                           // A |= L
+        case 0xB6: { OR(read_hl()); return 2; }                       // A |= memory[HL]
+        case 0xB7: { OR(reg_A); return 1; }                           // A |= A
+        case 0xB8: { CP(reg_B); return 1; }                           // Update flags for (A - B)
+        case 0xB9: { CP(reg_C); return 1; }                           // Update flags for (A - C)
+        case 0xBA: { CP(reg_D); return 1; }                           // Update flags for (A - D)
+        case 0xBB: { CP(reg_E); return 1; }                           // Update flags for (A - E)
+        case 0xBC: { CP(reg_H); return 1; }                           // Update flags for (A - H)
+        case 0xBD: { CP(reg_L); return 1; }                           // Update flags for (A - L)
+        case 0xBE: { CP(read_hl()); return 2; }                       // Update flags for (A - memory[HL])
+        case 0xBF: { CP(reg_A); return 1; }                           // Update flags for (A - A)
 
-        case 0xC0: { return (RET_COND(FLAG_ZERO, false)) ? 5 : 2; }                        // RET NZ
-        case 0xC1: { POP(BC); return 3; }                                                  // C <- memory[++SP]; B <- memory[++SP]
-        case 0xC2: { return (JP_COND(FLAG_ZERO, false)) ? 4 : 3; }                         // JP NZ, a16
-        case 0xC3: { JP(fetch16()); return 4; }                                            // JP a16
-        case 0xC4: { return (CALL_COND(FLAG_ZERO, false)) ? 6 : 3; }                       // CALL NZ, a16
-        case 0xC5: { PUSH(BC); return 4; }                                                 // memory[--SP] <- B; memory[--SP] <- C
-        case 0xC6: { ADD(fetch(), false); return 2; }                                      // A += n8
-        case 0xC7: { RST(interrupt_vector[0]); return 4; }                                 // memory[SP] <- PC; PC = 0x0000
-        case 0xC8: { return (RET_COND(FLAG_ZERO, true)) ? 5 : 2; }                         // RET Z
-        case 0xC9: { RET(); return 4; }                                                    // RET
-        case 0xCA: { return (JP_COND(FLAG_ZERO, true)) ? 4 : 3; }                          // JP Z, a16
-        case 0xCB: { return decode_execute_cb(); }                                         // PREFIX
-        case 0xCC: { return (CALL_COND(FLAG_ZERO, true)) ? 6 : 3; }                        // CALL Z, a16
-        case 0xCD: { CALL(); return 6; }                                                   // CALL a16
-        case 0xCE: { ADD(fetch(), true); return 2; }                                       // A += (n8 + carry)
-        case 0xCF: { RST(interrupt_vector[1]); return 4; }                                 // memory[SP] <- PC; PC = 0x0008
+        case 0xC0: { return (RET_IF(FLAG_ZERO, false)) ? 5 : 2; }     // RET NZ
+        case 0xC1: { POP(BC); return 3; }                             // C <- memory[SP++]; B <- memory[SP++]
+        case 0xC2: { return (JP_IF(FLAG_ZERO, false)) ? 4 : 3; }      // JP NZ, a16
+        case 0xC3: { JP(fetch16()); return 4; }                       // JP a16
+        case 0xC4: { return (CALL_IF(FLAG_ZERO, false)) ? 6 : 3; }    // CALL NZ, a16
+        case 0xC5: { PUSH(BC); return 4; }                            // memory[--SP] <- B; memory[--SP] <- C
+        case 0xC6: { ADD(fetch(), false); return 2; }                 // A += n8
+        case 0xC7: { RST(interrupt_vector[0]); return 4; }            // memory[SP] <- PC; PC = 0x0000
+        case 0xC8: { return (RET_IF(FLAG_ZERO, true)) ? 5 : 2; }      // RET Z
+        case 0xC9: { RET(); return 4; }                               // RET
+        case 0xCA: { return (JP_IF(FLAG_ZERO, true)) ? 4 : 3; }       // JP Z, a16
+        case 0xCB: { return decode_execute_cb(); }                    // PREFIX
+        case 0xCC: { return (CALL_IF(FLAG_ZERO, true)) ? 6 : 3; }     // CALL Z, a16
+        case 0xCD: { CALL(); return 6; }                              // CALL a16
+        case 0xCE: { ADD(fetch(), true); return 2; }                  // A += (n8 + carry)
+        case 0xCF: { RST(interrupt_vector[1]); return 4; }            // memory[SP] <- PC; PC = 0x0008
 
-        case 0xD0: { return (RET_COND(FLAG_CARRY, false)) ? 5 : 2; }                       // RET NC
-        case 0xD1: { POP(DE); return 3; }                                                  // E <- memory[++SP]; D <- memory[++SP]
-        case 0xD2: { return (JP_COND(FLAG_CARRY, false)) ? 4 : 3; }                        // JP NC, a16
-        case 0xD3: {}   // --- BAD ---
-        case 0xD4: { return (CALL_COND(FLAG_CARRY, false)) ? 6 : 3; }                      // CALL NC, a16
-        case 0xD5: { PUSH(DE); return 4; }                                                 // memory[--SP] <- D; memory[--SP] <- E
-        case 0xD6: { SUB(fetch(), false); return 2; }                                      // A -= n8
-        case 0xD7: { RST(interrupt_vector[2]); return 4; }                                 //  memory[SP] <- PC; PC = 0x0000
-        case 0xD8: { return (RET_COND(FLAG_CARRY, true)) ? 5 : 2; }                        // RET C
-        case 0xD9: { RET(); EI(); return 4; }                                              // RETI
-        case 0xDA: { return (JP_COND(FLAG_CARRY, true)) ? 4 : 3; }                         // JP C, a16
-        case 0xDB: {}   // --- BAD ---
-        case 0xDC: { return (CALL_COND(FLAG_CARRY, true)) ? 6 : 3; }                       // CALL C, a16
-        case 0xDD: {}   // --- BAD ---
-        case 0xDE: { SUB(fetch(), true); return 2; }                                       // A -= (n8 + carry)
-        case 0xDF: { RST(interrupt_vector[3]); return 4; }                                 // memory[SP] <- PC; PC = 0x0018
+        case 0xD0: { return (RET_IF(FLAG_CARRY, false)) ? 5 : 2; }    // RET NC
+        case 0xD1: { POP(DE); return 3; }                             // E <- memory[++SP]; D <- memory[++SP]
+        case 0xD2: { return (JP_IF(FLAG_CARRY, false)) ? 4 : 3; }     // JP NC, a16
+        case 0xD3: { throw std::runtime_error("Opcode: D3 is bad"); } // --- BAD ---
+        case 0xD4: { return (CALL_IF(FLAG_CARRY, false)) ? 6 : 3; }   // CALL NC, a16
+        case 0xD5: { PUSH(DE); return 4; }                            // memory[--SP] <- D; memory[--SP] <- E
+        case 0xD6: { SUB(fetch(), false); return 2; }                 // A -= n8
+        case 0xD7: { RST(interrupt_vector[2]); return 4; }            //  memory[SP] <- PC; PC = 0x0000
+        case 0xD8: { return (RET_IF(FLAG_CARRY, true)) ? 5 : 2; }     // RET C
+        case 0xD9: { RET(); EI(); return 4; }                         // RETI
+        case 0xDA: { return (JP_IF(FLAG_CARRY, true)) ? 4 : 3; }      // JP C, a16
+        case 0xDB: { throw std::runtime_error("Opcode: DB is bad"); } // --- BAD ---
+        case 0xDC: { return (CALL_IF(FLAG_CARRY, true)) ? 6 : 3; }    // CALL C, a16
+        case 0xDD: { throw std::runtime_error("Opcode: DD is bad"); } // --- BAD ---
+        case 0xDE: { SUB(fetch(), true); return 2; }                  // A -= (n8 + carry)
+        case 0xDF: { RST(interrupt_vector[3]); return 4; }            // memory[SP] <- PC; PC = 0x0018
 
-        case 0xE0: { LDH(fetch(), false); return 3; }                                      // memory[$FF00 + n8] <- A
-        case 0xE1: { POP(HL); return 3; }                                                  // L <- memory[++SP]; H <- memory[++SP]
-        case 0xE2: { LDH(reg_C, false); return 2; }                                        // memory[$FF00 + C] <- A
-        case 0xE3: {}   // --- BAD ---
-        case 0xE4: {}   // --- BAD ---
-        case 0xE5: {PUSH(HL); return 4; }                                                  // memory[--SP] <- H; memory[--SP] <- L
-        case 0xE6: { AND(fetch()); return 2; }                                             // A &= n8
-        case 0xE7: { RST(interrupt_vector[4]); return 4; }                                 // memory[SP] <- PC; PC = 0x0020
-        case 0xE8: { reg_SP = ADD_SP(); return 4; }                                        // SP += e8
-        case 0xE9: { JP(get_pair(HL)); return 4; }                                         // SP <- HL
-        case 0xEA: { LD(fetch16(), reg_A); return 4; }                                     // memory[n16] <- A
-        case 0xEB: {}   // --- BAD ---
-        case 0xEC: {}   // --- BAD ---
-        case 0xED: {}   // --- BAD ---
-        case 0xEE: { XOR(fetch()); return 2; }                                              // A ^= n8
-        case 0xEF: { RST(interrupt_vector[5]); return 4; }                                 // memory[SP] <- PC; PC = 0x0028
+        case 0xE0: { LDH(fetch(), false); return 3; }                 // memory[$FF00 + n8] <- A
+        case 0xE1: { POP(HL); return 3; }                             // L <- memory[++SP]; H <- memory[++SP]
+        case 0xE2: { LDH(reg_C, false); return 2; }                   // memory[$FF00 + C] <- A
+        case 0xE3: { throw std::runtime_error("Opcode: E3 is bad"); } // --- BAD ---
+        case 0xE4: { throw std::runtime_error("Opcode: E4 is bad"); } // --- BAD ---
+        case 0xE5: {PUSH(HL); return 4; }                             // memory[--SP] <- H; memory[--SP] <- L
+        case 0xE6: { AND(fetch()); return 2; }                        // A &= n8
+        case 0xE7: { RST(interrupt_vector[4]); return 4; }            // memory[SP] <- PC; PC = 0x0020
+        case 0xE8: { reg_SP = ADD_SP(); return 4; }                   // SP += e8
+        case 0xE9: { JP(get_pair(HL)); return 4; }                    // SP <- HL
+        case 0xEA: { LD(fetch16(), reg_A); return 4; }                // memory[n16] <- A
+        case 0xEB: { throw std::runtime_error("Opcode: EB is bad"); } // --- BAD ---
+        case 0xEC: { throw std::runtime_error("Opcode: EC is bad"); } // --- BAD ---
+        case 0xED: { throw std::runtime_error("Opcode: ED is bad"); } // --- BAD ---
+        case 0xEE: { XOR(fetch()); return 2; }                        // A ^= n8
+        case 0xEF: { RST(interrupt_vector[5]); return 4; }            // memory[SP] <- PC; PC = 0x0028
 
-        case 0xF0: { LDH(fetch(), true); return 3; }                                       // A <- memory[$FF00 + n8]
-        case 0xF1: { POP(AF); return 3; }                                                  // F <- memory[++SP]; A <- memory[++SP]
-        case 0xF2: { LDH(reg_C, true); return 2; }                                          // A <- memory[$FF00 + C]
-        case 0xF3: { DI(); return 4; }                                                      // DI
-        case 0xF4: {}   // --- BAD ---
-        case 0xF5: { PUSH(AF); return 4; }                                                 // memory[--SP] <- A; memory[--SP] <- F
-        case 0xF6: { OR(fetch()); return 2; }                                               // A |= n8
-        case 0xF7: { RST(interrupt_vector[6]); return 4; }                                 // memory[SP] <- PC; PC = 0x0030
-        case 0xF8: { LD(HL, ADD_SP()); return 3; }                                         // HL <- SP + e8
-        case 0xF9: { LD(reg_SP, get_pair(HL)); return 2; }                                  // LD SP, HL
-        case 0xFA: { LD(reg_A, fetch16()); return 4; }                                     // A <- memory[n16]
-        case 0xFB: { EI(); return 4; }                                                      // EI
-        case 0xFC: {}   // --- BAD ---
-        case 0xFD: {}   // --- BAD ---
-        case 0xFE: { CP(fetch()); return 2; }                                               // Update flags for (A - imm8)
-        case 0xFF: { RST(interrupt_vector[7]); return 4; }                                 // memory[SP] <- PC; PC = 0x0038
+        case 0xF0: { LDH(fetch(), true); return 3; }                  // A <- memory[$FF00 + n8]
+        case 0xF1: { POP(AF); return 3; }                             // F <- memory[++SP]; A <- memory[++SP]
+        case 0xF2: { LDH(reg_C, true); return 2; }                    // A <- memory[$FF00 + C]
+        case 0xF3: { DI(); return 4; }                                // DI
+        case 0xF4: { throw std::runtime_error("Opcode: F4 is bad"); } // --- BAD ---
+        case 0xF5: { PUSH(AF); return 4; }                            // memory[--SP] <- A; memory[--SP] <- F
+        case 0xF6: { OR(fetch()); return 2; }                         // A |= n8
+        case 0xF7: { RST(interrupt_vector[6]); return 4; }            // memory[SP] <- PC; PC = 0x0030
+        case 0xF8: { LD(HL, ADD_SP()); return 3; }                    // HL <- SP + e8
+        case 0xF9: { LD(reg_SP, get_pair(HL)); return 2; }            // LD SP, HL
+        case 0xFA: { LD(reg_A, fetch16()); return 4; }                // A <- memory[n16]
+        case 0xFB: { EI(); return 4; }                                // EI
+        case 0xFC: { throw std::runtime_error("Opcode: FC is bad"); } // --- BAD ---
+        case 0xFD: { throw std::runtime_error("Opcode: FD is bad"); } // --- BAD ---
+        case 0xFE: { CP(fetch()); return 2; }                         // Update flags for (A - imm8)
+        case 0xFF: { RST(interrupt_vector[7]); return 4; }            // memory[SP] <- PC; PC = 0x0038
 
         default: {throw std::runtime_error("How did you get here?"); }
-    }
+    } 
 }
 
 /**
  * CBG Rotates, Shifts, and Bit Operations
  * 
- * @return the number of t-states taken to execute the command
+ * @return the number of m-cycles taken to execute the command
 */
 int CPU::decode_execute_cb() {
     Byte opcode = fetch();
