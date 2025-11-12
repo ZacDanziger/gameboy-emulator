@@ -23,15 +23,16 @@ class CPU {
         void load_rom(const std::string& filename);
         
         bool is_halted() { return halted; }
+        bool is_stopped() { return stopped; }
 
         //Debugging functions - get rid of when not needed
         void write_registers();
         void set_logfile_suffix(const std::string suffix);
 
+        std::string _logfile;
+        std::string serial_buffer;
 
     private:
-        std::string _logfile;
-
         Memory _memory;
 
         // Pair of 8-bit registers
@@ -61,6 +62,7 @@ class CPU {
 
         bool interrupts_enabled;    // IME
         bool halted;
+        bool stopped;
 
         constexpr static Byte interrupt_vector[13]{
             0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38, // IVT[0:7] - Various resets
@@ -72,10 +74,10 @@ class CPU {
         };
 
 
-        void handle_interrupts(); // not implemented
+        void handle_interrupts();
         
 
-        // Fetch -> Decode -> Execute cycle
+        // Fetch -> Decode -> Execute loop
 
         Byte fetch();
         Word fetch16();
@@ -98,7 +100,7 @@ class CPU {
         void CPL();
         void CCF();
         void SCF();
-        void HALT();    // not implemented
+        void HALT();
         void STOP();    // not implemented
         void DI();
         void EI();

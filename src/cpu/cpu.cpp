@@ -18,6 +18,7 @@ CPU::CPU() : // register values hardcoded for testing change back later
     reg_PC(0x0100), 
     interrupts_enabled(false),
     halted(false),
+    stopped(false),
     _logfile("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/logfile") // get rid of when done with gameboy-doctor
 {} 
 
@@ -37,15 +38,26 @@ int CPU::step() {
 
     handle_interrupts();
 
+
+
     Byte opcode = fetch();
     int t_states = decode_execute(opcode);
+
+    // For gameboy-doctor
     write_registers();
 
-    // check 
-    if(_memory.read(0xFF02) == 0x81) {
-        Byte c = _memory.read(0xFF01);
-        std::cout << c << std::endl;
-        _memory.write(0xFF02, 0x00);
+
+    // For Blargg ROM test, will be serial interrupt when I get that working
+    if (_memory.read(SC_REGISTER) == 0x81) {
+        serial_buffer += _memory.read(SB_REGISTER);
+
+        if ((serial_buffer.length() > 6) && (serial_buffer.substr(serial_buffer.length() - 6) == "Passed")) {
+            stopped = true;
+        }
+
+        // clear 
+        _memory.write(SC_REGISTER, 0x00);
+        _memory.write(SB_REGISTER, 0x00);
     }
 
     return t_states;
@@ -542,7 +554,7 @@ void CPU::BIT(int pos, Byte reg) {
 
     bool set = ((reg & (1 << pos)) == (1 << pos));
 
-    update_flag(FLAG_ZERO, set);
+    update_flag(FLAG_ZERO, (1 - set));
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, true);
 }
@@ -1154,7 +1166,7 @@ void CPU::RR(Byte &reg, bool circular) {
 */
 void CPU::RR_HL(bool circular) {
     Byte value = read_hl();
-    RL(value, circular);
+    RR(value, circular);
     LD(get_pair(HL), value);
 }
 

@@ -51,7 +51,7 @@ void Memory::write(Address address, Byte data) {
     //     return;
     // }
 
-    if (address == DIV_REGISTER) {data = 0x00; }    // writing any value to DIV resets it to 0x00
+    if (address == DIV_REGISTER) {data = 0x00; return; }    // writing any value to DIV resets it to 0x00
     if (address < ERAM_START && address >= VRAM_START) { _vram[address - VRAM_START] = data; return; }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) { _wram_bank_00[address - WRAM_BANK_00_START] = data; return; }
     if (address < ECHO_START) { _wram_bank_01[address - WRAM_BANK_01_START] = data; return; }
