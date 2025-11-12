@@ -4,6 +4,7 @@ project(src)
 set (SourceFiles
     utils/utils.cpp
     memory/memory.cpp
+    timer/timer.cpp
     cpu/cpu.cpp
     cpu/optables.cpp
     emulator/emulator.cpp
@@ -11,6 +12,7 @@ set (SourceFiles
 
 include_directories(utils)
 include_directories(memory)
+include_directories(timer)
 include_directories(cpu)
 include_directories(emulator)
 

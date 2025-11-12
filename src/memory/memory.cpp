@@ -20,6 +20,7 @@ Memory::Memory() {
 */
 Byte Memory::read(Address address) const {
     if (address == 0xFF44) { return 0x90; }  // hardcoded for testing - take out later
+    
     if (address < ROM_BANK_01_START) { return _rom_bank_00[address]; }
     if (address < VRAM_START) { return _rom_bank_01[address - ROM_BANK_01_START]; }
     if (address < ERAM_START) { return _vram[address - VRAM_START]; }
@@ -51,7 +52,6 @@ void Memory::write(Address address, Byte data) {
     //     return;
     // }
 
-    if (address == DIV_REGISTER) {data = 0x00; return; }    // writing any value to DIV resets it to 0x00
     if (address < ERAM_START && address >= VRAM_START) { _vram[address - VRAM_START] = data; return; }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_01_START) { _wram_bank_00[address - WRAM_BANK_00_START] = data; return; }
     if (address < ECHO_START) { _wram_bank_01[address - WRAM_BANK_01_START] = data; return; }

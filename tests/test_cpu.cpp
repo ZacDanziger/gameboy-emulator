@@ -27,6 +27,9 @@ TEST(CPUTest, ROMTest_2) {
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/02-interrupts.gb";
 
     CPU cpu;
+    Memory memory;
+    Timer timer;
+    cpu.init(&timer, &memory);
     cpu.set_logfile_suffix("_2");
 
     EXPECT_NO_THROW(

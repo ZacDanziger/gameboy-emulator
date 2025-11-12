@@ -5,11 +5,13 @@
 
 class Emulator {
     public:
-        Emulator(): _cpu() {}
+        Emulator();
 
         void run();
     private:
-        CPU _cpu;
+        Memory *_memory;
+        Timer *_timer;
+        CPU *_cpu;
         // PPU
         // APU
 };

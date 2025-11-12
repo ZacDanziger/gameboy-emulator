@@ -5,7 +5,6 @@
 #include <array>
 #include <stdexcept>
 #include <algorithm>
-#include <span>
 #include "../utils/utils.h"
 
 

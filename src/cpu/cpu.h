@@ -2,6 +2,7 @@
 #define CPU_H
 
 #include "../memory/memory.h"
+#include "../timer/timer.h"
 #include <sstream>
 #include <iostream>
 
@@ -17,7 +18,8 @@ class CPU {
     public:
         CPU();
 
-        int step();
+        void init(Timer* timer, Memory* memory);
+        void step();
 
         void load(const Address address, const std::string& filename);
         void load_rom(const std::string& filename);
@@ -33,7 +35,8 @@ class CPU {
         std::string serial_buffer;
 
     private:
-        Memory _memory;
+        Memory *_memory;
+        Timer *_timer;
 
         // Pair of 8-bit registers
         struct Pair {
@@ -76,7 +79,6 @@ class CPU {
 
         void handle_interrupts();
         
-
         // Fetch -> Decode -> Execute loop
 
         Byte fetch();
@@ -129,7 +131,7 @@ class CPU {
 
         void LD(Byte& dest, const Byte value);          // dest <- value
         void LD(Byte& dest, const Address address);     // dest <- memory[address]
-        void LD(const Address dest, const Byte value);  // memory[address] <- value
+        void LD(const Address dest, Byte value);  // memory[address] <- value
         void LDH(const Byte reg, bool into_A);
 
         // 16-bit loads
