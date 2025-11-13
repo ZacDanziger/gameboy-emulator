@@ -1,280 +1,32 @@
 #include "../src/cpu/cpu.h"
+#include "../src/utils/logger.h"
 #include "gtest/gtest.h"
 
 
-// TEST(CPUTest, ROMTest_1) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/01-special.gb";
+TEST(BlarggROMTest, CPUInstructionTest) {
+    std::string filename = "../../gb-test-roms/cpu_instrs/cpu_instrs.gb";
 
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_1");
-
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     // 1256632
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-TEST(CPUTest, ROMTest_2) {
-    std::string filename = "../../gb-test-roms/cpu_instrs/individual/02-interrupts.gb";
-
-    CPU cpu;
     Memory memory;
     Timer timer;
+    CPU cpu;
+    // CPULogger logger = CPULogger(&cpu);
+    // logger.update_filename("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/cpu_log.txt");
+    
     cpu.init(&timer, &memory);
-    cpu.set_logfile_suffix("_2");
 
     EXPECT_NO_THROW(
-        cpu.load_rom(filename)
+        memory.load_rom(filename)
     );
-
-    cpu.write_registers();
 
     int i = 0;
     while(!cpu.is_stopped()) {
         cpu.step();
-        if (i == 161065) {
-            write_line(cpu._logfile, "DID NOT PASS\n");
-            break;
-        }
+        // logger.log_buffer();
         i++;
     }
 
-    write_line(cpu._logfile, cpu.serial_buffer);
+    EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");
 }
-
-// TEST(CPUTest, ROMTest_3) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_3");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 1066166) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_4) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/04-op r,imm.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_4");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 1260510) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_5) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/05-op rp.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_5");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 1761132) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_6) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/06-ld r,r.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_6");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 241017) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_7) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_7");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 587421) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_8) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/08-misc instrs.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_8");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-//     std::string output = "";
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 221636) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_9) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/09-op r,r.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_9");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 4418126) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_10) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/10-bit ops.gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_10");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 6712467) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
-
-// TEST(CPUTest, ROMTest_11) {
-//     std::string filename = "../../gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
-
-//     CPU cpu;
-//     cpu.set_logfile_suffix("_11");
-    
-//     EXPECT_NO_THROW(
-//         cpu.load_rom(filename)
-//     );
-
-//     cpu.write_registers();
-
-//     int i = 0;
-//     while(!cpu.is_stopped()) {
-//         cpu.step();
-//         if (i == 7427506) {
-//             write_line(cpu._logfile, "DID NOT PASS\n");
-//             break;
-//         }
-//         i++;
-//     }
-
-//     write_line(cpu._logfile, cpu.serial_buffer);
-// }
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);

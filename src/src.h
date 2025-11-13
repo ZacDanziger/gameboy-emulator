@@ -7,5 +7,6 @@
 #include "timer/timer.h"
 #include "cpu/cpu.h"
 #include "emulator/emulator.h"
+#include "utils/logger.h"
 
 #endif // SRC_H

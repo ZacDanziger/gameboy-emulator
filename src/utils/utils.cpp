@@ -47,3 +47,28 @@ void write_line(const std::string& filename, const std::string& line) {
 
     outfile.close();
 }
+
+// // For debugging purposes -- gameboy-doctor
+// void CPU::write_registers() {
+//     std::stringstream output;
+
+//     output << std::hex << std::setfill('0');
+
+//     output << "A:" << std::hex << std::setw(2) << static_cast<int>(reg_A)
+//            << " F:" << std::hex << std::setw(2) << static_cast<int>(reg_F)
+//            << " B:" << std::hex << std::setw(2) << static_cast<int>(reg_B)
+//            << " C:" << std::hex << std::setw(2) << static_cast<int>(reg_C)
+//            << " D:" << std::hex << std::setw(2) << static_cast<int>(reg_D)
+//            << " E:" << std::hex << std::setw(2) << static_cast<int>(reg_E)
+//            << " H:" << std::hex << std::setw(2) << static_cast<int>(reg_H)
+//            << " L:" << std::hex << std::setw(2) << static_cast<int>(reg_L)
+//            << " SP:" << std::hex << std::setw(4) << static_cast<int>(reg_SP)
+//            << " PC:" << std::hex << std::setw(4) << static_cast<int>(reg_PC)
+//            << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC))
+//            << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+1))
+//            << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+2))
+//            << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+3))
+//            << '\n';
+
+//     write_line(_logfile, output.str());
+// }

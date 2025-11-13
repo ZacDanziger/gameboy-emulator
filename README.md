@@ -1,4 +1,5 @@
 # GameBoy Emulator v1
+My GameBoy Color project to keep from getting rusty on my leave of absence
 
 ## TODO:
 * Memory
@@ -7,7 +8,8 @@
     * Handle Echo RAM
     * Handle Object Attribute Memory
 * CPU
-    * Implement STOP
+    * Implement weird STOP behavior
+    * Implement HALT bug
     
 
 

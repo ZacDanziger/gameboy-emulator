@@ -6,37 +6,27 @@
 #include <sstream>
 #include <iostream>
 
-// Set to true in debugging mode
-const bool DEBUG = true;
-
 const uint8_t FLAG_ZERO       = 0b10000000;
 const uint8_t FLAG_SUB        = 0b01000000;
 const uint8_t FLAG_HALF_CARRY = 0b00100000;
 const uint8_t FLAG_CARRY      = 0b00010000;
 
 class CPU {
+    friend class CPULogger;
     public:
         CPU();
 
-        void init(Timer* timer, Memory* memory);
-        void step();
+        void init(Timer* tim, Memory* mem);
 
-        void load(const Address address, const std::string& filename);
-        void load_rom(const std::string& filename);
+        void step();
         
         bool is_halted() { return halted; }
         bool is_stopped() { return stopped; }
 
-        //Debugging functions - get rid of when not needed
-        void write_registers();
-        void set_logfile_suffix(const std::string suffix);
-
-        std::string _logfile;
         std::string serial_buffer;
-
     private:
-        Memory *_memory;
-        Timer *_timer;
+        Memory *memory;
+        Timer *timer;
 
         // Pair of 8-bit registers
         struct Pair {
@@ -67,16 +57,19 @@ class CPU {
         bool halted;
         bool stopped;
 
-        constexpr static Byte interrupt_vector[13]{
-            0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38, // IVT[0:7] - Various resets
-            0x40,   // IVT[8]  - V Blank
-            0x48,   // IVT[9]  - LCD
-            0x50,   // IVT[10] - Timer 
-            0x58,   // IVT[11] - Serial
-            0x60    // IVT[12] - Joypad
+        constexpr static Byte reset_vector[8]{
+            0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38
         };
 
-
+        constexpr static Byte interrupt_vector[5]{
+            0x40,   // IVT[0] - V Blank
+            0x48,   // IVT[1] - LCD
+            0x50,   // IVT[2] - Timer 
+            0x58,   // IVT[3] - Serial
+            0x60    // IVT[4] - Joypad
+        };
+        
+        void reset();
         void handle_interrupts();
         
         // Fetch -> Decode -> Execute loop
@@ -103,7 +96,7 @@ class CPU {
         void CCF();
         void SCF();
         void HALT();
-        void STOP();    // not implemented
+        // void STOP();    // not implemented
         void DI();
         void EI();
 

@@ -3,6 +3,7 @@ project(src)
 
 set (SourceFiles
     utils/utils.cpp
+    utils/logger.cpp
     memory/memory.cpp
     timer/timer.cpp
     cpu/cpu.cpp

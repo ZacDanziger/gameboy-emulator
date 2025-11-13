@@ -33,7 +33,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0x0E: { LD(reg_C, fetch()); return 1; }                  // C <- n8
         case 0x0F: { RRA(true); return 1; }                           // RRCA
 
-        case 0x10: {}   // STOP (n8 ???)
+        case 0x10: {}                              // STOP
         case 0x11: { LD(DE, fetch16()); return 3; }                   // D <- n16[15:8], E <- n16[7:0]
         case 0x12: { LD(get_pair(DE), reg_A); return 2; }             // memory[DE] <- A
         case 0x13: { INC(DE); return 2; }                             // DE++
@@ -227,7 +227,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xC4: { return (CALL_IF(FLAG_ZERO, false)) ? 6 : 3; }    // CALL NZ, a16
         case 0xC5: { PUSH(BC); return 4; }                            // memory[--SP] <- B; memory[--SP] <- C
         case 0xC6: { ADD(fetch(), false); return 2; }                 // A += n8
-        case 0xC7: { RST(interrupt_vector[0]); return 4; }            // memory[SP] <- PC; PC = 0x0000
+        case 0xC7: { RST(reset_vector[0]); return 4; }                // memory[SP] <- PC; PC = 0x0000
         case 0xC8: { return (RET_IF(FLAG_ZERO, true)) ? 5 : 2; }      // RET Z
         case 0xC9: { RET(); return 4; }                               // RET
         case 0xCA: { return (JP_IF(FLAG_ZERO, true)) ? 4 : 3; }       // JP Z, a16
@@ -235,7 +235,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xCC: { return (CALL_IF(FLAG_ZERO, true)) ? 6 : 3; }     // CALL Z, a16
         case 0xCD: { CALL(); return 6; }                              // CALL a16
         case 0xCE: { ADD(fetch(), true); return 2; }                  // A += (n8 + carry)
-        case 0xCF: { RST(interrupt_vector[1]); return 4; }            // memory[SP] <- PC; PC = 0x0008
+        case 0xCF: { RST(reset_vector[1]); return 4; }                // memory[SP] <- PC; PC = 0x0008
 
         case 0xD0: { return (RET_IF(FLAG_CARRY, false)) ? 5 : 2; }    // RET NC
         case 0xD1: { POP(DE); return 3; }                             // E <- memory[++SP]; D <- memory[++SP]
@@ -244,7 +244,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xD4: { return (CALL_IF(FLAG_CARRY, false)) ? 6 : 3; }   // CALL NC, a16
         case 0xD5: { PUSH(DE); return 4; }                            // memory[--SP] <- D; memory[--SP] <- E
         case 0xD6: { SUB(fetch(), false); return 2; }                 // A -= n8
-        case 0xD7: { RST(interrupt_vector[2]); return 4; }            //  memory[SP] <- PC; PC = 0x0000
+        case 0xD7: { RST(reset_vector[2]); return 4; }                //  memory[SP] <- PC; PC = 0x0000
         case 0xD8: { return (RET_IF(FLAG_CARRY, true)) ? 5 : 2; }     // RET C
         case 0xD9: { RET(); EI(); return 4; }                         // RETI
         case 0xDA: { return (JP_IF(FLAG_CARRY, true)) ? 4 : 3; }      // JP C, a16
@@ -252,16 +252,16 @@ int CPU::decode_execute(Byte opcode) {
         case 0xDC: { return (CALL_IF(FLAG_CARRY, true)) ? 6 : 3; }    // CALL C, a16
         case 0xDD: { throw std::runtime_error("Opcode: DD is bad"); } // --- BAD ---
         case 0xDE: { SUB(fetch(), true); return 2; }                  // A -= (n8 + carry)
-        case 0xDF: { RST(interrupt_vector[3]); return 4; }            // memory[SP] <- PC; PC = 0x0018
+        case 0xDF: { RST(reset_vector[3]); return 4; }                // memory[SP] <- PC; PC = 0x0018
 
         case 0xE0: { LDH(fetch(), false); return 3; }                 // memory[$FF00 + n8] <- A
         case 0xE1: { POP(HL); return 3; }                             // L <- memory[++SP]; H <- memory[++SP]
         case 0xE2: { LDH(reg_C, false); return 2; }                   // memory[$FF00 + C] <- A
         case 0xE3: { throw std::runtime_error("Opcode: E3 is bad"); } // --- BAD ---
         case 0xE4: { throw std::runtime_error("Opcode: E4 is bad"); } // --- BAD ---
-        case 0xE5: { PUSH(HL); return 4; }                             // memory[--SP] <- H; memory[--SP] <- L
+        case 0xE5: { PUSH(HL); return 4; }                            // memory[--SP] <- H; memory[--SP] <- L
         case 0xE6: { AND(fetch()); return 2; }                        // A &= n8
-        case 0xE7: { RST(interrupt_vector[4]); return 4; }            // memory[SP] <- PC; PC = 0x0020
+        case 0xE7: { RST(reset_vector[4]); return 4; }                // memory[SP] <- PC; PC = 0x0020
         case 0xE8: { reg_SP = ADD_SP(); return 4; }                   // SP += e8
         case 0xE9: { JP(get_pair(HL)); return 4; }                    // SP <- HL
         case 0xEA: { LD(fetch16(), reg_A); return 4; }                // memory[n16] <- A
@@ -269,7 +269,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xEC: { throw std::runtime_error("Opcode: EC is bad"); } // --- BAD ---
         case 0xED: { throw std::runtime_error("Opcode: ED is bad"); } // --- BAD ---
         case 0xEE: { XOR(fetch()); return 2; }                        // A ^= n8
-        case 0xEF: { RST(interrupt_vector[5]); return 4; }            // memory[SP] <- PC; PC = 0x0028
+        case 0xEF: { RST(reset_vector[5]); return 4; }                // memory[SP] <- PC; PC = 0x0028
 
         case 0xF0: { LDH(fetch(), true); return 3; }                  // A <- memory[$FF00 + n8]
         case 0xF1: { POP(AF); reg_F &= 0xF0; return 3; }              // F <- memory[++SP]; A <- memory[++SP]
@@ -278,7 +278,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xF4: { throw std::runtime_error("Opcode: F4 is bad"); } // --- BAD ---
         case 0xF5: { PUSH(AF); return 4; }                            // memory[--SP] <- A; memory[--SP] <- F
         case 0xF6: { OR(fetch()); return 2; }                         // A |= n8
-        case 0xF7: { RST(interrupt_vector[6]); return 4; }            // memory[SP] <- PC; PC = 0x0030
+        case 0xF7: { RST(reset_vector[6]); return 4; }                // memory[SP] <- PC; PC = 0x0030
         case 0xF8: { LD(HL, ADD_SP()); return 3; }                    // HL <- SP + e8
         case 0xF9: { LD(reg_SP, get_pair(HL)); return 2; }            // LD SP, HL
         case 0xFA: { LD(reg_A, fetch16()); return 4; }                // A <- memory[n16]
@@ -286,7 +286,7 @@ int CPU::decode_execute(Byte opcode) {
         case 0xFC: { throw std::runtime_error("Opcode: FC is bad"); } // --- BAD ---
         case 0xFD: { throw std::runtime_error("Opcode: FD is bad"); } // --- BAD ---
         case 0xFE: { CP(fetch()); return 2; }                         // Update flags for (A - imm8)
-        case 0xFF: { RST(interrupt_vector[7]); return 4; }            // memory[SP] <- PC; PC = 0x0038
+        case 0xFF: { RST(reset_vector[7]); return 4; }                // memory[SP] <- PC; PC = 0x0038
 
         default: {throw std::runtime_error("How did you get here?"); }
     } 

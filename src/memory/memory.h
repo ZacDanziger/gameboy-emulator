@@ -78,14 +78,14 @@ class Memory {
         void load_rom(const std::string& filename);
 
     private:
-        std::array<Byte, ROM_BANK_SIZE> _rom_bank_00;       // 0x0000 - 0x3FFF
-        std::array<Byte, ROM_BANK_SIZE> _rom_bank_01;       // 0x4000 - 0x7FFF
-        std::array<Byte, VRAM_SIZE> _vram;                  // 0x8000 - 0x9FFF
-        std::array<Byte, WRAM_BANK_SIZE> _wram_bank_00;     // 0xC000 - 0xCFFF
-        std::array<Byte, WRAM_BANK_SIZE> _wram_bank_01;     // 0xD000 - 0xDFFF
-        std::array<Byte, IO_REG_SIZE> _io_registers;        // 0xFF00 - 0xFF7F
-        std::array<Byte, HRAM_SIZE> _hram;                  // 0xFF80 - 0xFFFE
-        Byte _IE_register;                                  // 0xFFFF
+        std::array<Byte, ROM_BANK_SIZE> rom_bank_00;       // 0x0000 - 0x3FFF
+        std::array<Byte, ROM_BANK_SIZE> rom_bank_01;       // 0x4000 - 0x7FFF
+        std::array<Byte, VRAM_SIZE> vram;                  // 0x8000 - 0x9FFF
+        std::array<Byte, WRAM_BANK_SIZE> wram_bank_00;     // 0xC000 - 0xCFFF
+        std::array<Byte, WRAM_BANK_SIZE> wram_bank_01;     // 0xD000 - 0xDFFF
+        std::array<Byte, IO_REG_SIZE> io_registers;        // 0xFF00 - 0xFF7F
+        std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
+        Byte ie_register;                                  // 0xFFFF
 
         std::pair<Byte*, size_t> resolve_region(const Address address);
 };

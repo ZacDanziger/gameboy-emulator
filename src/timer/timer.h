@@ -6,17 +6,19 @@
 class Timer {
     public:
         Timer();
-        void init(Memory* memory);
+        void init(Memory* mem);
         void tick(int m_cycles);
         void switch_speed(bool on_off);
     private:
-        Memory *_memory;
+        Memory *memory;
+
         bool double_speed;
+
         Word divider_clocksum;
         Word timer_clocksum;
-
-        const int CLOCK_SPEED = 4194304; // Hz
-        const int DIVIDER_SPEED = 16384; // Hz
+        
+        Word divider_update_threshold;
+        Word timer_update_threshold;
 };
 
 #endif // TIMER_H

@@ -1,105 +1,114 @@
 #include "cpu.h"
 
-CPU::CPU() : // register values hardcoded for testing change back later
-    reg_A(0x01),
-    reg_F(0xB0),
-    reg_B(0x00),
-    reg_C(0x13),
-    reg_D(0x00),
-    reg_E(0xD8),
-    reg_H(0x01),
-    reg_L(0x4D),
-    AF{&reg_A, &reg_F},
-    BC{&reg_B, &reg_C},
-    DE{&reg_D, &reg_E},
-    HL{&reg_H, &reg_L},
-    reg_SP(0xFFFE),
-    reg_PC(0x0100), 
-    interrupts_enabled(false),
-    halted(false),
-    stopped(false),
-    _logfile("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/logfile") // get rid of when done with gameboy-doctor
-{} 
-
-
-void CPU::init(Timer* timer, Memory* memory) {
-    _timer = timer;
-    _memory = memory;
-    _timer->init(memory);
+/**
+ * Initialize the non-pointer member variables to their post boot ROM state
+ * see: https://gbdev.io/pandocs/Power_Up_Sequence.html
+ */
+CPU::CPU() {    
+    reg_A = 0x11;
+    reg_F = 0x80;
+    reg_B = 0x00;
+    reg_C = 0x00;
+    reg_D = 0xFF;
+    reg_E = 0x56;
+    reg_H = 0x00;
+    reg_L = 0x0D;
+    AF = {&reg_A, &reg_F};
+    BC = {&reg_B, &reg_C};
+    DE = {&reg_D, &reg_E};
+    HL = {&reg_H, &reg_L};
+    reg_SP = 0xFFFE;
+    reg_PC = 0x0100;
+    interrupts_enabled = false;
+    halted = false;
+    stopped = false;
+    timer = nullptr;
+    memory = nullptr;
 }
+
+/**
+ * Initialize the timer and memory pointers
+ * 
+ * @param tim a pointer to the emulator's timer
+ * @param mem a pointer to the emulator's memory
+ */
+void CPU::init(Timer* tim, Memory* mem) {
+    timer = tim;
+    memory = mem;
+    timer->init(memory);
+}
+
 
 /**
  * Perform one loop of the fetch, decode, execute cycle
 */
 void CPU::step() {
+    // need to implement HALT bug
     while(halted) {
-        if ((_memory->read(IE_REGISTER) & _memory->read(IF_REGISTER))) {
+        if ((memory->read(IE_REGISTER) & memory->read(IF_REGISTER))) {
             handle_interrupts();
             halted = false;
         }
-        _timer->tick(1);
+        timer->tick(1);
     }
 
     handle_interrupts();
 
-
-
     Byte opcode = fetch();
     int m_cycles = decode_execute(opcode);
 
-    _timer->tick(m_cycles);
-    // For gameboy-doctor
-    write_registers();
+    timer->tick(m_cycles);
 
 
     // For Blargg ROM test, will be serial interrupt when I get that working
-    if (_memory->read(SC_REGISTER) == 0x81) {
-        serial_buffer += _memory->read(SB_REGISTER);
+    if (memory->read(SC_REGISTER) == 0x81) {
+        std::string buffer_file = "/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/buffer.txt";
+        serial_buffer += memory->read(SB_REGISTER);
+        std::ofstream of(buffer_file, std::ios::trunc);
+        of.close();
+
+        write_line(buffer_file, serial_buffer);
 
         if ((serial_buffer.length() > 6) && (serial_buffer.substr(serial_buffer.length() - 6) == "Passed")) {
             stopped = true;
         }
 
+        if ((serial_buffer.length() > 6) && (serial_buffer.substr(serial_buffer.length() - 6) == "Failed")) {
+            stopped = true;
+        }
+
         // clear 
-        _memory->write(SC_REGISTER, 0x00);
-        _memory->write(SB_REGISTER, 0x00);
+        memory->write(SC_REGISTER, 0x00);
+        memory->write(SB_REGISTER, 0x00);
     }
-
 }
 
 
 /**
- * Loads the data in a file to the section of memory starting at address
- * 
- * @param address one of the starting addresses of a section of memory defined in memory.h
- * @param filename the file containing the data to load in
-*/
-void CPU::load(const Address address, const std::string& filename) {
-    _memory->load(address, filename);
+ * Resets the CPU Registers and flags to their post boot ROM state
+ */
+void CPU::reset() {
+    reg_A = 0x11;
+    reg_F = 0x80;
+    reg_B = 0x00;
+    reg_C = 0x00;
+    reg_D = 0xFF;
+    reg_E = 0x56;
+    reg_H = 0x00;
+    reg_L = 0x0D;
+    AF = {&reg_A, &reg_F};
+    BC = {&reg_B, &reg_C};
+    DE = {&reg_D, &reg_E};
+    HL = {&reg_H, &reg_L};
+    reg_SP = 0xFFFE;
+    reg_PC = 0x0100;
+    interrupts_enabled = false;
+    halted = false;
+    stopped = false;
 }
 
 
 /**
- * Load the data in a file to both ROM banks, contiguously
- * 
- * @param filename the file containing the data to load in
-*/
-void CPU::load_rom(const std::string& filename) {
-    _memory->load_rom(filename);
-}
-
-
-void CPU::set_logfile_suffix(const std::string suffix) {
-    _logfile += (suffix + ".txt"); 
-
-    // clear logfile.txt
-    std::ofstream os(_logfile, std::ios::trunc);
-    os.close();
-}
-
-
-/**
- * NOT FINISHED
  * Handle interrupts
 */
 void CPU::handle_interrupts() {
@@ -108,8 +117,8 @@ void CPU::handle_interrupts() {
         return;
     }
 
-    Byte ie_register = _memory->read(IE_REGISTER);
-    Byte if_register = _memory->read(IF_REGISTER);
+    Byte ie_register = memory->read(IE_REGISTER);
+    Byte if_register = memory->read(IF_REGISTER);
 
     //check that the specific interrupts that are enabled are requesting an interrupt
     if  (!(ie_register & if_register)) {
@@ -117,78 +126,49 @@ void CPU::handle_interrupts() {
     }
 
     interrupts_enabled = false;
+    timer->tick(5);
 
     //V-Blank interrupt
     if ((ie_register & 0x01) & (if_register & 0x01)) {
-        RST(interrupt_vector[8]);
+        RST(interrupt_vector[0]);
         if_register &= ~0x01;
-        _memory->write(IF_REGISTER, if_register);
+        memory->write(IF_REGISTER, if_register);
         return;
     }
 
     // LCD interrupt
     if ((ie_register & 0x02) & (if_register & 0x02)) {
-        RST(interrupt_vector[9]);
+        RST(interrupt_vector[1]);
         if_register &= ~0x02;
-        _memory->write(IF_REGISTER, if_register);
+        memory->write(IF_REGISTER, if_register);
         return;
     }
 
     // Timer interrupt
     if ((ie_register & 0x04) & (if_register & 0x04)) {
-        RST(interrupt_vector[10]);
+        RST(interrupt_vector[2]);
         if_register &= ~0x04;
-        _memory->write(IF_REGISTER, if_register);
+        memory->write(IF_REGISTER, if_register);
         return;
     }
 
     // Serial Interrupt
     if ((ie_register & 0x08) & (if_register & 0x08)) {
-        RST(interrupt_vector[11]);
+        RST(interrupt_vector[3]);
         if_register &= ~0x08;
-        _memory->write(IF_REGISTER, if_register);
+        memory->write(IF_REGISTER, if_register);
         return;
     }
 
     // Joypad Interrupt
     if ((ie_register & 0x10) & (if_register & 0x10)) {
-        RST(interrupt_vector[12]);
+        RST(interrupt_vector[4]);
         if_register &= ~0x10;
-        _memory->write(IF_REGISTER, if_register);
+        memory->write(IF_REGISTER, if_register);
         return;
     }
 }
 
-
-
-// For debugging purposes -- gameboy-doctor
-void CPU::write_registers() {
-    if (!DEBUG) {
-        return;
-    }
-
-    std::stringstream output;
-
-    output << std::hex << std::setfill('0');
-
-    output << "A:" << std::hex << std::setw(2) << static_cast<int>(reg_A)
-           << " F:" << std::hex << std::setw(2) << static_cast<int>(reg_F)
-           << " B:" << std::hex << std::setw(2) << static_cast<int>(reg_B)
-           << " C:" << std::hex << std::setw(2) << static_cast<int>(reg_C)
-           << " D:" << std::hex << std::setw(2) << static_cast<int>(reg_D)
-           << " E:" << std::hex << std::setw(2) << static_cast<int>(reg_E)
-           << " H:" << std::hex << std::setw(2) << static_cast<int>(reg_H)
-           << " L:" << std::hex << std::setw(2) << static_cast<int>(reg_L)
-           << " SP:" << std::hex << std::setw(4) << static_cast<int>(reg_SP)
-           << " PC:" << std::hex << std::setw(4) << static_cast<int>(reg_PC)
-           << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC))
-           << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+1))
-           << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+2))
-           << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+3))
-           << '\n';
-
-    write_line(_logfile, output.str());
-}
 
 /**
  * Fetch the next instruction and increment PC
@@ -196,7 +176,7 @@ void CPU::write_registers() {
  * @return the value in memory[PC]
 */
 Byte CPU::fetch() {
-    return _memory->read(reg_PC++);
+    return memory->read(reg_PC++);
 }
 
 
@@ -265,7 +245,7 @@ void CPU::set_pair(const Pair &pair, const Word value) {
  * @return memory[HL]
 */
 Byte CPU::read_hl() const {
-    return _memory->read(get_pair(HL));
+    return memory->read(get_pair(HL));
 }
 
 
@@ -389,6 +369,19 @@ void CPU::SCF() {
 void CPU::HALT() {
     halted = true;
 }
+
+
+/**
+ * Stops the program
+ * - - - -
+ * 
+ * NEED TO IMPLEMENT WEIRD STOP BEHAVIOR
+ */
+// void CPU::STOP() {
+//     stopped = true;
+//     // Account for 2nd byte, naive
+//     reg_PC++;
+// }
 
 
 /**
@@ -521,9 +514,9 @@ void CPU::RST(const Byte offset) {
  * - - - -
 */
 void CPU::RET() {
-    Byte low = _memory->read(reg_SP);
+    Byte low = memory->read(reg_SP);
     reg_SP++;
-    reg_PC = ((_memory->read(reg_SP) << 8) | low);
+    reg_PC = ((memory->read(reg_SP) << 8) | low);
     reg_SP++;
 }
 
@@ -651,7 +644,7 @@ void CPU::LD(Byte& dest, const Byte value) {
  * @param address the address of the value to load into the destination register
 */
 void CPU::LD(Byte& dest, const Address address) {
-    dest = _memory->read(address);
+    dest = memory->read(address);
 }
 
 
@@ -667,7 +660,7 @@ void CPU::LD(const Address address, Byte value) {
     if (address == DIV_REGISTER) {    // writing any value to DIV_REGISTER resets it to 0x00
         value = 0x00;
     }
-    _memory->write(address, value);
+    memory->write(address, value);
 }
 
 
@@ -681,13 +674,13 @@ void CPU::LD(const Address address, Byte value) {
 void CPU::LDH(const Byte value, bool into_A) {
     if (into_A) {
         // memory[$FF00 + n] = reg_A
-        reg_A = _memory->read(IO_START + value);
+        reg_A = memory->read(IO_START + value);
     } else {
         // reg_A = memory[$FF00 + n]    
         if (value == 0x04) {    // writing any value to DIV_REGISTER resets it to 0x00
-            _memory->write(IO_START + value, 0x00);
+            memory->write(IO_START + value, 0x00);
         } else {
-            _memory->write(IO_START + value, reg_A);
+            memory->write(IO_START + value, reg_A);
         }
     }
 }
@@ -724,8 +717,8 @@ void CPU::LD(Pair& pair, const Word value) {
  * @param address the address in memory to hold least significant byte of SP
 */
 void CPU::write_SP(const Address address) {
-    _memory->write(address, (reg_SP & 0xFF));        // low byte
-    _memory->write((address + 1), (reg_SP >> 8));    // high byte
+    memory->write(address, (reg_SP & 0xFF));        // low byte
+    memory->write((address + 1), (reg_SP >> 8));    // high byte
 }
 
 /***
@@ -736,9 +729,9 @@ void CPU::write_SP(const Address address) {
 */
 void CPU::PUSH(const Pair& pair) {
     reg_SP--;
-    _memory->write(reg_SP, *(pair.reg_high));
+    memory->write(reg_SP, *(pair.reg_high));
     reg_SP--;
-    _memory->write(reg_SP, *(pair.reg_low));
+    memory->write(reg_SP, *(pair.reg_low));
 }
 
 
@@ -748,9 +741,9 @@ void CPU::PUSH(const Pair& pair) {
 */
 void CPU::PUSH_PC() {
     reg_SP--;
-    _memory->write(reg_SP, (reg_PC >> 8));   // high byte
+    memory->write(reg_SP, (reg_PC >> 8));   // high byte
     reg_SP--;
-    _memory->write(reg_SP, (reg_PC & 0xFF));   // low byte
+    memory->write(reg_SP, (reg_PC & 0xFF));   // low byte
 }
 
 
@@ -761,9 +754,9 @@ void CPU::PUSH_PC() {
  * @param pair the pair to be popped from the stack
 */
 void CPU::POP(Pair& pair) {
-    *(pair.reg_low) = _memory->read(reg_SP);
+    *(pair.reg_low) = memory->read(reg_SP);
     reg_SP++;
-    *(pair.reg_high) = _memory->read(reg_SP);
+    *(pair.reg_high) = memory->read(reg_SP);
     reg_SP++;
 }
 
@@ -916,13 +909,13 @@ void CPU::INC(Byte &reg) {
 */
 void CPU::INC_HL() {
     // Get memory[HL]
-    Byte value = _memory->read(get_pair(HL));
+    Byte value = memory->read(get_pair(HL));
 
     // Increment memory[HL] and set flags
     INC(value);
 
     // Update memory[HL] to incremented value
-    _memory->write(get_pair(HL), value);
+    memory->write(get_pair(HL), value);
 }
 
 
@@ -948,13 +941,13 @@ void CPU::DEC(Byte &reg) {
 */
 void CPU::DEC_HL() {
     // Get memory[HL]
-    Byte value = _memory->read(get_pair(HL));
+    Byte value = memory->read(get_pair(HL));
 
     // Decrement memory[HL] and set flags
     DEC(value);
 
     // Update memory[HL] to decremented value
-    _memory->write(get_pair(HL), value);
+    memory->write(get_pair(HL), value);
 }
 
 
