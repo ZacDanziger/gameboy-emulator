@@ -4,6 +4,7 @@
 #include "../memory/memory.h"
 #include "../timer/timer.h"
 #include "../cpu/cpu.h"
+#include "../ppu/ppu.h"
 
 class Emulator {
     public:
