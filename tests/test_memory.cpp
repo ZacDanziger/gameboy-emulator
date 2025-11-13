@@ -47,11 +47,11 @@ TEST_F(MemoryTest, TestLoad) {
     }
 
     EXPECT_NO_THROW(
-        _mem.load(ROM_BANK_01_START, "numbers.txt");
+        _mem.load(ROM_BANK_NN_START, "numbers.txt");
     );
 
     for (int i = 0; i < ROM_BANK_SIZE; i++) {
-        EXPECT_EQ(_data[i], _mem.read(i + ROM_BANK_01_START));
+        EXPECT_EQ(_data[i], _mem.read(i + ROM_BANK_NN_START));
     }
 
     EXPECT_NO_THROW(
@@ -71,11 +71,11 @@ TEST_F(MemoryTest, TestLoad) {
     }
 
     EXPECT_NO_THROW(
-        _mem.load(WRAM_BANK_01_START, "numbers.txt");
+        _mem.load(WRAM_BANK_NN_START, "numbers.txt");
     );
 
     for (int i = 0; i < WRAM_BANK_SIZE; i++) {
-        EXPECT_EQ(_data[i], _mem.read(i + WRAM_BANK_01_START));
+        EXPECT_EQ(_data[i], _mem.read(i + WRAM_BANK_NN_START));
     }
 
     EXPECT_NO_THROW(

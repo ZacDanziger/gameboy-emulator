@@ -8,11 +8,24 @@ Timer::Timer() {
     divider_update_threshold = 64;    // 16384 Hz update frequency (m-cycles)
 }
 
+/**
+ * Initialize timer's memory pointer
+ * 
+ * @param mem a valid pointer to a memory object
+ */
 void Timer::init(Memory* mem) {
+    if (mem == nullptr) {
+        throw std::runtime_error("Cannot initialize with nullptr");
+    }
     memory = mem;
 }
 
 
+/**
+ * Enables and Disables CGB's double speed mode
+ * 
+ * @param on_off true if switching to double speed mode, false if switching from double speed mode
+ */
 void Timer::switch_speed(bool on_off) {
     double_speed = on_off;
     if (double_speed) {
@@ -23,6 +36,12 @@ void Timer::switch_speed(bool on_off) {
 }
 
 
+/**
+ * Keeps count of m-cycles, updates DIV and TIMA registers accordingly
+ *     Will set the timer interrupt request flag when TIMA overflows 
+ * 
+ * @param m_cycles the number of m-cycles that have passed since the last tick
+ */
 void Timer::tick(int m_cycles) {
     divider_clocksum += m_cycles;
 

@@ -2,7 +2,7 @@
 
 /**
  * Initialize the non-pointer member variables to their post boot ROM state
- * see: https://gbdev.io/pandocs/Power_Up_Sequence.html
+ *     https://gbdev.io/pandocs/Power_Up_Sequence.html
  */
 CPU::CPU() {    
     reg_A = 0x11;
@@ -659,6 +659,7 @@ void CPU::LD(Byte& dest, const Address address) {
 void CPU::LD(const Address address, Byte value) {
     if (address == DIV_REGISTER) {    // writing any value to DIV_REGISTER resets it to 0x00
         value = 0x00;
+        timer->reset_divider();
     }
     memory->write(address, value);
 }
@@ -679,6 +680,7 @@ void CPU::LDH(const Byte value, bool into_A) {
         // reg_A = memory[$FF00 + n]    
         if (value == 0x04) {    // writing any value to DIV_REGISTER resets it to 0x00
             memory->write(IO_START + value, 0x00);
+            timer->reset_divider();
         } else {
             memory->write(IO_START + value, reg_A);
         }

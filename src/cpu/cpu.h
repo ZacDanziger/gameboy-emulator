@@ -76,7 +76,7 @@ class CPU {
 
         Byte fetch();
         Word fetch16();
-        int decode_execute(Byte opcode);
+        int decode_execute(const Byte opcode);
         int decode_execute_cb();
 
         // Helper Functions

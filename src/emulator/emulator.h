@@ -1,6 +1,8 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
+#include "../memory/memory.h"
+#include "../timer/timer.h"
 #include "../cpu/cpu.h"
 
 class Emulator {

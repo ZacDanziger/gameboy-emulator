@@ -3,7 +3,7 @@
 
 #include <string>
 #include <fstream>
-#include "../src.h"
+#include "../cpu/cpu.h"
 
 class Logger {
     public:

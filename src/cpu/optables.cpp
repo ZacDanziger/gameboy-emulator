@@ -14,7 +14,7 @@
  * @param opcode an 8-bit opcode to be executed
  * @return the number of m-cycles taken to execute the command
 */
-int CPU::decode_execute(Byte opcode) {
+int CPU::decode_execute(const Byte opcode) {
     switch(opcode) {
         case 0x00: { return 1; }                                      // NOP
         case 0x01: { LD(BC, fetch16()); return 3; }                   // B <- n16[15:8], C <- n16[7:0]
