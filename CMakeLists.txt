@@ -9,6 +9,7 @@ include(CTest)
 enable_testing()
 
 # include_directories(src)
+add_subdirectory(vendored)
 add_subdirectory(src)
 add_subdirectory(tests)
 

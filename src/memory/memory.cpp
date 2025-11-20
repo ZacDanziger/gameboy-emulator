@@ -6,6 +6,7 @@ Memory::Memory() {
     vram = {0};
     wram_bank_00 = {0};
     wram_bank_nn = {0};
+    oam = {0};
     io_registers = {0};
     hram = {0};
     ie_register = 0x00;
@@ -14,18 +15,22 @@ Memory::Memory() {
  
 /**
  * Read memory[address]
- * Cannot read from ERAM, Echo RAM, or OAM
+ * Cannot read from ERAM or OAM
  * 
  * @param address the address to be read
 */
 Byte Memory::read(Address address) const {
-    // if (address == 0xFF44) { return 0x90; }  // hardcoded for testing - take out later
-    
+    // if (address == LY_REGISTER) { return 0x90; }  // hardcoded for testing - take out later
+    if (address >= ECHO_START && address < OAM_START) {
+        address = convert_echo_RAM_address(address);
+    }
+
     if (address < ROM_BANK_NN_START) { return rom_bank_00[address]; }
     if (address < VRAM_START)        { return rom_bank_nn[address - ROM_BANK_NN_START]; }
     if (address < ERAM_START)        { return vram[address - VRAM_START]; }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_NN_START) { return wram_bank_00[address - WRAM_BANK_00_START]; }
     if (address < ECHO_START)        { return wram_bank_nn[address - WRAM_BANK_NN_START]; }
+    if (address <= OAM_STOP)         { return oam[address - OAM_START]; }
     if (address >= IO_START && address < HRAM_START) { return io_registers[address - IO_START]; }
     if (address < IE_REGISTER)       { return hram[address - HRAM_START]; }
     if (address == IE_REGISTER)      { return ie_register; }
@@ -52,9 +57,14 @@ void Memory::write(Address address, Byte data) {
     //     return;
     // }
 
+    if (address >= ECHO_START && address < OAM_START) {
+        address = convert_echo_RAM_address(address);
+    }
+
     if (address < ERAM_START && address >= VRAM_START) { vram[address - VRAM_START] = data; return; }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_NN_START) { wram_bank_00[address - WRAM_BANK_00_START] = data; return; }
     if (address < ECHO_START) { wram_bank_nn[address - WRAM_BANK_NN_START] = data; return; }
+    if (address <= OAM_STOP) { oam[address - OAM_START] = data; return; }
     if (address >= IO_START && address < HRAM_START) { io_registers[address - IO_START] = data; return; }
     if (address < IE_REGISTER) { hram[address - HRAM_START] = data; return; }
     if (address == IE_REGISTER) { ie_register = data; return; }
@@ -126,4 +136,18 @@ void Memory::initialize_mbc() {
     if (ram) {
         ram_size = rom_bank_00[CART_RAM_SIZE];
     }
+}
+
+/**
+ * Converts an address in ECHO RAM (0xE000 - 0xFDFF) to the corresponding address in WRAM (0xC000 - 0xDDFF)
+ * 
+ * @param address the address in ECHO RAM 
+ * @return the corresponding address in WRAM
+ */
+Address Memory::convert_echo_RAM_address(const Address address) const {
+    if (address < ECHO_START || address >= OAM_START) {
+        throw std::runtime_error("convert echo RAM called on address not in echo RAM");
+    }
+
+    return (address & ~(1 << 13));    // set bit 13 to 0
 }

@@ -5,6 +5,9 @@
 #include <vector>
 #include "memory_map.h"
 
+/**
+ * Not finished implementing
+ */
 class MBC {
     public:
         MBC();

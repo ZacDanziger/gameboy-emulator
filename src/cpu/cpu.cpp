@@ -32,10 +32,9 @@ CPU::CPU() {
  * @param tim a pointer to the emulator's timer
  * @param mem a pointer to the emulator's memory
  */
-void CPU::init(Timer* tim, Memory* mem) {
-    timer = tim;
-    memory = mem;
-    timer->init(memory);
+void CPU::init(Timer* tim_ptr, Memory* mem_ptr) {
+    timer = tim_ptr;
+    memory = mem_ptr;
 }
 
 
@@ -44,7 +43,7 @@ void CPU::init(Timer* tim, Memory* mem) {
 */
 void CPU::step() {
     // need to implement HALT bug
-    while(halted) {
+     while(halted) {
         if ((memory->read(IE_REGISTER) & memory->read(IF_REGISTER))) {
             handle_interrupts();
             halted = false;
@@ -62,12 +61,7 @@ void CPU::step() {
 
     // For Blargg ROM test, will be serial interrupt when I get that working
     if (memory->read(SC_REGISTER) == 0x81) {
-        std::string buffer_file = "/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/buffer.txt";
         serial_buffer += memory->read(SB_REGISTER);
-        std::ofstream of(buffer_file, std::ios::trunc);
-        of.close();
-
-        write_line(buffer_file, serial_buffer);
 
         if ((serial_buffer.length() > 6) && (serial_buffer.substr(serial_buffer.length() - 6) == "Passed")) {
             stopped = true;

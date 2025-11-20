@@ -12,9 +12,9 @@ class Emulator {
 
         void run();
     private:
-        Memory _memory;
-        Timer _timer;
-        CPU _cpu;
+        Memory memory;
+        Timer timer;
+        CPU cpu;
         // PPU
         // APU
 };

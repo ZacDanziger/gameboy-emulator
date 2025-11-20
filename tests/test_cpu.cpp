@@ -4,7 +4,7 @@
 
 
 TEST(BlarggROMTest, CPUInstructionTest) {
-    std::string filename = "../../gb-test-roms/cpu_instrs/individual/01-special.gb";
+    // std::string filename = "../../gb-test-roms/cpu_instrs/individual/01-special.gb";
     // std::string filename = "../../gb-test-roms/cpu_instrs/individual/02-interrupts.gb";
     // std::string filename = "../../gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb";
     // std::string filename = "../../gb-test-roms/cpu_instrs/individual/04-op r,imm.gb";
@@ -16,13 +16,16 @@ TEST(BlarggROMTest, CPUInstructionTest) {
     // std::string filename = "../../gb-test-roms/cpu_instrs/individual/10-bit ops.gb";
     // std::string filename = "../../gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
     // std::string filename = "../../gb-test-roms/cpu_instrs/cpu_instrs.gb";
+    // std::string filename = "../../gb-test-roms/mem_timing/individual/01-read_timing.gb";
+    // std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
+    std::string filename = "../../gb-test-roms/mem_timing/mem_timing.gb";
 
     Memory memory;
     Timer timer;
     CPU cpu;
-    // CPULogger logger = CPULogger(&cpu);
-    // logger.update_filename("/Users/zacdanziger/Documents/01_Personal/Coding/gameboy-emulator/build/cpu_log.txt");
+    CPULogger logger = CPULogger(&cpu);
     
+    timer.init(&memory);
     cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
@@ -32,10 +35,10 @@ TEST(BlarggROMTest, CPUInstructionTest) {
     int i = 0;
     while(!cpu.is_stopped()) {
         cpu.step();
-        // logger.log_buffer();
         i++;
     }
 
+    logger.log_buffer();
     EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");
 }
 

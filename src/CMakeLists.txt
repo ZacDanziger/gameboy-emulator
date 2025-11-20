@@ -20,3 +20,4 @@ include_directories(ppu)
 include_directories(emulator)
 
 add_library(${PROJECT_NAME} ${SourceFiles})
+target_link_libraries(${PROJECT_NAME} vendored)

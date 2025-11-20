@@ -1,15 +1,15 @@
 #include "emulator.h"
 
 Emulator::Emulator() {
-    _timer.init(&_memory);
-    _cpu.init(&_timer, &_memory);
+    timer.init(&memory);
+    cpu.init(&timer, &memory);
 }
 
 
 void Emulator::run() {
     // Initialize here
 
-    while (!_cpu.is_halted()) {
-        _cpu.step();
+    while (!cpu.is_halted()) {
+        cpu.step();
     }
 }

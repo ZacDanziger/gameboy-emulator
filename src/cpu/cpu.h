@@ -4,26 +4,22 @@
 #include "../memory/memory.h"
 #include "../timer/timer.h"
 #include <sstream>
-#include <iostream>
 
-const uint8_t FLAG_ZERO       = 0b10000000;
-const uint8_t FLAG_SUB        = 0b01000000;
-const uint8_t FLAG_HALF_CARRY = 0b00100000;
-const uint8_t FLAG_CARRY      = 0b00010000;
 
 class CPU {
     friend class CPULogger;
+
     public:
         CPU();
 
-        void init(Timer* tim, Memory* mem);
+        void init(Timer* tim_ptr, Memory* mem_ptr);
 
         void step();
         
         bool is_halted() { return halted; }
         bool is_stopped() { return stopped; }
 
-        std::string serial_buffer;
+        std::string serial_buffer;  // probably don't leave
     private:
         Memory *memory;
         Timer *timer;
@@ -33,6 +29,11 @@ class CPU {
             Byte *reg_high;
             Byte *reg_low;
         };
+
+        static const uint8_t FLAG_ZERO       = 0b10000000;
+        static const uint8_t FLAG_SUB        = 0b01000000;
+        static const uint8_t FLAG_HALF_CARRY = 0b00100000;
+        static const uint8_t FLAG_CARRY      = 0b00010000;
         
         // Gameboy's Eight 8-bit registers
         Byte reg_A;   // Accumulator
@@ -124,7 +125,7 @@ class CPU {
 
         void LD(Byte& dest, const Byte value);          // dest <- value
         void LD(Byte& dest, const Address address);     // dest <- memory[address]
-        void LD(const Address dest, Byte value);  // memory[address] <- value
+        void LD(const Address dest, Byte value);        // memory[address] <- value
         void LDH(const Byte reg, bool into_A);
 
         // 16-bit loads
