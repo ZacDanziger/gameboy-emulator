@@ -4,22 +4,33 @@
 #include "../memory/memory.h"
 
 class Timer {
+    friend class TimerLogger;
+
     public:
         Timer();
 
         void init(Memory* mem);
-        void tick(int m_cycles);
+        // void cycle(int m_cycles);
 
-        // writing to DIV resets the entire 16-bit register to 0
-        void reset_divider() { divider_clock_cycles = 0x0000; } 
+        void tick();
+        void write(const Address address, const Byte value);
+        Byte read(const Address address) const;
+
     private:
         Memory *memory;
         
-        uint16_t divider_clock_cycles;
-        uint16_t divider_update_threshold;
+        uint16_t divider_internal;  // SYSCLK
+        Byte divider;               // DIV_REGISTER
+        Byte timer;                 // TIMA_REGISTER
+        Byte timer_modulo;          // TMA_REGISTER
+        Byte timer_control;         // TAC_REGISTER
 
-        uint16_t timer_clock_cycles;
-        uint16_t timer_update_threshold;
+        uint8_t div_bit;
+        bool enabled;
+        bool previous_high;
+        bool overflow_delay;
+        bool timer_reload_cycle;
+
 
         void request_timer_interrupt() { memory->write(IF_REGISTER, (memory->read(IF_REGISTER) | 0b100)); }
 };

@@ -36,17 +36,14 @@ std::vector<uint8_t> read_file(const std::string& filename) {
  * @param filename the file to append to
  * @param line the line to append
 */
-void write_line(const std::string& filename, const std::string& line) {
-    std::ofstream outfile(filename, std::fstream::app);
-
-    if(!outfile.is_open()) {
+void write_line(std::ofstream& out, const std::string& line) {
+    if(!out.is_open()) {
         throw std::runtime_error("Cannot open_file");
     }
 
-    outfile << line;
-
-    outfile.close();
+    out << line;
 }
+
 
 // // For debugging purposes -- gameboy-doctor
 // void CPU::write_registers() {

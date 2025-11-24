@@ -19,7 +19,7 @@ class CPU {
         bool is_halted() { return halted; }
         bool is_stopped() { return stopped; }
 
-        std::string serial_buffer;  // probably don't leave
+        std::string serial_buffer;  // probably don't leave in
     private:
         Memory *memory;
         Timer *timer;
@@ -77,8 +77,8 @@ class CPU {
 
         Byte fetch();
         Word fetch16();
-        int decode_execute(const Byte opcode);
-        int decode_execute_cb();
+        void decode_execute(const Byte opcode);
+        void decode_execute_cb();
 
         // Helper Functions
 

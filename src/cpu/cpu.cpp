@@ -1,24 +1,28 @@
 #include "cpu.h"
+#include <iostream>
 
 /**
  * Initialize the non-pointer member variables to their post boot ROM state
  *     https://gbdev.io/pandocs/Power_Up_Sequence.html
  */
 CPU::CPU() {    
-    reg_A = 0x11;
-    reg_F = 0x80;
+    // gameboy doctor init
+    reg_A = 0x01;
+    reg_F = 0xB0;
     reg_B = 0x00;
-    reg_C = 0x00;
-    reg_D = 0xFF;
-    reg_E = 0x56;
-    reg_H = 0x00;
-    reg_L = 0x0D;
+    reg_C = 0x13;
+    reg_D = 0x00;
+    reg_E = 0xD8;
+    reg_H = 0x01;
+    reg_L = 0x4D;
+    reg_SP = 0xFFFE;
+    reg_PC = 0x0100;
+
     AF = {&reg_A, &reg_F};
     BC = {&reg_B, &reg_C};
     DE = {&reg_D, &reg_E};
     HL = {&reg_H, &reg_L};
-    reg_SP = 0xFFFE;
-    reg_PC = 0x0100;
+    
     interrupts_enabled = false;
     halted = false;
     stopped = false;
@@ -48,16 +52,16 @@ void CPU::step() {
             handle_interrupts();
             halted = false;
         }
-        timer->tick(1);
     }
 
     handle_interrupts();
 
     Byte opcode = fetch();
-    int m_cycles = decode_execute(opcode);
+    if (reg_PC == 0xC2D5) {
+        std::cerr << "At Breakpoint" << std::endl;
+    }
 
-    timer->tick(m_cycles);
-
+    decode_execute(opcode);
 
     // For Blargg ROM test, will be serial interrupt when I get that working
     if (memory->read(SC_REGISTER) == 0x81) {
@@ -120,7 +124,7 @@ void CPU::handle_interrupts() {
     }
 
     interrupts_enabled = false;
-    timer->tick(5);
+    // timer->cycle(5);
 
     //V-Blank interrupt
     if ((ie_register & 0x01) & (if_register & 0x01)) {
@@ -166,17 +170,19 @@ void CPU::handle_interrupts() {
 
 /**
  * Fetch the next instruction and increment PC
- * 
+ * TICKS GOOD
  * @return the value in memory[PC]
 */
 Byte CPU::fetch() {
-    return memory->read(reg_PC++);
+    Byte opcode = memory->read(reg_PC++);
+    timer->tick();
+    return opcode;
 }
 
 
 /**
  * Fetch the next 16 bits, in little endian format
- * 
+ * TICKS GOOD
  * @return [mem[SP+1] | mem[SP]]
 */
 Word CPU::fetch16() {
@@ -239,7 +245,9 @@ void CPU::set_pair(const Pair &pair, const Word value) {
  * @return memory[HL]
 */
 Byte CPU::read_hl() const {
-    return memory->read(get_pair(HL));
+    Byte res = memory->read(get_pair(HL));
+    timer->tick();
+    return res;
 }
 
 
@@ -417,13 +425,13 @@ void CPU::JP(const Address address) {
  * @return true if a jump occured, false otherwise
 */
 bool CPU::JP_IF(const uint16_t flag, bool set) {
+    Address destination = fetch16();
     if (get_flag(flag) == set) {
-        JP(fetch16());
+        JP(destination);
+        timer->tick();
         return true;
     }
 
-    // Account for the two bytes that would have been imm16
-    reg_PC += 2;
     return false;
 }
 
@@ -435,6 +443,7 @@ bool CPU::JP_IF(const uint16_t flag, bool set) {
 void CPU::JR() {
     int16_t imm = (int16_t)(int8_t)(fetch());
     reg_PC = (Word)((int16_t)(reg_PC) + imm);
+    timer->tick();
 }
 
 
@@ -452,9 +461,9 @@ bool CPU::JR_IF(const uint16_t flag, bool set) {
         JR();
         return true;
     }
-
     // Account for the byte that would have been (signed) imm8
     reg_PC += 1;
+    timer->tick();
     return false;
 }
 
@@ -470,6 +479,7 @@ void CPU::CALL() {
     reg_PC -= 2;
 
     reg_PC = fetch16();
+    timer->tick();
 }
 
 
@@ -490,6 +500,8 @@ bool CPU::CALL_IF(const uint16_t flag, bool set) {
 
     // Account for the two bytes that would have been imm16
     reg_PC += 2;
+    timer->tick();
+    timer->tick();
     return false;
 }
 /**
@@ -500,6 +512,7 @@ bool CPU::CALL_IF(const uint16_t flag, bool set) {
 void CPU::RST(const Byte offset) {
     PUSH_PC();
     reg_PC = 0x0000 + offset;
+    timer->tick();
 }
 
 
@@ -510,8 +523,13 @@ void CPU::RST(const Byte offset) {
 void CPU::RET() {
     Byte low = memory->read(reg_SP);
     reg_SP++;
+    timer->tick();
+
     reg_PC = ((memory->read(reg_SP) << 8) | low);
     reg_SP++;
+    timer->tick();
+
+    timer->tick();
 }
 
 /**
@@ -524,6 +542,7 @@ void CPU::RET() {
  * @return true if a return occured, false otherwise
 */
 bool CPU::RET_IF(const uint16_t flag, bool set) {
+    timer->tick();  
     if (get_flag(flag) == set) {
         RET();
         return true;
@@ -638,7 +657,12 @@ void CPU::LD(Byte& dest, const Byte value) {
  * @param address the address of the value to load into the destination register
 */
 void CPU::LD(Byte& dest, const Address address) {
-    dest = memory->read(address);
+    if (address >= DIV_REGISTER && address <= TAC_REGISTER) {  
+        dest = timer->read(address);
+    } else {
+        dest = memory->read(address);
+    }
+    timer->tick();
 }
 
 
@@ -651,11 +675,13 @@ void CPU::LD(Byte& dest, const Address address) {
  * @param value the value to load into the destination
 */
 void CPU::LD(const Address address, Byte value) {
-    if (address == DIV_REGISTER) {    // writing any value to DIV_REGISTER resets it to 0x00
-        value = 0x00;
-        timer->reset_divider();
+    // pass relevant changes to timer (may change how this is done when I implement MMU)
+    if (address >= DIV_REGISTER && address <= TAC_REGISTER) {    
+        timer->write(address, value);
+    } else {
+        memory->write(address, value);
     }
-    memory->write(address, value);
+    timer->tick();
 }
 
 
@@ -667,17 +693,13 @@ void CPU::LD(const Address address, Byte value) {
  * @param into_A true if loading memory value into A, false if loading A into memory
 */
 void CPU::LDH(const Byte value, bool into_A) {
+    Address address = IO_START + value;
     if (into_A) {
-        // memory[$FF00 + n] = reg_A
-        reg_A = memory->read(IO_START + value);
+        // reg_A = memory[$FF00 + n]  
+        LD(reg_A, address);
     } else {
-        // reg_A = memory[$FF00 + n]    
-        if (value == 0x04) {    // writing any value to DIV_REGISTER resets it to 0x00
-            memory->write(IO_START + value, 0x00);
-            timer->reset_divider();
-        } else {
-            memory->write(IO_START + value, reg_A);
-        }
+        // memory[$FF00 + n] = reg_A
+        LD(address, reg_A);
     }
 }
 
@@ -709,13 +731,16 @@ void CPU::LD(Pair& pair, const Word value) {
  * 16-bit load (write)
  * memory[address] = SP[7:0], memory[address+1] = SP[15:8]
  * - - - -
- * 
+ * TICKS GOOD
  * @param address the address in memory to hold least significant byte of SP
 */
 void CPU::write_SP(const Address address) {
     memory->write(address, (reg_SP & 0xFF));        // low byte
+    timer->tick();
     memory->write((address + 1), (reg_SP >> 8));    // high byte
+    timer->tick();
 }
+
 
 /***
  * Push pair onto the stack
@@ -726,8 +751,13 @@ void CPU::write_SP(const Address address) {
 void CPU::PUSH(const Pair& pair) {
     reg_SP--;
     memory->write(reg_SP, *(pair.reg_high));
+    timer->tick();
+    
     reg_SP--;
     memory->write(reg_SP, *(pair.reg_low));
+    timer->tick();
+
+    timer->tick();
 }
 
 
@@ -738,8 +768,11 @@ void CPU::PUSH(const Pair& pair) {
 void CPU::PUSH_PC() {
     reg_SP--;
     memory->write(reg_SP, (reg_PC >> 8));   // high byte
+    timer->tick();
+
     reg_SP--;
     memory->write(reg_SP, (reg_PC & 0xFF));   // low byte
+    timer->tick();
 }
 
 
@@ -752,8 +785,11 @@ void CPU::PUSH_PC() {
 void CPU::POP(Pair& pair) {
     *(pair.reg_low) = memory->read(reg_SP);
     reg_SP++;
+    timer->tick();
+
     *(pair.reg_high) = memory->read(reg_SP);
     reg_SP++;
+    timer->tick();
 }
 
 
@@ -906,12 +942,14 @@ void CPU::INC(Byte &reg) {
 void CPU::INC_HL() {
     // Get memory[HL]
     Byte value = memory->read(get_pair(HL));
+    timer->tick();
 
     // Increment memory[HL] and set flags
     INC(value);
 
     // Update memory[HL] to incremented value
     memory->write(get_pair(HL), value);
+    timer->tick();
 }
 
 
@@ -938,12 +976,14 @@ void CPU::DEC(Byte &reg) {
 void CPU::DEC_HL() {
     // Get memory[HL]
     Byte value = memory->read(get_pair(HL));
+    timer->tick();
 
     // Decrement memory[HL] and set flags
     DEC(value);
 
     // Update memory[HL] to decremented value
     memory->write(get_pair(HL), value);
+    timer->tick();
 }
 
 
@@ -960,7 +1000,9 @@ void CPU::ADD_HL(const Word value) {
     bool carry = (res >> 16) != 0;
     bool half_carry = (((old_val & 0xFFF) + (value & 0xFFF)) > 0xFFF);
 
+    
     set_pair(HL, (res & 0xFFFF));
+    timer->tick();
 
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
@@ -980,9 +1022,10 @@ Word CPU::ADD_SP() {
     int16_t imm = (int16_t)(int8_t)(fetch());
     Word res = (Word)((int16_t)(reg_SP) + imm);
 
+    timer->tick();
+
     bool carry = (res & 0xFF) < (reg_SP & 0xFF);
     bool half_carry = (res & 0xF) < (reg_SP & 0xF);
-
 
     update_flag(FLAG_ZERO, false);
     update_flag(FLAG_SUB, false);
@@ -1001,6 +1044,7 @@ Word CPU::ADD_SP() {
 */
 void CPU::INC(Word& reg) {
     reg++;
+    timer->tick();
 }
 
 
@@ -1026,6 +1070,7 @@ void CPU::INC(Pair& pair) {
 */
 void CPU::DEC(Word& reg) {
     reg--;
+    timer->tick();
 }
 
 

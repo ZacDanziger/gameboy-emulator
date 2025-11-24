@@ -29,3 +29,13 @@ target_link_libraries(cpu_test
 )
 
 add_test(cpu_gtests cpu_test)
+
+add_executable(timer_test test_timer.cpp)
+
+target_link_libraries(timer_test
+  PRIVATE
+  GTest::GTest
+  src
+)
+
+add_test(timer_gtests timer_test)

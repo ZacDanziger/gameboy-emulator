@@ -2,9 +2,19 @@
 
 Timer::Timer() {
     memory = nullptr;
-    divider_clock_cycles = 0x0000;
-    divider_update_threshold = 64;  // 16384 Hz update frequency (m-cycles)
+    divider_internal = 0x0000;
+    divider = 0x00;
+    timer = 0x00;
+    timer_modulo = 0x00;
+    timer_control = 0x00;
+
+    div_bit = 7;
+    enabled = false;
+    previous_high = false;
+    overflow_delay = false;
+    timer_reload_cycle = false;
 }
+
 
 /**
  * Initialize timer's memory pointer
@@ -19,65 +29,115 @@ void Timer::init(Memory* mem) {
 }
 
 
-/**
- * Keeps count of m-cycles, updates DIV and TIMA registers accordingly
- *     Will set the timer interrupt request flag when TIMA overflows 
- * 
- * @param m_cycles the number of m-cycles that have passed since the last tick
- */
-void Timer::tick(int m_cycles) {
-    divider_clock_cycles += m_cycles;
+// May do other stuff here later (like ppu and apu)
+// void Timer::cycle(int m_cycles) {
+//     for (int i = 0; i < (4 * m_cycles); i++) {
+//         tick();
+//     }
+// }
 
-    if (divider_clock_cycles >= divider_update_threshold) {
-        memory->write(DIV_REGISTER, (memory->read(DIV_REGISTER) + 1));
-        divider_clock_cycles -= divider_update_threshold;
+
+/**
+ * Cycle the timer forward one m-cycle
+ */
+void Timer::tick() {
+    timer_reload_cycle  = false;
+
+    if (overflow_delay) {
+        overflow_delay = false;
+        timer = timer_modulo;
+        request_timer_interrupt();
+        timer_reload_cycle = true;
     }
 
-
-    Byte timer_control = memory->read(TAC_REGISTER);
+    divider_internal += 1;
 
     // check timer enable bit
-    if (((timer_control >> 2) & 0x1) == 0x0) {
-        return;
-    }
+    bool set = (((divider_internal >> div_bit) & 0b1) == 0b1);
+    bool high = (enabled && set);
 
-    timer_clock_cycles += m_cycles;
-
-    /* Lowest 2 bits of TAC register set speed
-     * 00 -> divider bit 8  (256 m-cycles)
-     * 01 -> divider bit 2  (4 m-cycles)
-     * 10 -> divider bit 4  (16 m-cycles)
-     * 11 -> divider bit 6  (64 m-cycles)
-    */
-
-    switch(timer_control & 0x3) {        // NORMAL    | DOUBLE SPEED
-    case 0x00:                           //-----------|-------------
-        timer_update_threshold = 256;    // 4096 Hz   | 8192 Hz 
-        break;                           //           | 
-    case 0x01:                           //           |
-        timer_update_threshold = 4;      // 262144 Hz | 524288 Hz
-        break;                           //           |
-    case 0x02:                           //           |
-        timer_update_threshold = 16;     // 65536 Hz  | 131072 Hz
-        break;                           //           |
-    case 0x03:                           //           |
-        timer_update_threshold = 64;     // 16384 Hz  | 32768 Hz
-        break;
-    }
-
-    while (timer_clock_cycles >= timer_update_threshold) {
-        Byte tima = memory->read(TIMA_REGISTER);
-        memory->write(TIMA_REGISTER, tima + 1);
+    // check falling edge
+    if (!high && previous_high) {
+        timer += 1;
 
         // If an overflow occurs
-        if (tima == 0xFF) {
-            // Set the timer interrupt request flag
-            request_timer_interrupt();
-            // Reset timer counter to timer modulo
-            memory->write(TIMA_REGISTER, memory->read(TMA_REGISTER));
+        if (timer == 0x00) {
+            overflow_delay = true;
         }
-        
-        timer_clock_cycles -= timer_update_threshold;
+    }
+
+    previous_high = high;
+}
+
+
+void Timer::write(const Address address, const Byte value) {
+    switch(address) {
+    case DIV_REGISTER:
+        divider_internal = 0x0000;
+        break;
+    case TIMA_REGISTER:
+        if (!timer_reload_cycle) {
+            timer = value;
+        }
+        // writing to timer the cycle it overflows prevents timer interrupt flag going off
+        // https://gbdev.io/pandocs/Timer_Obscure_Behaviour.html#timer-overflow-behavior
+        if (overflow_delay) {
+            overflow_delay = false;
+        }
+        break;
+    case TMA_REGISTER:
+        if (timer_reload_cycle) {
+            timer = value;
+        }
+        timer_modulo = value;
+        break;
+    case TAC_REGISTER:
+        timer_control = value;
+        enabled = (((timer_control >> 2) & 0b1) == 0b1);
+
+        /* Lowest 2 bits of TAC register set speed
+        * 00 -> divider bit 9  (256 m-cycles)
+        * 01 -> divider bit 3  (4 m-cycles)
+        * 10 -> divider bit 5  (16 m-cycles)
+        * 11 -> divider bit 7  (64 m-cycles)
+        * 
+        * since we're working in m-cycles and not t-states, each of the above bits -= 2
+        */
+        switch(timer_control & 0x3) {
+        case 0x00:                           //-----------|-------------
+            div_bit = 7;                     // 4096 Hz   | 8192 Hz 
+            break;                           //           | 
+        case 0x01:                           //           |
+            div_bit = 1;                     // 262144 Hz | 524288 Hz
+            break;                           //           |
+        case 0x02:                           //           |
+            div_bit = 3;                     // 65536 Hz  | 131072 Hz
+            break;                           //           |
+        case 0x03:                           //           |
+            div_bit = 5;                     // 16384 Hz  | 32768 Hz
+            break;
+        }
+        break;
+    default:
+        throw std::runtime_error("Timer write called on wrong register");
     }
 }
 
+Byte Timer::read(const Address address) const {
+    switch (address) {
+    case DIV_REGISTER:
+        return ((divider_internal >> 6) & 0xFF);
+        break;
+    case TIMA_REGISTER:
+        return timer;
+        break;
+    case TMA_REGISTER:
+        return timer_modulo;
+        break;
+    case TAC_REGISTER:
+        return timer_control;
+        break;
+    default:
+        throw std::runtime_error("Timer read called on wrong register");
+    }
+}

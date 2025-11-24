@@ -20,7 +20,7 @@ Memory::Memory() {
  * @param address the address to be read
 */
 Byte Memory::read(Address address) const {
-    // if (address == LY_REGISTER) { return 0x90; }  // hardcoded for testing - take out later
+    if (address == LY_REGISTER) { return 0x90; }  // hardcoded for testing - take out later
     if (address >= ECHO_START && address < OAM_START) {
         address = convert_echo_RAM_address(address);
     }

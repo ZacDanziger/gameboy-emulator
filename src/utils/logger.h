@@ -8,27 +8,35 @@
 class Logger {
     public:
         Logger();
+        ~Logger();
 
-        void update_filename(const std::string& file);
-        virtual void log() {}
-
+        void log();
+        void init_ofstream(const std::string& filename);
+        void teardown() { out.close(); }
     protected:
         virtual void update_line() {}
-        std::string filename;
-        std::string line;
+        std::string buffer;
+        std::ofstream out;
+        size_t line_size;
 };
 
 
 class CPULogger: public Logger {
     public:
         CPULogger(CPU* cpu_);
-        void log() override;
-        void log_buffer();
+        void log_serial_buffer(const std::string& buffer_filename);
     private:
         void update_line() override;
         CPU *cpu;
-        const std::string buffer_filename = "../../build/buffer.txt";
+        // const std::string buffer_filename = "../../build/buffer.txt";
 };
 
+class TimerLogger: public Logger {
+    public:
+        TimerLogger(Timer* timer_ptr);
+    private:
+        void update_line() override;
+        Timer *timer;
+};
 
 #endif
