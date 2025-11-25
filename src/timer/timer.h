@@ -1,24 +1,36 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include "../memory/memory.h"
+#include <stdexcept>
+#include "../memory/memory_map.h"
 
 class Timer {
     friend class TimerLogger;
 
     public:
-        Timer();
+        Timer(InterruptCallback cb):
+            request_interrupt(cb),
+            divider_internal(0x0000),
+            divider(0x00),
+            timer(0x00),
+            timer_modulo(0x00),
+            timer_control(0x00),
 
-        void init(Memory* mem);
-        // void cycle(int m_cycles);
+            div_bit(7),
+            enabled(false),
+            previous_high(false),
+            overflow_delay(false),
+            timer_reload_cycle(false)
+        {}
 
         void tick();
+
         void write(const Address address, const Byte value);
         Byte read(const Address address) const;
 
     private:
-        Memory *memory;
-        
+        InterruptCallback request_interrupt;
+
         uint16_t divider_internal;  // SYSCLK
         Byte divider;               // DIV_REGISTER
         Byte timer;                 // TIMA_REGISTER
@@ -30,9 +42,6 @@ class Timer {
         bool previous_high;
         bool overflow_delay;
         bool timer_reload_cycle;
-
-
-        void request_timer_interrupt() { memory->write(IF_REGISTER, (memory->read(IF_REGISTER) | 0b100)); }
 };
 
 #endif // TIMER_H

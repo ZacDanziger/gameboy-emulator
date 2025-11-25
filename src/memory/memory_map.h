@@ -1,11 +1,7 @@
 #ifndef MEMORY_MAP_H
 #define MEMORY_MAP_H
 
-#include <cstdint>
-
-// Types
-typedef uint8_t Byte;
-typedef uint16_t Word, Address;
+#include "../types/types.h"
 
 const uint16_t KiB = 0x0400;
 
@@ -39,14 +35,29 @@ const Address IO_START           = 0xFF00;
 const Address HRAM_START         = 0xFF80;
 
 
-const uint16_t ROM_BANK_SIZE     = 16 * KiB; 
-const uint16_t VRAM_SIZE         = 8 * KiB;
-const uint16_t ERAM_SIZE         = 8 * KiB;
-const uint16_t WRAM_BANK_SIZE    = 4 * KiB;
+constexpr uint16_t ROM_BANK_SIZE     = 16 * KiB; 
+constexpr uint16_t VRAM_SIZE         = 8 * KiB;
+constexpr uint16_t ERAM_SIZE         = 8 * KiB;
+constexpr uint16_t WRAM_BANK_SIZE    = 4 * KiB;
 const uint16_t ECHO_RAM_SIZE     = 0x1E00;
 const uint16_t OAM_SIZE          = 0x00A0;
 const uint16_t IO_REG_SIZE       = 0x0080;
 const uint16_t HRAM_SIZE         = 0x007F;
+
+/**
+ * Tile data--------0x8000 - 0x97FF
+ * |- Block 0-------0x8000 - 0x87FF (8000 method)(For Objects)
+ * |- Block 1-------0x8800 - 0x8FFF (Shared / both methods)
+ * |- Block 2-------0x9000 - 0x97FF (8800 method)
+ * 
+ * Tile map 1-------0x9800 - 0x9BFF (32 x 32 tiles)
+ * Tile map 2-------0x9C00 - 0x9FFF (32 x 32 tiles)
+ */
+
+ const Address TILE_DATA_0      = 0x8000;
+ const Address TILE_DATA_1      = 0x9000;
+ const Address TILE_MAP_0_START = 0x9800;
+ const Address TILE_MAP_1_START = 0x9C00;
 
 
 // Registers

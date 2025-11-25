@@ -1,18 +1,17 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
-#include "../memory/memory.h"
+#include "../memory/mmu.h"
 #include "../timer/timer.h"
 #include "../cpu/cpu.h"
-#include "../ppu/ppu.h"
 
 class Emulator {
     public:
-        Emulator();
+        Emulator(): mmu(), timer([this](Interrupt i){ mmu.request_interrupt(i); }), cpu() {}
 
         void run();
     private:
-        Memory memory;
+        MMU mmu;
         Timer timer;
         CPU cpu;
         // PPU

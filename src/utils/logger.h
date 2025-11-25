@@ -3,6 +3,7 @@
 
 #include <string>
 #include <fstream>
+#include "utils.h"
 #include "../cpu/cpu.h"
 
 class Logger {

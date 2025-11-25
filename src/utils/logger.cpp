@@ -33,10 +33,8 @@ void Logger::init_ofstream(const std::string& filename) {
 void Logger::log() {
     update_line();
     if (out.is_open()) {
-        if (buffer.size() > (1024 * line_size)) {
-            write_line(out, buffer);
-            buffer.clear();
-        }
+        write_line(out, buffer);
+        buffer.clear();
     }
 }
 
@@ -68,10 +66,10 @@ void CPULogger::update_line() {
            << " L:" << std::hex << std::setw(2) << static_cast<int>(cpu->reg_L)
            << " SP:" << std::hex << std::setw(4) << static_cast<int>(cpu->reg_SP)
            << " PC:" << std::hex << std::setw(4) << static_cast<int>(cpu->reg_PC)
-           << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(cpu->memory->read(cpu->reg_PC))
-           << "," << std::hex << std::setw(2) << static_cast<int>(cpu->memory->read(cpu->reg_PC+1))
-           << "," << std::hex << std::setw(2) << static_cast<int>(cpu->memory->read(cpu->reg_PC+2))
-           << "," << std::hex << std::setw(2) << static_cast<int>(cpu->memory->read(cpu->reg_PC+3))
+           << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(cpu->mmu->read(cpu->reg_PC))
+           << "," << std::hex << std::setw(2) << static_cast<int>(cpu->mmu->read(cpu->reg_PC+1))
+           << "," << std::hex << std::setw(2) << static_cast<int>(cpu->mmu->read(cpu->reg_PC+2))
+           << "," << std::hex << std::setw(2) << static_cast<int>(cpu->mmu->read(cpu->reg_PC+3))
            << '\n';
 
     if (line_size == 0) {
@@ -98,8 +96,8 @@ void TimerLogger::update_line() {
            << " Prev High:" << std::hex << std::setw(2) << static_cast<int>(timer->previous_high)
            << " Overflow Delay:" << std::hex << std::setw(2) << static_cast<int>(timer->overflow_delay)
            << " Reload Cycle:" << std::hex << std::setw(2) << static_cast<int>(timer->timer_reload_cycle)
-           << " IF REG:" << std::hex << std::setw(2) << static_cast<int>(timer->memory->read(IF_REGISTER))
-           << " IE REG:" << std::hex << std::setw(2) << static_cast<int>(timer->memory->read(IE_REGISTER))
+           << " IF REG:" << std::hex << std::setw(2) << static_cast<int>(timer->read(IF_REGISTER))
+           << " IE REG:" << std::hex << std::setw(2) << static_cast<int>(timer->read(IE_REGISTER))
            << '\n';
     if (line_size == 0) {
         line_size = output.str().size();

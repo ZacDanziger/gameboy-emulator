@@ -1,14 +1,13 @@
 #ifndef PPU_H
 #define PPU_H
 
-#include "../timer/timer.h"
-#include "../memory/memory.h"
 #include <bitset>
+#include <array>
 #include <SDL3/SDL.h>
 
+#include "../memory/memory_map.h"
+
 typedef std::array<Byte, 16> Tile;
-
-
 
 // Pixel counts of display screen and larger background map 
 const std::size_t SCREEN_WIDTH = 160;
@@ -23,52 +22,67 @@ const int CYCLES_PER_SCANLINE = 114;
 const int FRAME_PERIOD = 144 * CYCLES_PER_SCANLINE;
 
 
-template <std::size_t width, std::size_t height, std::size_t depth>
-using Byte_Array3D = std::array<std::array<std::array<Byte, width>, height>, depth>;
-
-/**
- * Tile data--------0x8000 - 0x97FF
- * |- Block 0-------0x8000 - 0x87FF (8000 method)(For Objects)
- * |- Block 1-------0x8800 - 0x8FFF (Shared / both methods)
- * |- Block 2-------0x9000 - 0x97FF (8800 method)
- * 
- * Tile map 1-------0x9800 - 0x9BFF (32 x 32 tiles)
- * Tile map 2-------0x9C00 - 0x9FFF (32 x 32 tiles)
- */
-
- const Address TILE_DATA_0 = 0x8000;
- const Address TILE_DATA_1 = 0x9000;
- const Address TILE_MAP_0_START = 0x9800;
- const Address TILE_MAP_1_START = 0x9C00;
-
-enum Mode {
-    HBLANK,
-    VBLANK,
-    OAM_SCAN,
-    DRAW_PIXELS
-};
-
 
 // NOTE: PPU locks VRAM during mode 3, locks OAM during modes 2 & 3
 // NOTE: 1 frame is 16.74 ms, not exactly 1/60th of a second (16.67 ms)
 // NOTE: Until MBC is working, just use bank 0 of VRAM
+// NOTE: Background not working
+// NOTE: Window not working
+// NOTE: Sprites not working
 class PPU {
     public:
-        PPU();
+        PPU(InterruptCallback cb) : 
+            request_interrupt(cb),
+            vram{0},
+            oam{0},
+            
+            frame_buffer{0},
+            background_map{0},
 
-        void init(Timer* timer_ptr, Memory* memory_ptr);
-        void render_frame();
-        void update_cycles(int m_cycles);
+            lcd_status(0x00),
+            viewport_y(0x00),
+            viewport_x(0x00),
+            lcd_y(0x00),
+            ly_compare(0x00),
+            oam_dma(0x00),
+            bgp(0x00),
+            object_palette_0(0x00),
+            object_palette_1(0x00),
+            window_y(0x00),
+            window_x(0x00),
+            mode(Mode::OAM_SCAN)
+            {
+                // initialize all flags to 0
+                write(LCDC_REGISTER, 0x00);
+            }
+
+        Byte read(const Address address) const;
+        void write(const Address address, const Byte value);
 
     private:
-        Memory *memory;
-        Timer *timer;
+        InterruptCallback request_interrupt;
+        
+        std::array<Byte, VRAM_SIZE> vram;      // 0x8000 - 0x9FFF
+        std::array<Byte, OAM_SIZE> oam;        // 0xFE00 - 0xFE9F
 
         Byte_Array3D<SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_CHANNELS> frame_buffer; 
         // Byte_Array3D<SCREEN_WIDTH, SCREEN_HEIGHT, (COLOR_CHANNELS + 1)> frame_buffer_alpha;   
 
         Byte_Array3D<BACKGROUND_WIDTH, BACKGROUND_HEIGHT, COLOR_CHANNELS> background_map;
         // Byte_Array3D<BACKGROUND_WIDTH, BACKGROUND_HEIGHT, (COLOR_CHANNELS + 1)> background_map_alpha;
+
+        Byte lcd_control;                 // LCDC REGISTER
+        Byte lcd_status;                  // STAT REGISTER
+        Byte viewport_y;                  // SCY REGISTER
+        Byte viewport_x;                  // SCX REGISTER
+        Byte lcd_y;                       // LY REGISTER
+        Byte ly_compare;                  // LYC REGISTER
+        Byte oam_dma;                     // DMA REGISTER
+        Byte bgp;                         // BGP REGISTER
+        Byte object_palette_0;            // OBP0 REGISTER
+        Byte object_palette_1;            // OBP1 REGISTER
+        Byte window_y;                    // WY REGISTER
+        Byte window_x;                    // WX REGISTER
 
         bool enabled;                     // LCDC.7
         Address window_tile_map;          // LCDC.6   
@@ -80,26 +94,6 @@ class PPU {
         bool background_window_enable;    // LCDC.0
 
         Mode mode;                        // OAM SCAN -> DRAW PIXEL -> HBLANK -> VBLANK
-        Byte scan_line;                   // local copy of LY register
-
-        Word scanline_clock_cycles;
-        Word frame_clock_cycles;
-
-        void update_flags();
-        void request_stat_interrupt() { memory->write(IF_REGISTER, (memory->read(IF_REGISTER) | 0b10)); }
-        void request_vblank_interrupt() { memory->write(IF_REGISTER, (memory->read(IF_REGISTER) | 0x01)); }
-        void ly_compare();
-        
-        
-        void update_scanline();
-        void draw_background();
-        void draw_window();
-        void draw_objects();
-        
-        Byte get_tile_ID(const Address address) { return ((address >> 4) % 256); }  // does this matter?
-        Address get_tile_address(const Byte offset) const;
-        Tile get_tile(const Address address);
-        void get_color_map(const Tile& tile, std::array<std::array<std::bitset<2>, 8>, 8> &color_map);
 };
 
 #endif // PPU_H

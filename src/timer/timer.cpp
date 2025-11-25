@@ -1,44 +1,8 @@
 #include "timer.h"
 
-Timer::Timer() {
-    memory = nullptr;
-    divider_internal = 0x0000;
-    divider = 0x00;
-    timer = 0x00;
-    timer_modulo = 0x00;
-    timer_control = 0x00;
-
-    div_bit = 7;
-    enabled = false;
-    previous_high = false;
-    overflow_delay = false;
-    timer_reload_cycle = false;
-}
-
 
 /**
- * Initialize timer's memory pointer
- * 
- * @param mem a valid pointer to a memory object
- */
-void Timer::init(Memory* mem) {
-    if (mem == nullptr) {
-        throw std::runtime_error("Cannot initialize with nullptr");
-    }
-    memory = mem;
-}
-
-
-// May do other stuff here later (like ppu and apu)
-// void Timer::cycle(int m_cycles) {
-//     for (int i = 0; i < (4 * m_cycles); i++) {
-//         tick();
-//     }
-// }
-
-
-/**
- * Cycle the timer forward one m-cycle
+ * Move the timer forward one m-cycle
  */
 void Timer::tick() {
     timer_reload_cycle  = false;
@@ -46,8 +10,10 @@ void Timer::tick() {
     if (overflow_delay) {
         overflow_delay = false;
         timer = timer_modulo;
-        request_timer_interrupt();
         timer_reload_cycle = true;
+
+        // REQUEST INTERRUPT HERE
+        request_interrupt(Interrupt::Timer);
     }
 
     divider_internal += 1;

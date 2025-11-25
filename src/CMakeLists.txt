@@ -4,7 +4,7 @@ project(src)
 set (SourceFiles
     utils/utils.cpp
     utils/logger.cpp
-    memory/memory.cpp
+    memory/mmu.cpp
     timer/timer.cpp
     cpu/cpu.cpp
     cpu/optables.cpp
@@ -18,6 +18,7 @@ include_directories(timer)
 include_directories(cpu)
 include_directories(ppu)
 include_directories(emulator)
+include_directories(types)
 
 add_library(${PROJECT_NAME} ${SourceFiles})
 target_link_libraries(${PROJECT_NAME} vendored)

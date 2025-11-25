@@ -1,21 +1,11 @@
 #include "../src/timer/timer.h"
+#include "../src/memory/mmu.h"
 #include "gtest/gtest.h"
 
-TEST(TimerTest, TestInit) {
-    Timer timer;
-    Memory memory;
-
-    create_data<(2*ROM_BANK_SIZE)>();
-    memory.load_rom("numbers.txt");
-    EXPECT_NO_THROW(
-        timer.init(&memory);
-    );
-}
 
 TEST(TimerTest, TestReadWrite) {
-    Timer timer;
-    Memory memory;
-    timer.init(&memory);
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
 
     EXPECT_NO_THROW(
         timer.write(TAC_REGISTER, 0x05);
@@ -38,9 +28,8 @@ TEST(TimerTest, TestReadWrite) {
 
 
 TEST(TimerTest, TestTick) {
-    Timer timer;
-    Memory memory;
-    timer.init(&memory);
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
 
     timer.write(TAC_REGISTER, 0x05);
 
@@ -58,9 +47,8 @@ TEST(TimerTest, TestTick) {
 }
 
 TEST(TimerTest, TestOverflow) {
-    Timer timer;
-    Memory memory;
-    timer.init(&memory);
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
 
     timer.write(TAC_REGISTER, 0x05);
     timer.write(TMA_REGISTER, 0xFF);
@@ -73,15 +61,15 @@ TEST(TimerTest, TestOverflow) {
     EXPECT_EQ(timer.read(TIMA_REGISTER), 0x00);
 
     // expect interrupt request to be delayed 1 m-cycle
-    EXPECT_EQ(memory.read(IF_REGISTER), 0x00);
+    EXPECT_EQ(mmu.read(IF_REGISTER), 0x00);
     timer.tick();
-    EXPECT_EQ(memory.read(IF_REGISTER), 0x04);
+    EXPECT_EQ(mmu.read(IF_REGISTER), 0x04);
 
     // expect write during reload cycle to fail
     timer.write(TIMA_REGISTER, 0xDE);
     EXPECT_NE(timer.read(TIMA_REGISTER), 0xDE);
 
-    memory.write(IF_REGISTER, 0x00);
+    mmu.write(IF_REGISTER, 0x00);
 
     // expect this to end on timer reload cycle
     for (int i = 0; i < 4; i++) {

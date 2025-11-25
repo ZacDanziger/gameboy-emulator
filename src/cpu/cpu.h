@@ -1,8 +1,9 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include "../memory/memory.h"
 #include "../timer/timer.h"
+#include "../memory/mmu.h"
+
 #include <sstream>
 
 
@@ -12,7 +13,7 @@ class CPU {
     public:
         CPU();
 
-        void init(Timer* tim_ptr, Memory* mem_ptr);
+        void init(Timer* tim_ptr, MMU* mmu_ptr);
 
         void step();
         
@@ -21,7 +22,7 @@ class CPU {
 
         std::string serial_buffer;  // probably don't leave in
     private:
-        Memory *memory;
+        MMU *mmu;
         Timer *timer;
 
         // Pair of 8-bit registers

@@ -1,36 +1,46 @@
-#include "memory.h"
+#include "mmu.h"
 
-Memory::Memory() {
+MMU::MMU() {
     rom_bank_00 = {0};
     rom_bank_nn = {0};
-    vram = {0};
     wram_bank_00 = {0};
     wram_bank_nn = {0};
-    oam = {0};
     io_registers = {0};
     hram = {0};
     ie_register = 0x00;
 }
 
  
+void MMU::init(Timer* timer_ptr, PPU* ppu_ptr) {
+    timer = timer_ptr;
+    ppu = ppu_ptr;
+}
+
+
 /**
  * Read memory[address]
  * Cannot read from ERAM or OAM
  * 
  * @param address the address to be read
 */
-Byte Memory::read(Address address) const {
-    if (address == LY_REGISTER) { return 0x90; }  // hardcoded for testing - take out later
+Byte MMU::read(Address address) const {
+    if (address >= DIV_REGISTER && address <= TAC_REGISTER) {
+        return timer->read(address);
+    }
+    if (address >= LCDC_REGISTER && address <= WX_REGISTER) {
+        return ppu->read(address);
+    }
+
     if (address >= ECHO_START && address < OAM_START) {
-        address = convert_echo_RAM_address(address);
+        address -= 0x2000;
     }
 
     if (address < ROM_BANK_NN_START) { return rom_bank_00[address]; }
     if (address < VRAM_START)        { return rom_bank_nn[address - ROM_BANK_NN_START]; }
-    if (address < ERAM_START)        { return vram[address - VRAM_START]; }
+    if (address < ERAM_START)        { return ppu->read(address); }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_NN_START) { return wram_bank_00[address - WRAM_BANK_00_START]; }
     if (address < ECHO_START)        { return wram_bank_nn[address - WRAM_BANK_NN_START]; }
-    if (address <= OAM_STOP)         { return oam[address - OAM_START]; }
+    if (address <= OAM_STOP)         { return ppu->read(address); }
     if (address >= IO_START && address < HRAM_START) { return io_registers[address - IO_START]; }
     if (address < IE_REGISTER)       { return hram[address - HRAM_START]; }
     if (address == IE_REGISTER)      { return ie_register; }
@@ -45,7 +55,7 @@ Byte Memory::read(Address address) const {
  * @param address the address to be written to
  * @param data the data to be written in the address
 */
-void Memory::write(Address address, Byte data) {
+void MMU::write(Address address, Byte data) {
 
     // NO WRITING TO ROM!!!     (I think)
     // if (address < ROM_BANK_NN_START) {
@@ -57,17 +67,27 @@ void Memory::write(Address address, Byte data) {
     //     return;
     // }
 
-    if (address >= ECHO_START && address < OAM_START) {
-        address = convert_echo_RAM_address(address);
+    if (address >= DIV_REGISTER && address <= TAC_REGISTER) {
+        timer->write(address, data);
+        return;
+    }
+    if (address >= LCDC_REGISTER && address <= WX_REGISTER) {
+        ppu->write(address, data);
+        return;
     }
 
-    if (address < ERAM_START && address >= VRAM_START) { vram[address - VRAM_START] = data; return; }
+    if (address >= ECHO_START && address < OAM_START) {
+        address -= 0x2000;
+    }
+
+    if (address >= VRAM_START && address < ERAM_START) { ppu->write(address, data); return; }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_NN_START) { wram_bank_00[address - WRAM_BANK_00_START] = data; return; }
     if (address < ECHO_START) { wram_bank_nn[address - WRAM_BANK_NN_START] = data; return; }
-    if (address <= OAM_STOP) { oam[address - OAM_START] = data; return; }
+    if (address <= OAM_STOP) { ppu->write(address, data); return; }
     if (address >= IO_START && address < HRAM_START) { io_registers[address - IO_START] = data; return; }
     if (address < IE_REGISTER) { hram[address - HRAM_START] = data; return; }
     if (address == IE_REGISTER) { ie_register = data; return; }
+
     throw std::runtime_error("Cannot write to that area of memory");
 }
 
@@ -80,7 +100,7 @@ void Memory::write(Address address, Byte data) {
  * @param address 16-bit address that needs to be one of the starting addresses defined in memory.h
  * @param filename the filename containing the data to be read from
 */
-void Memory::load(Address address, const std::string& filename) {
+void MMU::load(Address address, const std::string& filename) {
     std::vector<Byte> data = read_file(filename);
     auto [backing_array, max_size] = resolve_region(address);
     size_t size = std::min(data.size(), max_size);
@@ -95,7 +115,7 @@ void Memory::load(Address address, const std::string& filename) {
  * 
  * @param filename the filename containing the data to be read from
 */
-void Memory::load_rom(const std::string& filename) {
+void MMU::load_rom(const std::string& filename) {
     std::vector<Byte> data = read_file(filename);
 
     if (data.size() < 0x8000) {
@@ -106,6 +126,31 @@ void Memory::load_rom(const std::string& filename) {
     std::copy_n(data.begin() + ROM_BANK_SIZE, ROM_BANK_SIZE, rom_bank_nn.begin());
 }
 
+void MMU::request_interrupt(Interrupt interrupt) {
+    int bit = -1;
+
+    switch(interrupt) {
+    case Interrupt::VBlank:
+        bit = 0;
+        break;
+    case Interrupt::LCDStat:
+        bit = 1;
+        break;
+    case Interrupt::Timer:
+        bit = 2;
+        break;
+    case Interrupt::Serial:
+        bit = 3;
+        break;
+    case Interrupt::Joypad:
+        bit = 4;
+        break;
+    default:
+        throw std::runtime_error("How did you get here?");
+    }
+
+    io_registers[0x0F] |= (1 << bit);
+}
 
 /**
  * Given one of the starting addresses of a memory region, return that memory region
@@ -113,41 +158,14 @@ void Memory::load_rom(const std::string& filename) {
  * @param address one of the starting addresses of valid memory regions
  * @return a pair containing a reference to the backing array of the memory region as well as its size
 */
-std::pair<Byte*, size_t> Memory::resolve_region(const Address address) {
+std::pair<Byte*, size_t> MMU::resolve_region(const Address address) {
     switch(address) {
         case ROM_BANK_00_START:  { return {rom_bank_00.data(), ROM_BANK_SIZE}; }
         case ROM_BANK_NN_START:  { return {rom_bank_nn.data(), ROM_BANK_SIZE}; }
-        case VRAM_START:         { return {vram.data(), VRAM_SIZE}; }
         case WRAM_BANK_00_START: { return {wram_bank_00.data(), WRAM_BANK_SIZE}; }
         case WRAM_BANK_NN_START: { return {wram_bank_nn.data(), WRAM_BANK_SIZE}; }
         case IO_START:           { return {io_registers.data(), IO_REG_SIZE}; }
         case HRAM_START:         { return {hram.data(), HRAM_SIZE}; }
         default: { throw std::runtime_error("Unsupported load address"); }
     }
-}
-
-void Memory::initialize_mbc() {
-    Byte mbc_type = rom_bank_00[MBC_TYPE];
-    bool ram = false;
-
-
-
-    Byte ram_size = 0x00;
-    if (ram) {
-        ram_size = rom_bank_00[CART_RAM_SIZE];
-    }
-}
-
-/**
- * Converts an address in ECHO RAM (0xE000 - 0xFDFF) to the corresponding address in WRAM (0xC000 - 0xDDFF)
- * 
- * @param address the address in ECHO RAM 
- * @return the corresponding address in WRAM
- */
-Address Memory::convert_echo_RAM_address(const Address address) const {
-    if (address < ECHO_START || address >= OAM_START) {
-        throw std::runtime_error("convert echo RAM called on address not in echo RAM");
-    }
-
-    return (address & ~(1 << 13));    // set bit 13 to 0
 }

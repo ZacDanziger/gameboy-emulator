@@ -3,7 +3,7 @@
 
 #include <array>
 #include <vector>
-#include "memory_map.h"
+#include "../src.h"
 
 /**
  * Not finished implementing

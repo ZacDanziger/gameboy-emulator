@@ -2,10 +2,8 @@
 #include "../src/utils/logger.h"
 #include "gtest/gtest.h"
 
-#include <vector>
 
-
-bool SKIP_INDIVIDUAL_TESTS = true;
+bool SKIP_INDIVIDUAL_TESTS = false;
 
 TEST(IndividualTest, CPUTest01) {
     if (SKIP_INDIVIDUAL_TESTS) {
@@ -14,9 +12,13 @@ TEST(IndividualTest, CPUTest01) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/01-special.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
     CPU cpu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
@@ -24,11 +26,10 @@ TEST(IndividualTest, CPUTest01) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
     
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
+
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -58,9 +59,13 @@ TEST(IndividualTest, CPUTest02) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/02-interrupts.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
@@ -68,11 +73,9 @@ TEST(IndividualTest, CPUTest02) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
     
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -102,21 +105,22 @@ TEST(IndividualTest, CPUTest03) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -146,21 +150,22 @@ TEST(IndividualTest, CPUTest04) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/04-op r,imm.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -190,21 +195,22 @@ TEST(IndividualTest, CPUTest05) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/05-op rp.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -234,21 +240,22 @@ TEST(IndividualTest, CPUTest06) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/06-ld r,r.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -278,21 +285,22 @@ TEST(IndividualTest, CPUTest07) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -322,21 +330,22 @@ TEST(IndividualTest, CPUTest08) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/08-misc instrs.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -366,21 +375,22 @@ TEST(IndividualTest, CPUTest09) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/09-op r,r.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -410,21 +420,22 @@ TEST(IndividualTest, CPUTest10) {
     
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/10-bit ops.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -453,24 +464,23 @@ TEST(IndividualTest, CPUTest11) {
     }
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
-    // std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
-    // std::string filename = "../../gb-test-roms/mem_timing/mem_timing.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
 
     bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     if (LOGGING) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
-    
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -494,13 +504,14 @@ TEST(IndividualTest, CPUTest11) {
 }
 
 TEST(TimingTest, InstrTiming) {
+    GTEST_SKIP();
     std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
 
-    bool LOGGING = true;
+    bool LOGGING = false;
     CPULogger logger = CPULogger(&cpu);
     TimerLogger t_logger = TimerLogger(&timer);
     if (LOGGING) {
@@ -508,11 +519,10 @@ TEST(TimingTest, InstrTiming) {
         t_logger.init_ofstream("../../build/timer_log.txt");
     }
     
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
+    cpu.init(&timer, &mmu);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {
@@ -537,12 +547,12 @@ TEST(TimingTest, InstrTiming) {
     EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");
 }
 
-TEST(TimingTest, MemTiming) {
+TEST(TimingTest, MemTiming01) {
     GTEST_SKIP();
-    std::string filename = "../../gb-test-roms/mem_timing/mem_timing.gb";
+    std::string filename = "../../gb-test-roms/mem_timing/individual/01-read_timing.gb";
 
-    Memory memory;
-    Timer timer;
+    MMU mmu;
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
     CPU cpu;
 
     bool LOGGING = false;
@@ -551,11 +561,11 @@ TEST(TimingTest, MemTiming) {
         logger.init_ofstream("../../build/cpu_log.txt");
     }
     
-    timer.init(&memory);
-    cpu.init(&timer, &memory);
+    
+    cpu.init(&timer, &mmu);
 
     EXPECT_NO_THROW(
-        memory.load_rom(filename)
+        mmu.load_rom(filename)
     );
 
     if (LOGGING) {

@@ -1,4 +1,4 @@
-#include "../src/memory/memory.h"
+#include "../src/memory/mmu.h"
 #include <iostream>
 #include "gtest/gtest.h"
 
@@ -8,10 +8,8 @@
 
 class MemoryTest : public testing::Test {
     protected:
-        MemoryTest() : _mem() {};
-        Memory _mem;
-
-
+        MemoryTest() : mmu() {};
+        MMU mmu;
 };
 
 
