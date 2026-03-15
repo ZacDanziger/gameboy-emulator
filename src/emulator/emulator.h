@@ -19,8 +19,8 @@ const bool LOGGING = false;
 class Emulator {
     public:
         Emulator(const std::string& rom_file):
-            display("GameBoy v1"),
             mmu(),
+            display("GameBoy v1", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
             timer([this](Interrupt i){ mmu.request_interrupt(i); },
                    [this]{ ppu.update(); }),
             ppu([this](Interrupt i){ mmu.request_interrupt(i); },

@@ -1,6 +1,8 @@
 #include "display.h"
 
-Display::Display(const std::string& title) {
+Display::Display(const std::string& title, KeyCallback k) {
+    on_key_event = k;
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL ") + SDL_GetError());
     }
@@ -44,6 +46,39 @@ bool Display::poll_events() {
     while(SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT) {
             return false;
+        }
+
+        if ((e.type == SDL_EVENT_KEY_DOWN) || (e.type == SDL_EVENT_KEY_UP)) {
+            bool pressed = (e.type == SDL_EVENT_KEY_DOWN);
+
+            switch(e.key.scancode) {
+            case SDL_SCANCODE_Z:
+                on_key_event(Key::A, pressed);
+                break;
+            case SDL_SCANCODE_X:
+                on_key_event(Key::B, pressed);
+                break;
+            case SDL_SCANCODE_RSHIFT:
+                on_key_event(Key::Select, pressed);
+                break;
+            case SDL_SCANCODE_RETURN:
+                on_key_event(Key::Start, pressed);
+                break;
+            case SDL_SCANCODE_RIGHT:
+                on_key_event(Key::Right, pressed);
+                break;
+            case SDL_SCANCODE_LEFT:
+                on_key_event(Key::Left, pressed);
+                break;
+            case SDL_SCANCODE_UP:
+                on_key_event(Key::Up, pressed);
+                break;
+            case SDL_SCANCODE_DOWN:
+                on_key_event(Key::Down, pressed);
+                break;
+            default:
+                break;
+            }
         }
     }
 

@@ -25,9 +25,19 @@ Byte MMU::read(Address address) const {
         address -= 0x2000;
     }  
 
-    // for tetris, remove when joypad is implemented
     if (address == JOYP_REGISTER) {
-        return 0x0F;
+        Byte joypad = io_registers[JOYP_REGISTER - IO_START];
+
+        switch(joypad & 0x30) {
+        case 0x00:
+            return 0x0F;
+        case 0x10:
+            return (0x10 | button_keys);
+        case 0x20:
+            return (0x20 | direction_keys);
+        case 0x30:
+            return 0x3F;
+        }
     }
 
     if (address < ROM_BANK_NN_START) { return rom_bank_00[address]; }
@@ -97,6 +107,11 @@ void MMU::write(Address address, Byte data) {
         return;
     }
     if (address >= IO_START && address < HRAM_START) {
+        if (address == JOYP_REGISTER) {
+            // lower nibble of JOYP is read-only
+            data &= 0xF0;
+        }
+
         io_registers[address - IO_START] = data;
         return;
     }
@@ -220,6 +235,53 @@ void MMU::load_rom(const std::string& filename) {
 
 void MMU::request_interrupt(Interrupt interrupt) {
     io_registers[0x0F] |= static_cast<Byte>(interrupt);
+}
+
+void MMU::set_key(Key key, bool pressed) {
+    Byte* target = nullptr;
+    Bit bit = Bit::Bit0;
+
+    switch(key) {
+    case Key::A:
+        target = &button_keys;
+        bit = Bit::Bit0;
+        break;
+    case Key::B:
+        target = &button_keys;
+        bit = Bit::Bit1;
+        break;
+    case Key::Select:
+        target = &button_keys;
+        bit = Bit::Bit2;
+        break;
+    case Key::Start:
+        target = &button_keys;
+        bit = Bit::Bit3;
+        break;
+    case Key::Right:
+        target = &direction_keys;
+        bit = Bit::Bit0;
+        break;
+    case Key::Left:
+        target = &direction_keys;
+        bit = Bit::Bit1;
+        break;
+    case Key::Up:
+        target = &direction_keys;
+        bit = Bit::Bit2;
+        break;
+    case Key::Down:
+        target = &direction_keys;
+        bit = Bit::Bit3;
+        break;
+    }
+
+    if (pressed) {
+        reset_bit(*target, bit);
+        request_interrupt(Interrupt::Joypad);
+    } else {
+        set_bit(*target, bit);
+    }
 }
 
 

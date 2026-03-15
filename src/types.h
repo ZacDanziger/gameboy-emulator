@@ -10,13 +10,6 @@ using Word = uint16_t;
 using Address = uint16_t;
 using RGBA32 = uint32_t;
 
-enum class Interrupt : Byte {
-    VBlank  = 0b00000001, // PPU
-    LCDStat = 0b00000010, // PPU
-    Timer   = 0b00000100, // Timer
-    Serial  = 0b00001000, // I/O Registers
-    Joypad  = 0b00010000  // I/O Registers
-};
 
 enum class Bit : Byte {
     Bit0 = 0b00000001,
@@ -29,6 +22,22 @@ enum class Bit : Byte {
     Bit7 = 0b10000000
 };
 
+
+enum class Interrupt : Byte {
+    VBlank  = 0b00000001, // PPU
+    LCDStat = 0b00000010, // PPU
+    Timer   = 0b00000100, // Timer
+    Serial  = 0b00001000, // I/O Registers
+    Joypad  = 0b00010000  // I/O Registers
+};
+
+
+enum class Key {
+    A, B, Select, Start,    // button keys
+    Right, Left, Up, Down   // direction keys
+};
+
+
 enum class Mode {
     HBLANK,
     VBLANK,
@@ -40,6 +49,8 @@ enum class Mode {
 constexpr std::size_t SCREEN_WIDTH = 160;
 constexpr std::size_t SCREEN_HEIGHT = 144;
 
+using FrameCallback = std::function<void()>;
 using InterruptCallback = std::function<void(Interrupt)>;
+using KeyCallback = std::function<void(Key, bool)>;
 
 #endif // TYPES_H

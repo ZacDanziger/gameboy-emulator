@@ -9,7 +9,7 @@ constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
 
 class Display {
     public:
-        Display(const std::string& title);
+        Display(const std::string& title, KeyCallback k);
         ~Display();
 
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame);
@@ -18,6 +18,8 @@ class Display {
         SDL_Window* window;
         SDL_Renderer* renderer;
         SDL_Texture* texture;
+
+        KeyCallback on_key_event;
 
         void teardown();
 };

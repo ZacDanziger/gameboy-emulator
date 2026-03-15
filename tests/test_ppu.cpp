@@ -73,14 +73,12 @@ TEST(ScreenTest, TestBackgroundLoad) {
     }
 }
 
-TEST(ScreenTest, Acid2) {
+TEST(ScreenTest, DMGAcid2) {
 
     std::string filename = "../../gb-test-roms/dmg-acid2.gb";
 
     Emulator emulator(filename);
     emulator.run();
-
-    
 }
 
 

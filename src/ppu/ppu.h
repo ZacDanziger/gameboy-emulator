@@ -3,12 +3,10 @@
 
 #include <bitset>
 #include <array>
-// #include <algorithm>
-
 #include "../utils/utils.h"
 #include "../memory/memory_map.h"
 
-using FrameCallback = std::function<void()>;
+
 
 constexpr int CYCLES_PER_SCANLINE = 114;
 constexpr int SCANLINES_PER_FRAME = 154;

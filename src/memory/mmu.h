@@ -29,7 +29,9 @@ class MMU {
             wram_bank_nn{},
             io_registers{},
             hram{},
-            ie_register(0x00)
+            ie_register(0x00),
+            button_keys(0x0F),
+            direction_keys(0x0F)
         {}
 
         void init(Timer* timer_ptr, PPU* ppu_ptr);
@@ -41,7 +43,7 @@ class MMU {
         void load_rom(const std::string& filename);
 
         void request_interrupt(Interrupt interrupt);
-
+        void set_key(Key key, bool pressed);
     private:
         Timer *timer;
         PPU *ppu;
@@ -58,6 +60,10 @@ class MMU {
 
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
         Byte ie_register;                                  // 0xFFFF
+
+        // the 2x4 grid of values for JOYP
+        Byte button_keys;
+        Byte direction_keys;
 
         void oam_dma_transfer(const Byte value);
 };
