@@ -41,7 +41,7 @@ class Emulator {
                 }
             }
 
-        void run(); // not implemented
+        void run();
     private:
         Display display;
         MMU mmu;

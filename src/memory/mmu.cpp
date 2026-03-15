@@ -23,6 +23,11 @@ Byte MMU::read(Address address) const {
 
     if (address >= ECHO_START && address < OAM_START) {
         address -= 0x2000;
+    }  
+
+    // for tetris, remove when joypad is implemented
+    if (address == JOYP_REGISTER) {
+        return 0x0F;
     }
 
     if (address < ROM_BANK_NN_START) { return rom_bank_00[address]; }
@@ -30,7 +35,7 @@ Byte MMU::read(Address address) const {
     if (address < ERAM_START)        { return ppu->read(address); }
     if (address >= WRAM_BANK_00_START && address < WRAM_BANK_NN_START) { return wram_bank_00[address - WRAM_BANK_00_START]; }
     if (address < ECHO_START)        { return wram_bank_nn[address - WRAM_BANK_NN_START]; }
-    if (address <= OAM_STOP)         { return ppu->read(address); }
+    if (address < NOT_USABLE_START)  { return ppu->read(address); }
     if (address >= IO_START && address < HRAM_START) { return io_registers[address - IO_START]; }
     if (address < IE_REGISTER)       { return hram[address - HRAM_START]; }
     if (address == IE_REGISTER)      { return ie_register; }
@@ -87,7 +92,7 @@ void MMU::write(Address address, Byte data) {
         wram_bank_nn[address - WRAM_BANK_NN_START] = data;
         return;
     }
-    if (address <= OAM_STOP) {
+    if (address < NOT_USABLE_START) {
         ppu->write(address, data);
         return;
     }

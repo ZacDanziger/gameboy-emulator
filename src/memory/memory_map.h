@@ -30,7 +30,7 @@ constexpr Address WRAM_BANK_00_START = 0xC000;
 constexpr Address WRAM_BANK_NN_START = 0xD000;
 constexpr Address ECHO_START         = 0xE000;
 constexpr Address OAM_START          = 0xFE00;
-constexpr Address OAM_STOP           = 0xFE9F;
+constexpr Address NOT_USABLE_START   = 0xFEA0;
 constexpr Address IO_START           = 0xFF00;
 constexpr Address HRAM_START         = 0xFF80;
 

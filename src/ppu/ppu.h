@@ -65,7 +65,9 @@ class PPU {
             window_y(0x00),
             window_x(0x00),
             mode(Mode::VBLANK),
-            cycles(0)
+            cycles(0),
+            window_line_counter(0),
+            debug_check(false)
         {}
 
         Byte read(const Address address) const;
@@ -76,6 +78,9 @@ class PPU {
         std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> get_frame() const { return frame_buffer; }
 
         void update();
+
+        void dump_oam();
+        bool debug_check;
 
     private:
         struct Tile {
@@ -109,6 +114,7 @@ class PPU {
 
         Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
         int cycles;
+        int window_line_counter;
 
         void draw_scanline();
         void draw_background(std::array<bool, SCREEN_WIDTH>& background_priority);

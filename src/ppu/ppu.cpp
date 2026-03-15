@@ -9,7 +9,7 @@ Byte PPU::read(const Address address) const {
         return vram[address - VRAM_START];
     }
 
-    if (address >= OAM_START && address <= OAM_STOP) {
+    if (address >= OAM_START && address < NOT_USABLE_START) {
         if ((mode == Mode::OAM_SCAN) || (mode == Mode::TRANSFER)) {
             return 0xFF;
         }
@@ -60,12 +60,15 @@ void PPU::write(const Address address, const Byte value) {
         return;
     }
 
-    if (address >= OAM_START && address <= OAM_STOP) {
+    if (address >= OAM_START && address < NOT_USABLE_START) {
         if ((mode != Mode::OAM_SCAN) && (mode != Mode::TRANSFER)) {
             oam[address - OAM_START] = value;
         }
         return;
     }
+
+    // only used for lcd_stat, but I have to initialize outside of switch statement
+    Byte masked_value = value & 0xF8;
 
     switch(address) {
     case LCDC_REGISTER:
@@ -75,7 +78,8 @@ void PPU::write(const Address address, const Byte value) {
     // May want to implement spurious STAT interrupt
     // https://gbdev.io/pandocs/STAT.html#spurious-stat-interrupts
     case STAT_REGISTER:
-        lcd_status = value;
+        // Bits 0-2 are read-only
+        lcd_status = masked_value;
         break;
     case SCY_REGISTER:
         viewport_y = value;
@@ -152,9 +156,15 @@ void PPU::update() {
         lcd_y += 1;
         lcd_y %= SCANLINES_PER_FRAME;
 
-        if (is_set(lcd_status, Bit::Bit6) && (lcd_y == ly_compare)) {
-            request_interrupt(Interrupt::LCDStat);
-    }
+        if (lcd_y == ly_compare) {
+
+            set_bit(lcd_status, Bit::Bit2);
+            if (is_set(lcd_status, Bit::Bit6)) {
+                request_interrupt(Interrupt::LCDStat);
+            }
+        } else {
+            reset_bit(lcd_status, Bit::Bit2);
+        }
     }
 
     // VBlank period
@@ -170,6 +180,12 @@ void PPU::update() {
             }
 
             frame_ready();
+            window_line_counter = 0;
+
+            // if (!debug_check) {
+            //     dump_oam();
+            //     debug_check = true;
+            // }
         }
 
         return;
@@ -191,6 +207,7 @@ void PPU::update() {
     else if (cycles < TRANSFER_END) {
         if (mode != Mode::TRANSFER) {
             mode = Mode::TRANSFER;
+            set_bit(lcd_status, Bit::Bit1);
             set_bit(lcd_status, Bit::Bit0);
             
             // do the actual work here
@@ -222,7 +239,7 @@ void PPU::draw_scanline() {
     std::fill(
         frame_buffer.begin() + buffer_index,
         frame_buffer.begin() + buffer_index + SCREEN_WIDTH,
-        0xFFFFFFFF
+        dmg_palette[0]
     );
 
     if (is_set(lcd_control, Bit::Bit0)) {
@@ -230,7 +247,7 @@ void PPU::draw_scanline() {
     }
 
     // change this behavior when converting to CGB
-    if ((is_set(lcd_control, Bit::Bit0)) && (is_set(lcd_control, Bit::Bit5))) {
+    if ((is_set(lcd_control, Bit::Bit5))) {
         draw_window(background_priority);
     }
 
@@ -283,12 +300,12 @@ void PPU::draw_background(std::array<bool, SCREEN_WIDTH>& background_priority) {
  * Draw one line of the window to the frame buffer
  */
 void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
-    if (lcd_y < window_y){
+    if ((lcd_y < window_y) || (window_x >= 167)) {
         return;
     }
 
     // get the correct window line
-    uint8_t y = lcd_y - window_y;
+    uint8_t y = window_line_counter;
     // get the correct window tile row
     uint8_t tile_row = y >> 3;
 
@@ -301,8 +318,10 @@ void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
             continue;
         }
 
-        // adjust screen x-coordinate to window, divide by 8 to get window tile column
-        uint8_t tile_column = (pixel_column - window_x + 7) >> 3;
+        // adjust screen x-coordinate relative to window
+        uint8_t x = pixel_column - window_x + 7;
+        // divide by 8 to get window tile column
+        uint8_t tile_column = x >> 3;
 
         Word offset = (tile_row << 5) | tile_column;
         Address tile_lookup = tile_map + offset;
@@ -316,15 +335,16 @@ void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
             refresh_tile(tile_address);
         }
 
-        int pixel_color_id = tile_cache[index].pixels[((y % 8) << 3) + (pixel_column % 8)];
+        int pixel_color_id = tile_cache[index].pixels[((y % 8) << 3) + (x % 8)];
+
         if (pixel_color_id != 0) {
             background_priority[pixel_column] = true;
+            int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+            frame_buffer[buffer_index] = color_id_to_argb(pixel_color_id, background_palette);
         }
-
-        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
-
-        frame_buffer[buffer_index] = color_id_to_argb(pixel_color_id, background_palette);
     }
+
+    window_line_counter += 1;
 }
 
 /**
@@ -339,28 +359,36 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
     // only 10 sprites allowed per scanline
     std::array<Address, 10> selected_sprites = select_sprites(sprite_height);
 
+    struct SpritePixel {
+        int color_id = 0;
+        Byte x_coord = 0x00;
+        bool priority = false;
+        Byte palette = 0x00;
+    };
+
+    std::array<SpritePixel, SCREEN_WIDTH> sprite_buffer{};
+
     // Do lowest priority sprites first, so higher priority ones will overwrite on overlap
-    // NOTE: some odd behavior that I haven't implemented yet - 
-    //      if two or more sprites claim a pixel, and the highest priority one does not have priority over background
-    //      background will be shown, even if a lower priority sprite does have priority over background
-    //      --- Current implementation would show lower priority sprite, instead
-    //          will be annoying to fix
-    for (int i = 9; i >= 0; i--) {
+    for (int i = 0; i < 10; i++) {
+        // when you get to your first 0 address, there are no more sprites
         if (selected_sprites[i] == 0x0000) {
-            continue;
+            break;
         }
 
-        Byte sprite_y_pos = read(selected_sprites[i]);  // top edge of sprite + 16
-        Byte sprite_x_pos = read(selected_sprites[i] + 1);  // left edge of sprite + 8
-        Byte sprite_tile_index = read(selected_sprites[i] + 2);
-        Byte sprite_attributes = read(selected_sprites[i] + 3);
+        Address adjusted_sprite_address = selected_sprites[i] - OAM_START;
+
+        // Cant use read during mode 3
+        Byte sprite_y_pos = oam[adjusted_sprite_address];  // top edge of sprite + 16
+        Byte sprite_x_pos = oam[adjusted_sprite_address + 1];  // left edge of sprite + 8
+        Byte sprite_tile_index = oam[adjusted_sprite_address+ 2];
+        Byte sprite_attributes = oam[adjusted_sprite_address + 3];
 
         bool priority = is_set(sprite_attributes, Bit::Bit7);
         bool flip_y = is_set(sprite_attributes, Bit::Bit6);
         bool flip_x = is_set(sprite_attributes, Bit::Bit5);
         // DMG palette
         // TODO: switch to CGB palette system
-        Address palette = is_set(sprite_attributes, Bit::Bit4) ? OBP1_REGISTER : OBP0_REGISTER;
+        Byte palette = is_set(sprite_attributes, Bit::Bit4) ? object_palette_1 : object_palette_0;
 
         // if sprite is offscreen, skip it
         if ((sprite_x_pos == 0) || (sprite_x_pos >= 168)) {
@@ -374,10 +402,13 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
             y = sprite_height - y;
         }
 
-        
-        if ((sprite_height == 15) && (y >= 8)) {
-            sprite_tile_index += 1;
-            y -= 8;
+        if (sprite_height == 15) {
+            // mask the LSB to get an even index
+            sprite_tile_index &= 0xFE;
+            if (y >= 8) {
+                sprite_tile_index += 1;
+                y -= 8;
+            }
         }
 
         // sprites only use 8000 addressing mode
@@ -406,17 +437,29 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 
             int color_id = tile_cache[index].pixels[(y * 8) + x];
 
-            // background has priority over obj if:
-            //     1. obj's color id is 0 (meaning transparent) OR
-            //     2. priority is set, and background/window color id is not 0
-            if ((color_id == 0) || ((priority && background_priority[pixel_column]))) {
-                continue;
+            // weird priority behavior stuff
+            // NOTE: take out x-coord check when moving to CGB
+            if (color_id != 0) {
+                if ((sprite_buffer[pixel_column].color_id != 0) &&
+                    (sprite_buffer[pixel_column].x_coord <= sprite_x_pos))
+                {
+                    continue;
+                }
+                sprite_buffer[pixel_column] = {color_id, sprite_x_pos, priority, palette};
             }
-
-            int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
-
-            frame_buffer[buffer_index] = color_id_to_argb(color_id, palette);
         }
+    }
+
+    for (int pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
+
+        if ((sprite_buffer[pixel_column].color_id == 0) || 
+            (sprite_buffer[pixel_column].priority && background_priority[pixel_column]))
+        {
+            continue;
+        }
+        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+
+        frame_buffer[buffer_index] = color_id_to_argb(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette);
     }
 }
 
@@ -430,11 +473,11 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 Address PPU::get_tile_address(const Byte tile_id) const {
     if (is_set(lcd_control, Bit::Bit4)) {
         // 8000 method
-        return (TILE_DATA_0 + (16 * tile_id));
+        return (TILE_DATA_0 + (tile_id * 16));
     } else {
         // 8800 method
         int8_t signed_id = static_cast<int8_t>(tile_id);
-        return static_cast<Address>(static_cast<int16_t>(TILE_DATA_1) + signed_id);
+        return static_cast<Address>(static_cast<int16_t>(TILE_DATA_1) + (signed_id * 16));
     }
 }
 
@@ -536,4 +579,14 @@ std::array<Address, 10> PPU::select_sprites(const int sprite_height) {
     }
 
     return selected_sprites;
+}
+
+
+void PPU::dump_oam() {
+    std::vector<Byte> data(OAM_SIZE);
+    std::copy(oam.begin(), oam.end(), data.begin());
+
+    std::string out_file = "/Users/zacdanziger/Documents/Personal/Coding/gameboy-emulator/build/oam_dump.txt";
+
+    dump(data, out_file);
 }

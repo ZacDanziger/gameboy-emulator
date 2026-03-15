@@ -44,12 +44,10 @@ void write_line(std::ofstream& out, const std::string& line) {
     out << line;
 }
 
-void dump(const std::string& filename) {
+void dump(const std::vector<Byte>& data, const std::string& out_filename) {
     const int BYTES_PER_LINE = 16;
 
-    std::vector<uint8_t> data = read_file(filename);
-
-    std::ofstream outfile("/Users/zacdanziger/Documents/Personal/Coding/gameboy-emulator/build/rom_dump.txt");
+    std::ofstream outfile(out_filename);
     if (!outfile.is_open()) {
         throw std::runtime_error("Cannot open out file");
     }
@@ -57,7 +55,7 @@ void dump(const std::string& filename) {
     outfile << "Size: " << data.size() << " bytes (0x" 
             << std::hex << std::uppercase << data.size() << std::dec << ")\n";
     outfile << std::string(70, '-') << "\n";
-    outfile << "Address  | 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F | ASCII\n";
+    outfile << "Address  | 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F |\n";
     outfile << std::string(70, '-') << "\n";
 
     for (size_t i = 0; i < data.size(); i += BYTES_PER_LINE) {

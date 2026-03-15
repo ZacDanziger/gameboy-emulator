@@ -9,10 +9,8 @@ My GameBoy Color project to keep from getting rusty on my leave of absence
     * Implement HALT bug
     * Change code block in step() that deals with serial interrupt, handle that somewhere else
 * PPU
-    * Test background load
-    * Implement Window handling
-    * Implement Object handling
-    * Implement screen with SDL3
+    * Fix Object handling
+    * Debug problems with dmg-acid2 ROM test
 * MBC
     * Start working on
     
@@ -21,4 +19,4 @@ My GameBoy Color project to keep from getting rusty on my leave of absence
 * CMake
     * CTest
     * GTest
-* SDL3 (In Progress)
+* SDL3

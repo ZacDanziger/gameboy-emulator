@@ -40,6 +40,6 @@ void create_data() {
     out.close();
 }
 
-void dump(const std::string& filename);
+void dump(const std::vector<Byte>& data, const std::string& out_filename);
 
 #endif  // UTILS_H
