@@ -13,6 +13,7 @@
 
 
 /**
+ * Memory Management Unit
  * Represents all memory in the gameboy
  * Byte-addressable 16-bit address size
  *      currently handles ROM, VRAM, WRAM, ECHO RAM, I/O REGISTERS, HRAM, and IE REGISTER
@@ -21,12 +22,21 @@
 */
 class MMU {
     public:
-        MMU();
+        MMU() :
+            rom_bank_00{},
+            rom_bank_nn{},
+            wram_bank_00{},
+            wram_bank_nn{},
+            io_registers{},
+            hram{},
+            ie_register(0x00)
+        {}
 
         void init(Timer* timer_ptr, PPU* ppu_ptr);
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
+        
         void load(const Address address, const std::string& filename);
         void load_rom(const std::string& filename);
 
@@ -49,7 +59,7 @@ class MMU {
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
         Byte ie_register;                                  // 0xFFFF
 
-        std::pair<Byte*, size_t> resolve_region(const Address address);
+        void oam_dma_transfer(const Byte value);
 };
 
 #endif // MEMORY_H

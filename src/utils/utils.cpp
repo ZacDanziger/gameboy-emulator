@@ -44,28 +44,50 @@ void write_line(std::ofstream& out, const std::string& line) {
     out << line;
 }
 
+void dump(const std::string& filename) {
+    const int BYTES_PER_LINE = 16;
 
-// // For debugging purposes -- gameboy-doctor
-// void CPU::write_registers() {
-//     std::stringstream output;
+    std::vector<uint8_t> data = read_file(filename);
 
-//     output << std::hex << std::setfill('0');
+    std::ofstream outfile("/Users/zacdanziger/Documents/Personal/Coding/gameboy-emulator/build/rom_dump.txt");
+    if (!outfile.is_open()) {
+        throw std::runtime_error("Cannot open out file");
+    }
 
-//     output << "A:" << std::hex << std::setw(2) << static_cast<int>(reg_A)
-//            << " F:" << std::hex << std::setw(2) << static_cast<int>(reg_F)
-//            << " B:" << std::hex << std::setw(2) << static_cast<int>(reg_B)
-//            << " C:" << std::hex << std::setw(2) << static_cast<int>(reg_C)
-//            << " D:" << std::hex << std::setw(2) << static_cast<int>(reg_D)
-//            << " E:" << std::hex << std::setw(2) << static_cast<int>(reg_E)
-//            << " H:" << std::hex << std::setw(2) << static_cast<int>(reg_H)
-//            << " L:" << std::hex << std::setw(2) << static_cast<int>(reg_L)
-//            << " SP:" << std::hex << std::setw(4) << static_cast<int>(reg_SP)
-//            << " PC:" << std::hex << std::setw(4) << static_cast<int>(reg_PC)
-//            << " PCMEM:" << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC))
-//            << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+1))
-//            << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+2))
-//            << "," << std::hex << std::setw(2) << static_cast<int>(_memory->read(reg_PC+3))
-//            << '\n';
+    outfile << "Size: " << data.size() << " bytes (0x" 
+            << std::hex << std::uppercase << data.size() << std::dec << ")\n";
+    outfile << std::string(70, '-') << "\n";
+    outfile << "Address  | 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F | ASCII\n";
+    outfile << std::string(70, '-') << "\n";
 
-//     write_line(_logfile, output.str());
-// }
+    for (size_t i = 0; i < data.size(); i += BYTES_PER_LINE) {
+        // Address
+        outfile << "0x" << std::hex << std::uppercase 
+                << std::setw(4) << std::setfill('0') << i << "   | ";
+ 
+        // Hex bytes
+        for (int j = 0; j < BYTES_PER_LINE; j++) {
+            if (i + j < data.size()) {
+                outfile << std::hex << std::uppercase
+                        << std::setw(2) << std::setfill('0') 
+                        << static_cast<int>(data[i + j]) << " ";
+            } else {
+                outfile << "   ";  // pad if last line is short
+            }
+        }
+ 
+        outfile << "| ";
+ 
+        // // ASCII representation
+        // for (int j = 0; j < BYTES_PER_LINE && i + j < data.size(); j++) {
+        //     char c = static_cast<char>(data[i + j]);
+        //     outfile << (std::isprint(static_cast<unsigned char>(c)) ? c : '.');
+        // }
+ 
+        outfile << "\n";
+    }
+
+    outfile << std::string(70, '-') << "\n";
+
+    outfile.close();
+}

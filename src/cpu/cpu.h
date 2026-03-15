@@ -6,14 +6,18 @@
 
 #include <sstream>
 
+using Flag = Bit;
 
+/**
+ * Central Processing Unit
+ */
 class CPU {
     friend class CPULogger;
 
     public:
         CPU();
 
-        void init(Timer* tim_ptr, MMU* mmu_ptr);
+        void init(Timer* timer_ptr, MMU* mmu_ptr);
 
         void step();
         
@@ -31,10 +35,11 @@ class CPU {
             Byte *reg_low;
         };
 
-        static const uint8_t FLAG_ZERO       = 0b10000000;
-        static const uint8_t FLAG_SUB        = 0b01000000;
-        static const uint8_t FLAG_HALF_CARRY = 0b00100000;
-        static const uint8_t FLAG_CARRY      = 0b00010000;
+        Flag FLAG_ZERO       = Bit::Bit7;    // 0b10000000
+        Flag FLAG_SUB        = Bit::Bit6;    // 0b01000000
+        Flag FLAG_HALF_CARRY = Bit::Bit5;    // 0b00100000
+        Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
+
         
         // Gameboy's Eight 8-bit registers
         Byte reg_A;   // Accumulator
@@ -56,6 +61,7 @@ class CPU {
         Word reg_PC;
 
         bool interrupts_enabled;    // IME
+        bool ei_pending;
         bool halted;
         bool stopped;
 
@@ -83,8 +89,8 @@ class CPU {
 
         // Helper Functions
 
-        bool get_flag(const uint8_t flag) const;
-        void update_flag(const uint8_t flag, bool new_val);
+        bool get_flag(const Flag flag) const;
+        void update_flag(const Flag flag, bool new_val);
         Word get_pair(const Pair& pair) const;
         void set_pair(const Pair& pair, const Word value);
         Byte read_hl() const;
@@ -105,22 +111,22 @@ class CPU {
         // Jumps and Calls
 
         void JP(const Address address);
-        bool JP_IF(const uint16_t flag, bool set);
+        bool JP_IF(const Flag flag, bool set);
         void JR();
-        bool JR_IF(const uint16_t flag, bool set);
+        bool JR_IF(const Flag flag, bool set);
         void CALL();
-        bool CALL_IF(const uint16_t flag, bool set);
+        bool CALL_IF(const Flag flag, bool set);
         void RST(const Byte offset);
         void RET();
-        bool RET_IF(const uint16_t flag, bool set);
+        bool RET_IF(const Flag flag, bool set);
 
         // Bit Operations
 
-        void BIT(int pos, const Byte reg);
-        void SET(int pos, Byte& reg);
-        void SET_HL(int pos);
-        void RES(int pos, Byte& reg);
-        void RES_HL(int pos);
+        void BIT(const Byte reg, const Bit bit);
+        void SET(Byte& reg, const Bit bit);
+        void SET_HL(const Bit bit);
+        void RES(Byte& reg, const Bit bit);
+        void RES_HL(const Bit bit);
 
         // 8-bit loads
 

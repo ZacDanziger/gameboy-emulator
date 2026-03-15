@@ -3,74 +3,97 @@
 
 #include <bitset>
 #include <array>
-#include <SDL3/SDL.h>
+// #include <algorithm>
 
+#include "../utils/utils.h"
 #include "../memory/memory_map.h"
 
-typedef std::array<Byte, 16> Tile;
+using FrameCallback = std::function<void()>;
 
-// Pixel counts of display screen and larger background map 
-const std::size_t SCREEN_WIDTH = 160;
-const std::size_t SCREEN_HEIGHT = 144;
+constexpr int CYCLES_PER_SCANLINE = 114;
+constexpr int SCANLINES_PER_FRAME = 154;
 
-const std::size_t BACKGROUND_WIDTH = 256;
-const std::size_t BACKGROUND_HEIGHT = 256;
+// m-cycle in scanline at which each stage ends
+constexpr int OAM_SCAN_END = 20;
+constexpr int TRANSFER_END = 78;  // average, based on pan docs numbers [172, 289] dots
 
-const std::size_t COLOR_CHANNELS = 3;
+constexpr RGBA32 dmg_palette[4] = {
+    0xEFEFEFFF, // White
+    0x9F9F9FFF, // Light Gray
+    0x5F5F5FFF, // Dark Gray
+    0x0F0F0FFF  // Black
+};
 
-const int CYCLES_PER_SCANLINE = 114;
-const int FRAME_PERIOD = 144 * CYCLES_PER_SCANLINE;
-
-
+constexpr RGBA32 dmg_green_palette[4] = {
+    0xE0F8D0FF, // Lightest green
+    0x88C070FF, // Light green
+    0x346856FF, // Dark green
+    0x081820FF  // Darkest / almost black
+};
 
 // NOTE: PPU locks VRAM during mode 3, locks OAM during modes 2 & 3
 // NOTE: 1 frame is 16.74 ms, not exactly 1/60th of a second (16.67 ms)
 // NOTE: Until MBC is working, just use bank 0 of VRAM
-// NOTE: Background not working
-// NOTE: Window not working
-// NOTE: Sprites not working
+// NOTE: Need a way to signal that frame is ready
+
+
+/**
+ * Pixel Processing Unit
+ */
 class PPU {
     public:
-        PPU(InterruptCallback cb) : 
-            request_interrupt(cb),
-            vram{0},
-            oam{0},
-            
-            frame_buffer{0},
-            background_map{0},
+        PPU(InterruptCallback i, FrameCallback f) :
+            request_interrupt(i),
+            frame_ready(f),
 
+            vram{},
+            oam{},
+
+            tile_cache{},
+            frame_buffer{},
+
+            lcd_control(0x00),
             lcd_status(0x00),
             viewport_y(0x00),
             viewport_x(0x00),
             lcd_y(0x00),
             ly_compare(0x00),
             oam_dma(0x00),
-            bgp(0x00),
+            background_palette(0x00),
             object_palette_0(0x00),
             object_palette_1(0x00),
             window_y(0x00),
             window_x(0x00),
-            mode(Mode::OAM_SCAN)
-            {
-                // initialize all flags to 0
-                write(LCDC_REGISTER, 0x00);
-            }
+            mode(Mode::VBLANK),
+            cycles(0)
+        {}
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte value);
 
+        void load(const Address address, const std::vector<Byte>& data);
+
+        std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> get_frame() const { return frame_buffer; }
+
+        void update();
+
     private:
+        struct Tile {
+            bool dirty = true;
+            std::array<int, 64> pixels = {0}; // Tiles are 8x8 -> 64 pixels
+        };
+
         InterruptCallback request_interrupt;
+        FrameCallback frame_ready;
         
         std::array<Byte, VRAM_SIZE> vram;      // 0x8000 - 0x9FFF
         std::array<Byte, OAM_SIZE> oam;        // 0xFE00 - 0xFE9F
+        // TODO: Add Color RAM
 
-        Byte_Array3D<SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_CHANNELS> frame_buffer; 
-        // Byte_Array3D<SCREEN_WIDTH, SCREEN_HEIGHT, (COLOR_CHANNELS + 1)> frame_buffer_alpha;   
-
-        Byte_Array3D<BACKGROUND_WIDTH, BACKGROUND_HEIGHT, COLOR_CHANNELS> background_map;
-        // Byte_Array3D<BACKGROUND_WIDTH, BACKGROUND_HEIGHT, (COLOR_CHANNELS + 1)> background_map_alpha;
-
+        std::array<Tile, 384> tile_cache;      //3 tile blocks of 128 tiles each
+        std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> frame_buffer;
+        
+        // PPU's IO Registers
         Byte lcd_control;                 // LCDC REGISTER
         Byte lcd_status;                  // STAT REGISTER
         Byte viewport_y;                  // SCY REGISTER
@@ -78,84 +101,30 @@ class PPU {
         Byte lcd_y;                       // LY REGISTER
         Byte ly_compare;                  // LYC REGISTER
         Byte oam_dma;                     // DMA REGISTER
-        Byte bgp;                         // BGP REGISTER
+        Byte background_palette;          // BGP REGISTER
         Byte object_palette_0;            // OBP0 REGISTER
         Byte object_palette_1;            // OBP1 REGISTER
         Byte window_y;                    // WY REGISTER
         Byte window_x;                    // WX REGISTER
 
-        bool enabled;                     // LCDC.7
-        Address window_tile_map;          // LCDC.6   
-        bool window_enable;               // LCDC.5
-        Address tile_data;                // LCDC.4
-        Address background_tile_map;      // LCDC.3
-        bool obj_size;                    // LCDC.2   (true = 8x16 sprites, false = 8x8 sprites)
-        bool obj_enable;                  // LCDC.1
-        bool background_window_enable;    // LCDC.0
+        Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
+        int cycles;
 
-        Mode mode;                        // OAM SCAN -> DRAW PIXEL -> HBLANK -> VBLANK
+        void draw_scanline();
+        void draw_background(std::array<bool, SCREEN_WIDTH>& background_priority);
+        void draw_window(std::array<bool, SCREEN_WIDTH>& background_priority);
+        void draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority);
+        
+        // Helper functions
+        Address get_tile_address(const Byte tile_id)const ;
+        int address_to_index(const Address tile_address) const { return static_cast<int>((tile_address - VRAM_START) >> 4); }
+
+        std::array<int, 8> fetch_pixel_slice(const Byte low_byte, const Byte high_byte) const;
+        void refresh_tile(const Address tile_address);
+
+        RGBA32 color_id_to_argb(const int color_id, const Byte palette) const;
+
+        std::array<Address, 10> select_sprites(const int sprite_height);
 };
 
 #endif // PPU_H
-
-// SDL Example Program:
-// int main(int, char**){
-//     SDL_Init(SDL_INIT_VIDEO);
-
-//     SDL_Window* win = SDL_CreateWindow("SDL3 Image", 640, 480, 0);
-//     if (win == nullptr) {
-//         std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-//         SDL_Quit();
-//         return 1;
-//     }
-
-//     SDL_Renderer* ren = SDL_CreateRenderer(win, NULL);
-//     if (ren == nullptr) {
-//         std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
-//         SDL_DestroyWindow(win);
-//         SDL_Quit();
-//         return 1;
-//     }
-
-//     SDL_Surface* bmp = SDL_LoadBMP("lettuce.bmp");
-//     if (bmp == nullptr) {
-//         std::cerr << "SDL_LoadBMP Error: " << SDL_GetError() << std::endl;
-//         SDL_DestroyRenderer(ren);
-//         SDL_DestroyWindow(win);
-//         SDL_Quit();
-//         return 1;
-//     }
-
-//     SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, bmp);
-//     SDL_DestroySurface(bmp);
-
-//     if (tex == nullptr) {
-//         std::cerr << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
-//         SDL_DestroyRenderer(ren);
-//         SDL_DestroyWindow(win);
-//         SDL_Quit();
-//         return 1;
-//     }
-
-//     SDL_Event e;
-//     bool quit = false;
-
-//     while (!quit) {
-//         while (SDL_PollEvent(&e)) {
-//             if (e.type == SDL_EVENT_QUIT) {
-//                 quit = true;
-//             }
-//         }
-
-//         SDL_RenderClear(ren);
-//         SDL_RenderTexture(ren, tex, NULL, NULL);
-//         SDL_RenderPresent(ren);
-//     }
-
-//     SDL_DestroyTexture(tex);
-//     SDL_DestroyRenderer(ren);
-//     SDL_DestroyWindow(win);
-//     SDL_Quit();
-
-//     return 0;
-// }

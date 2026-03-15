@@ -39,8 +39,8 @@ void Logger::log() {
 }
 
 
-CPULogger::CPULogger(CPU* cpu_) {
-    cpu = cpu_;
+CPULogger::CPULogger(CPU* cpu_ptr) {
+    cpu = cpu_ptr;
 }
 
 void CPULogger::log_serial_buffer(const std::string& buffer_filename) {
@@ -87,7 +87,6 @@ void TimerLogger::update_line() {
     output << std::hex << std::setfill('0');
 
     output << "Div Internal:" << std::hex << std::setw(4) << static_cast<int>(timer->divider_internal)
-           << " DIV:" << std::hex << std::setw(2) << static_cast<int>(timer->divider)
            << " TIMA:" << std::hex << std::setw(2) << static_cast<int>(timer->timer)
            << " TMA:" << std::hex << std::setw(2) << static_cast<int>(timer->timer_modulo)
            << " TAC:" << std::hex << std::setw(2) << static_cast<int>(timer->timer_control)

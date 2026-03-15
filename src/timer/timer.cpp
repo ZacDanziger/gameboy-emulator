@@ -12,14 +12,14 @@ void Timer::tick() {
         timer = timer_modulo;
         timer_reload_cycle = true;
 
-        // REQUEST INTERRUPT HERE
         request_interrupt(Interrupt::Timer);
     }
 
     divider_internal += 1;
+    on_tick();
 
     // check timer enable bit
-    bool set = (((divider_internal >> div_bit) & 0b1) == 0b1);
+    bool set = is_set(divider_internal, div_bit);
     bool high = (enabled && set);
 
     // check falling edge
@@ -36,6 +36,12 @@ void Timer::tick() {
 }
 
 
+/**
+ * Write to DIV, TIMA, TMA, or TAC registers
+ * 
+ * @param address the address of one of the registers that Timer is responsible for
+ * @param value the new value to be written to the register
+ */
 void Timer::write(const Address address, const Byte value) {
     switch(address) {
     case DIV_REGISTER:
@@ -59,7 +65,7 @@ void Timer::write(const Address address, const Byte value) {
         break;
     case TAC_REGISTER:
         timer_control = value;
-        enabled = (((timer_control >> 2) & 0b1) == 0b1);
+        enabled = is_set(timer_control, Bit::Bit2);
 
         /* Lowest 2 bits of TAC register set speed
         * 00 -> divider bit 9  (256 m-cycles)
@@ -71,24 +77,31 @@ void Timer::write(const Address address, const Byte value) {
         */
         switch(timer_control & 0x3) {
         case 0x00:                           //-----------|-------------
-            div_bit = 7;                     // 4096 Hz   | 8192 Hz 
+            div_bit = Bit::Bit7;             // 4096 Hz   | 8192 Hz 
             break;                           //           | 
         case 0x01:                           //           |
-            div_bit = 1;                     // 262144 Hz | 524288 Hz
+            div_bit = Bit::Bit1;             // 262144 Hz | 524288 Hz
             break;                           //           |
         case 0x02:                           //           |
-            div_bit = 3;                     // 65536 Hz  | 131072 Hz
+            div_bit = Bit::Bit3;             // 65536 Hz  | 131072 Hz
             break;                           //           |
         case 0x03:                           //           |
-            div_bit = 5;                     // 16384 Hz  | 32768 Hz
+            div_bit = Bit::Bit5;             // 16384 Hz  | 32768 Hz
             break;
         }
         break;
     default:
-        throw std::runtime_error("Timer write called on wrong register");
+        throw std::runtime_error("Timer write called on wrong address");
     }
 }
 
+
+/**
+ * Read the value from DIV, TIMA, TMA, or TAC registers
+ * 
+ * @param address the address of one of the registers that Timer controls
+ * @return the value in the requested register
+ */
 Byte Timer::read(const Address address) const {
     switch (address) {
     case DIV_REGISTER:
@@ -104,6 +117,6 @@ Byte Timer::read(const Address address) const {
         return timer_control;
         break;
     default:
-        throw std::runtime_error("Timer read called on wrong register");
+        throw std::runtime_error("Timer read called on wrong address");
     }
 }

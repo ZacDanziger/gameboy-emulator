@@ -4,8 +4,11 @@
 
 
 TEST(TimerTest, TestReadWrite) {
-    MMU mmu;
-    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+        MMU mmu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+            []{});
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+                [&ppu]{ ppu.update(); });
 
     EXPECT_NO_THROW(
         timer.write(TAC_REGISTER, 0x05);
@@ -29,7 +32,10 @@ TEST(TimerTest, TestReadWrite) {
 
 TEST(TimerTest, TestTick) {
     MMU mmu;
-    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+            []{});
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+                [&ppu]{ ppu.update(); });
 
     timer.write(TAC_REGISTER, 0x05);
 
@@ -48,7 +54,10 @@ TEST(TimerTest, TestTick) {
 
 TEST(TimerTest, TestOverflow) {
     MMU mmu;
-    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); });
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+            []{});
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+                [&ppu]{ ppu.update(); });
 
     timer.write(TAC_REGISTER, 0x05);
     timer.write(TMA_REGISTER, 0xFF);

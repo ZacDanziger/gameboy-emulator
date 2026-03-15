@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 4.1.0)
-project(src)
-
 set (SourceFiles
     utils/utils.cpp
     utils/logger.cpp
@@ -9,16 +6,13 @@ set (SourceFiles
     cpu/cpu.cpp
     cpu/optables.cpp
     ppu/ppu.cpp
+    display/display.cpp
     emulator/emulator.cpp
 )
 
-include_directories(utils)
-include_directories(memory)
-include_directories(timer)
-include_directories(cpu)
-include_directories(ppu)
-include_directories(emulator)
-include_directories(types)
 
-add_library(${PROJECT_NAME} ${SourceFiles})
-target_link_libraries(${PROJECT_NAME} vendored)
+add_library(gameboy ${SourceFiles})
+target_include_directories(gameboy PUBLIC
+    utils memory timer cpu ppu display emulator 
+)
+target_link_libraries(gameboy vendored)

@@ -24,12 +24,11 @@ class Logger {
 
 class CPULogger: public Logger {
     public:
-        CPULogger(CPU* cpu_);
+        CPULogger(CPU* cpu_ptr);
         void log_serial_buffer(const std::string& buffer_filename);
     private:
         void update_line() override;
         CPU *cpu;
-        // const std::string buffer_filename = "../../build/buffer.txt";
 };
 
 class TimerLogger: public Logger {

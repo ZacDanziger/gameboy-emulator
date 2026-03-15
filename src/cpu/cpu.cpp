@@ -6,7 +6,6 @@
  *     https://gbdev.io/pandocs/Power_Up_Sequence.html
  */
 CPU::CPU() {    
-    // gameboy doctor init
     reg_A = 0x01;
     reg_F = 0xB0;
     reg_B = 0x00;
@@ -24,6 +23,7 @@ CPU::CPU() {
     HL = {&reg_H, &reg_L};
     
     interrupts_enabled = false;
+    ei_pending = false;
     halted = false;
     stopped = false;
     timer = nullptr;
@@ -36,8 +36,8 @@ CPU::CPU() {
  * @param tim a pointer to the emulator's timer
  * @param mem a pointer to the emulator's memory
  */
-void CPU::init(Timer* tim_ptr, MMU* mmu_ptr) {
-    timer = tim_ptr;
+void CPU::init(Timer* timer_ptr, MMU* mmu_ptr) {
+    timer = timer_ptr;
     mmu = mmu_ptr;
 }
 
@@ -48,7 +48,7 @@ void CPU::init(Timer* tim_ptr, MMU* mmu_ptr) {
 void CPU::step() {
     // need to implement HALT bug
      while(halted) {
-        if ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER))) {
+        if ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0) {
             handle_interrupts();
             halted = false;
         }
@@ -60,21 +60,25 @@ void CPU::step() {
     Byte opcode = fetch();
     decode_execute(opcode);
 
-    // For Blargg ROM test, will be serial interrupt when I get that working
+    if (ei_pending) {
+        interrupts_enabled = true;
+        ei_pending = false;
+    }
+
+    // For Blargg ROM test
     if (mmu->read(SC_REGISTER) == 0x81) {
         serial_buffer += mmu->read(SB_REGISTER);
 
-        if ((serial_buffer.length() > 6) && (serial_buffer.substr(serial_buffer.length() - 6) == "Passed")) {
-            stopped = true;
-        }
+        if (serial_buffer.length() > 6) {
+            std::string tail = serial_buffer.substr(serial_buffer.length() - 6);
 
-        if ((serial_buffer.length() > 6) && (serial_buffer.substr(serial_buffer.length() - 6) == "Failed")) {
-            stopped = true;
+            if ((tail == "Passed") || (tail == "Failed")) {
+                stopped = true;
+            }
         }
 
         // clear 
         mmu->write(SC_REGISTER, 0x00);
-        mmu->write(SB_REGISTER, 0x00);
     }
 }
 
@@ -168,7 +172,7 @@ void CPU::handle_interrupts() {
 
 /**
  * Fetch the next instruction and increment PC
- * TICKS GOOD
+ * 
  * @return the value in mmu[PC]
 */
 Byte CPU::fetch() {
@@ -180,7 +184,7 @@ Byte CPU::fetch() {
 
 /**
  * Fetch the next 16 bits, in little endian format
- * TICKS GOOD
+ * 
  * @return [mem[SP+1] | mem[SP]]
 */
 Word CPU::fetch16() {
@@ -193,8 +197,8 @@ Word CPU::fetch16() {
  * 
  * @param flag the flag to be read
 */
-bool CPU::get_flag(const uint8_t flag) const {
-    return ((reg_F & flag) == flag);
+bool CPU::get_flag(const Flag flag) const {
+    return is_set(reg_F, flag);
 }
 
 
@@ -204,11 +208,11 @@ bool CPU::get_flag(const uint8_t flag) const {
  * @param flag the flag to be updated
  * @param new_val the new value of the flag
  */ 
-void CPU::update_flag(const uint8_t flag, bool new_val) {
+void CPU::update_flag(const Flag flag, bool new_val) {
     if (new_val) {
-        reg_F |= flag;
+        set_bit(reg_F, flag);
     } else {
-        reg_F &= ~(flag);
+        reset_bit(reg_F, flag);
     }
 }
 
@@ -398,7 +402,7 @@ void CPU::DI() {
  * - - - -
 */
 void CPU::EI() {
-    interrupts_enabled = true;
+    ei_pending = true;
 }
 
 
@@ -422,7 +426,7 @@ void CPU::JP(const Address address) {
  * @param set the boolean value to check the flag against
  * @return true if a jump occured, false otherwise
 */
-bool CPU::JP_IF(const uint16_t flag, bool set) {
+bool CPU::JP_IF(const Flag flag, bool set) {
     Address destination = fetch16();
     if (get_flag(flag) == set) {
         JP(destination);
@@ -454,7 +458,7 @@ void CPU::JR() {
  * @param set the boolean value to check the flag against
  * @return true if a jump occured, false otherwise
 */
-bool CPU::JR_IF(const uint16_t flag, bool set) {
+bool CPU::JR_IF(const Flag flag, bool set) {
     if (get_flag(flag) == set) {
         JR();
         return true;
@@ -471,13 +475,19 @@ bool CPU::JR_IF(const uint16_t flag, bool set) {
  * - - - -
 */
 void CPU::CALL() {  
-    // + and - 2 to account for the 2 bytes read in that are imm16, not instructions
-    reg_PC += 2;
+    Address destination = fetch16();
     PUSH_PC();
-    reg_PC -= 2;
-
-    reg_PC = fetch16();
+    reg_PC = destination;
     timer->tick();
+
+    // OLD IMPLEMENTATION - SAVING IN CASE CLAUDE IS WRONG
+    // // + and - 2 to account for the 2 bytes read in that are imm16, not instructions
+    // reg_PC += 2;
+    // PUSH_PC();
+    // reg_PC -= 2;
+
+    // reg_PC = fetch16();
+    // timer->tick();
 }
 
 
@@ -490,7 +500,7 @@ void CPU::CALL() {
  * @param set the boolean value to check the flag against
  * @return true if a call occured, false otherwise
 */
-bool CPU::CALL_IF(const uint16_t flag, bool set) {
+bool CPU::CALL_IF(const Flag flag, bool set) {
     if (get_flag(flag) == set) {
         CALL();
         return true;
@@ -502,6 +512,8 @@ bool CPU::CALL_IF(const uint16_t flag, bool set) {
     timer->tick();
     return false;
 }
+
+
 /**
  * Reset, pushing PC onto the stack and jumping to 0x0000 + offset
  * 
@@ -539,7 +551,7 @@ void CPU::RET() {
  * @param set the boolean value to check the flag against
  * @return true if a return occured, false otherwise
 */
-bool CPU::RET_IF(const uint16_t flag, bool set) {
+bool CPU::RET_IF(const Flag flag, bool set) {
     timer->tick();  
     if (get_flag(flag) == set) {
         RET();
@@ -557,12 +569,8 @@ bool CPU::RET_IF(const uint16_t flag, bool set) {
  * @param pos the bit position to check, in range [0, 7]
  * @param reg the register to check the bit of
 */
-void CPU::BIT(int pos, Byte reg) {
-    if (pos < 0 || pos > 7) {
-        throw std::runtime_error("Invalid bit position");
-    }
-
-    bool set = ((reg & (1 << pos)) == (1 << pos));
+void CPU::BIT(const Byte reg, const Bit bit) {
+    bool set = is_set(reg, bit);
 
     update_flag(FLAG_ZERO, (1 - set));
     update_flag(FLAG_SUB, false);
@@ -576,12 +584,8 @@ void CPU::BIT(int pos, Byte reg) {
  * @param pos the bit position to set, in range [0, 7]
  * @param reg the register to set the bit of
 */
-void CPU::SET(int pos, Byte& reg) {
-    if (pos < 0 || pos > 7) {
-        throw std::runtime_error("Invalid bit position");
-    }
-
-    reg |= (1 << pos);
+void CPU::SET(Byte& reg, const Bit bit) {
+    set_bit(reg, bit);
 }
 
 /**
@@ -590,13 +594,9 @@ void CPU::SET(int pos, Byte& reg) {
  * 
  * @param pos the bit position to set in memory[HL]
 */
-void CPU::SET_HL(int pos) {
-    if (pos < 0 || pos > 7) {
-        throw std::runtime_error("Invalid bit position");
-    }
-
+void CPU::SET_HL(const Bit bit) {
     Byte value = read_hl();
-    SET(pos, value);
+    SET(value, bit);
     LD(get_pair(HL), value);
 }
 
@@ -608,12 +608,8 @@ void CPU::SET_HL(int pos) {
  * @param pos the bit position to reset, in range [0, 7]
  * @param reg the register to reset the bit of
 */
-void CPU::RES(int pos, Byte& reg) {
-    if (pos < 0 || pos > 7) {
-        throw std::runtime_error("Invalid bit position");
-    }
-
-    reg &= ~(1 << pos);
+void CPU::RES(Byte& reg, const Bit bit) {
+    reset_bit(reg, bit);
 }
 
 /**
@@ -622,13 +618,9 @@ void CPU::RES(int pos, Byte& reg) {
  * 
  * @param pos the bit position to reset in memory[HL]
 */
-void CPU::RES_HL(int pos) {
-    if (pos < 0 || pos > 7) {
-        throw std::runtime_error("Invalid bit position");
-    }
-
+void CPU::RES_HL(const Bit bit) {
     Byte value = read_hl();
-    RES(pos, value);
+    RES(value, bit);
     LD(get_pair(HL), value);
 }
 
@@ -638,8 +630,8 @@ void CPU::RES_HL(int pos) {
  * dest = value
  * - - - -
  * 
- * @param dest the address of the destination register or location in memory
- * @param value the value to load into the destination register
+ * @param dest the destination register or value in memory to be changed
+ * @param value the value to load into the destination
 */
 void CPU::LD(Byte& dest, const Byte value) {
     dest = value;
@@ -651,8 +643,8 @@ void CPU::LD(Byte& dest, const Byte value) {
  * dest = memory[address]
  * - - - -
  * 
- * @param dest the address of the destination register or location in memory
- * @param address the address of the value to load into the destination register
+ * @param dest the destination register or value in memory to be changed
+ * @param address the address of the value to load into the destination
 */
 void CPU::LD(Byte& dest, const Address address) {
     dest = mmu->read(address);
@@ -697,7 +689,7 @@ void CPU::LDH(const Byte value, bool into_A) {
  * dest = value
  * - - - -
  * 
- * @param dest the address of the 16-bit register to update
+ * @param dest the 16-bit register to update
  * @param value the value to load into the register
 */
 void CPU::LD(Word& dest, const Word value) {
@@ -720,7 +712,7 @@ void CPU::LD(Pair& pair, const Word value) {
  * 16-bit load (write)
  * memory[address] = SP[7:0], memory[address+1] = SP[15:8]
  * - - - -
- * TICKS GOOD
+ * 
  * @param address the address in memory to hold least significant byte of SP
 */
 void CPU::write_SP(const Address address) {
@@ -732,7 +724,7 @@ void CPU::write_SP(const Address address) {
 
 
 /***
- * Push pair onto the stack
+ * Push pair onto the stack, little-endian
  * - - - -
  * 
  * @param pair the pair to be pushed to the stack

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.1.0)
+cmake_minimum_required(VERSION 3.15)
 project(gameboy-emulator VERSION 0.1.0 LANGUAGES CXX)
 
 # GoogleTest requires at least C++17
@@ -14,6 +14,5 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 
-add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} src)
-target_link_libraries(${PROJECT_NAME} gtest)
+add_executable(gameboy-emulator main.cpp)
+target_link_libraries(gameboy-emulator gameboy)

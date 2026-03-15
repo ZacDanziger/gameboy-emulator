@@ -27,7 +27,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x08: { write_SP(fetch16()); return; }                 // memory[n16] <- SP[7:0], memory[n16+1] <- SP[15:8]
         case 0x09: { ADD_HL(get_pair(BC)); return; }                // HL += BC
         case 0x0A: { LD(reg_A, get_pair(BC)); return; }             // A <- memory[BC]
-        case 0x0B: { DEC(BC); timer->tick(); return; }                             // BC--
+        case 0x0B: { DEC(BC); timer->tick(); return; }              // BC--
         case 0x0C: { INC(reg_C); return; }                          // C++
         case 0x0D: { DEC(reg_C); return; }                          // C--
         case 0x0E: { LD(reg_C, fetch()); return; }                  // C <- n8
@@ -36,7 +36,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x10: { throw std::runtime_error("Cannot do STOP right now"); }    // STOP
         case 0x11: { LD(DE, fetch16()); return; }                   // D <- n16[15:8], E <- n16[7:0]
         case 0x12: { LD(get_pair(DE), reg_A); return; }             // memory[DE] <- A
-        case 0x13: { INC(DE); timer->tick(); return; }                             // DE++
+        case 0x13: { INC(DE); timer->tick(); return; }              // DE++
         case 0x14: { INC(reg_D); return; }                          // D++
         case 0x15: { DEC(reg_D); return; }                          // D--
         case 0x16: { LD(reg_D, fetch()); return; }                  // D <- n8
@@ -44,16 +44,16 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x18: { JR(); return; }                                // SP += e8
         case 0x19: { ADD_HL(get_pair(DE)); return; }                // HL += DE
         case 0x1A: { LD(reg_A, get_pair(DE)); return; }             // A <- memory[DE]
-        case 0x1B: { DEC(DE); timer->tick(); return; }                             // DE--
+        case 0x1B: { DEC(DE); timer->tick(); return; }              // DE--
         case 0x1C: { INC(reg_E); return; }                          // E++
         case 0x1D: { DEC(reg_E); return; }                          // E--
         case 0x1E: { LD(reg_E, fetch()); return; }                  // E <- n8
         case 0x1F: { RRA(false); return; }                          // RRA
 
-        case 0x20: { (JR_IF(FLAG_ZERO, false)); return; }             // JR NZ, e8
+        case 0x20: { (JR_IF(FLAG_ZERO, false)); return; }           // JR NZ, e8
         case 0x21: { LD(HL, fetch16()); return; }                   // LD HL, n16
         case 0x22: { LD(get_pair(HL), reg_A); INC(HL); return; }    // memory[HL++] <- A
-        case 0x23: { INC(HL); timer->tick(); return; }                             // INC HL
+        case 0x23: { INC(HL); timer->tick(); return; }              // INC HL
         case 0x24: { INC(reg_H); return; }                          // H++
         case 0x25: { DEC(reg_H); return; }                          // H--
         case 0x26: { LD(reg_H, fetch()); return; }                  // H <- n8
@@ -61,7 +61,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x28: { (JR_IF(FLAG_ZERO, true)); return; }            // JR Z, e8
         case 0x29: { ADD_HL(get_pair(HL)); return; }                // ADD HL, HL
         case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return; }    // A <- memory[HL++]
-        case 0x2B: { DEC(HL); timer->tick(); return; }                             // HL--
+        case 0x2B: { DEC(HL); timer->tick(); return; }              // HL--
         case 0x2C: { INC(reg_L); return; }                          // L++
         case 0x2D: { DEC(reg_L); return; }                          // L--
         case 0x2E: { LD(reg_L, fetch()); return; }                  // L <- n8
@@ -223,7 +223,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xC0: { (RET_IF(FLAG_ZERO, false)); return; }          // RET NZ
         case 0xC1: { POP(BC); return; }                             // C <- memory[SP++]; B <- memory[SP++]
         case 0xC2: { (JP_IF(FLAG_ZERO, false)); return; }           // JP NZ, a16
-        case 0xC3: { JP(fetch16()); timer->tick(); return; }                       // JP a16
+        case 0xC3: { JP(fetch16()); timer->tick(); return; }        // JP a16
         case 0xC4: { (CALL_IF(FLAG_ZERO, false)); return; }         // CALL NZ, a16
         case 0xC5: { PUSH(BC); return; }                            // memory[--SP] <- B; memory[--SP] <- C
         case 0xC6: { ADD(fetch(), false); return; }                 // A += n8
@@ -262,7 +262,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xE5: { PUSH(HL); return; }                            // memory[--SP] <- H; memory[--SP] <- L
         case 0xE6: { AND(fetch()); return; }                        // A &= n8
         case 0xE7: { RST(reset_vector[4]); return; }                // memory[SP] <- PC; PC = 0x0020
-        case 0xE8: { reg_SP = ADD_SP(); timer->tick(); return; }                   // SP += e8
+        case 0xE8: { reg_SP = ADD_SP(); timer->tick(); return; }    // SP += e8
         case 0xE9: { JP(get_pair(HL)); return; }                    // SP <- HL
         case 0xEA: { LD(fetch16(), reg_A); return; }                // memory[n16] <- A
         case 0xEB: { throw std::runtime_error("Opcode: EB is bad"); } // --- BAD ---
@@ -280,7 +280,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xF6: { OR(fetch()); return; }                         // A |= n8
         case 0xF7: { RST(reset_vector[6]); return; }                // memory[SP] <- PC; PC = 0x0030
         case 0xF8: { LD(HL, ADD_SP()); return; }                    // HL <- SP + e8
-        case 0xF9: { LD(reg_SP, get_pair(HL)); timer->tick(); return; }            // LD SP, HL
+        case 0xF9: { LD(reg_SP, get_pair(HL)); timer->tick(); return; } // LD SP, HL
         case 0xFA: { LD(reg_A, fetch16()); return; }                // A <- memory[n16]
         case 0xFB: { EI(); return; }                                // EI
         case 0xFC: { throw std::runtime_error("Opcode: FC is bad"); } // --- BAD ---
@@ -369,209 +369,209 @@ void CPU::decode_execute_cb() {
         case 0x3E: { SRL_HL(); return; }
         case 0x3F: { SRL(reg_A); return; }
 
-        case 0x40: { BIT(0, reg_B); return; }
-        case 0x41: { BIT(0, reg_C); return; }
-        case 0x42: { BIT(0, reg_D); return; }
-        case 0x43: { BIT(0, reg_E); return; }
-        case 0x44: { BIT(0, reg_H); return; }
-        case 0x45: { BIT(0, reg_L); return; }
-        case 0x46: { BIT(0, read_hl()); return; }
-        case 0x47: { BIT(0, reg_A); return; }
-        case 0x48: { BIT(1, reg_B); return; }
-        case 0x49: { BIT(1, reg_C); return; }
-        case 0x4A: { BIT(1, reg_D); return; }
-        case 0x4B: { BIT(1, reg_E); return; }
-        case 0x4C: { BIT(1, reg_H); return; }
-        case 0x4D: { BIT(1, reg_L); return; }
-        case 0x4E: { BIT(1, read_hl()); return; }
-        case 0x4F: { BIT(1, reg_A); return; }
+        case 0x40: { BIT(reg_B, Bit::Bit0); return; }
+        case 0x41: { BIT(reg_C, Bit::Bit0); return; }
+        case 0x42: { BIT(reg_D, Bit::Bit0); return; }
+        case 0x43: { BIT(reg_E, Bit::Bit0); return; }
+        case 0x44: { BIT(reg_H, Bit::Bit0); return; }
+        case 0x45: { BIT(reg_L, Bit::Bit0); return; }
+        case 0x46: { BIT(read_hl(), Bit::Bit0); return; }
+        case 0x47: { BIT(reg_A, Bit::Bit0); return; }
+        case 0x48: { BIT(reg_B, Bit::Bit1); return; }
+        case 0x49: { BIT(reg_C, Bit::Bit1); return; }
+        case 0x4A: { BIT(reg_D, Bit::Bit1); return; }
+        case 0x4B: { BIT(reg_E, Bit::Bit1); return; }
+        case 0x4C: { BIT(reg_H, Bit::Bit1); return; }
+        case 0x4D: { BIT(reg_L, Bit::Bit1); return; }
+        case 0x4E: { BIT(read_hl(), Bit::Bit1); return; }
+        case 0x4F: { BIT(reg_A, Bit::Bit1); return; }
 
-        case 0x50: { BIT(2, reg_B); return; }
-        case 0x51: { BIT(2, reg_C); return; }
-        case 0x52: { BIT(2, reg_D); return; }
-        case 0x53: { BIT(2, reg_E); return; }
-        case 0x54: { BIT(2, reg_H); return; }
-        case 0x55: { BIT(2, reg_L); return; }
-        case 0x56: { BIT(2, read_hl()); return; }
-        case 0x57: { BIT(2, reg_A); return; }
-        case 0x58: { BIT(3, reg_B); return; }
-        case 0x59: { BIT(3, reg_C); return; }
-        case 0x5A: { BIT(3, reg_D); return; }
-        case 0x5B: { BIT(3, reg_E); return; }
-        case 0x5C: { BIT(3, reg_H); return; }
-        case 0x5D: { BIT(3, reg_L); return; }
-        case 0x5E: { BIT(3, read_hl()); return; }
-        case 0x5F: { BIT(3, reg_A); return; }
+        case 0x50: { BIT(reg_B, Bit::Bit2); return; }
+        case 0x51: { BIT(reg_C, Bit::Bit2); return; }
+        case 0x52: { BIT(reg_D, Bit::Bit2); return; }
+        case 0x53: { BIT(reg_E, Bit::Bit2); return; }
+        case 0x54: { BIT(reg_H, Bit::Bit2); return; }
+        case 0x55: { BIT(reg_L, Bit::Bit2); return; }
+        case 0x56: { BIT(read_hl(), Bit::Bit2); return; }
+        case 0x57: { BIT(reg_A, Bit::Bit2); return; }
+        case 0x58: { BIT(reg_B, Bit::Bit3); return; }
+        case 0x59: { BIT(reg_C, Bit::Bit3); return; }
+        case 0x5A: { BIT(reg_D, Bit::Bit3); return; }
+        case 0x5B: { BIT(reg_E, Bit::Bit3); return; }
+        case 0x5C: { BIT(reg_H, Bit::Bit3); return; }
+        case 0x5D: { BIT(reg_L, Bit::Bit3); return; }
+        case 0x5E: { BIT(read_hl(), Bit::Bit3); return; }
+        case 0x5F: { BIT(reg_A, Bit::Bit3); return; }
 
-        case 0x60: { BIT(4, reg_B); return; }
-        case 0x61: { BIT(4, reg_C); return; }
-        case 0x62: { BIT(4, reg_D); return; }
-        case 0x63: { BIT(4, reg_E); return; }
-        case 0x64: { BIT(4, reg_H); return; }
-        case 0x65: { BIT(4, reg_L); return; }
-        case 0x66: { BIT(4, read_hl()); return; }
-        case 0x67: { BIT(4, reg_A); return; }
-        case 0x68: { BIT(5, reg_B); return; }
-        case 0x69: { BIT(5, reg_C); return; }
-        case 0x6A: { BIT(5, reg_D); return; }
-        case 0x6B: { BIT(5, reg_E); return; }
-        case 0x6C: { BIT(5, reg_H); return; }
-        case 0x6D: { BIT(5, reg_L); return; }
-        case 0x6E: { BIT(5, read_hl()); return; }
-        case 0x6F: { BIT(5, reg_A); return; }
+        case 0x60: { BIT(reg_B, Bit::Bit4); return; }
+        case 0x61: { BIT(reg_C, Bit::Bit4); return; }
+        case 0x62: { BIT(reg_D, Bit::Bit4); return; }
+        case 0x63: { BIT(reg_E, Bit::Bit4); return; }
+        case 0x64: { BIT(reg_H, Bit::Bit4); return; }
+        case 0x65: { BIT(reg_L, Bit::Bit4); return; }
+        case 0x66: { BIT(read_hl(), Bit::Bit4); return; }
+        case 0x67: { BIT(reg_A, Bit::Bit4); return; }
+        case 0x68: { BIT(reg_B, Bit::Bit5); return; }
+        case 0x69: { BIT(reg_C, Bit::Bit5); return; }
+        case 0x6A: { BIT(reg_D, Bit::Bit5); return; }
+        case 0x6B: { BIT(reg_E, Bit::Bit5); return; }
+        case 0x6C: { BIT(reg_H, Bit::Bit5); return; }
+        case 0x6D: { BIT(reg_L, Bit::Bit5); return; }
+        case 0x6E: { BIT(read_hl(), Bit::Bit5); return; }
+        case 0x6F: { BIT(reg_A, Bit::Bit5); return; }
 
-        case 0x70: { BIT(6, reg_B); return; }
-        case 0x71: { BIT(6, reg_C); return; }
-        case 0x72: { BIT(6, reg_D); return; }
-        case 0x73: { BIT(6, reg_E); return; }
-        case 0x74: { BIT(6, reg_H); return; }
-        case 0x75: { BIT(6, reg_L); return; }
-        case 0x76: { BIT(6, read_hl()); return; }
-        case 0x77: { BIT(6, reg_A); return; }
-        case 0x78: { BIT(7, reg_B); return; }
-        case 0x79: { BIT(7, reg_C); return; }
-        case 0x7A: { BIT(7, reg_D); return; }
-        case 0x7B: { BIT(7, reg_E); return; }
-        case 0x7C: { BIT(7, reg_H); return; }
-        case 0x7D: { BIT(7, reg_L); return; }
-        case 0x7E: { BIT(7, read_hl()); return; }
-        case 0x7F: { BIT(7, reg_A); return; }
+        case 0x70: { BIT(reg_B, Bit::Bit6); return; }
+        case 0x71: { BIT(reg_C, Bit::Bit6); return; }
+        case 0x72: { BIT(reg_D, Bit::Bit6); return; }
+        case 0x73: { BIT(reg_E, Bit::Bit6); return; }
+        case 0x74: { BIT(reg_H, Bit::Bit6); return; }
+        case 0x75: { BIT(reg_L, Bit::Bit6); return; }
+        case 0x76: { BIT(read_hl(), Bit::Bit6); return; }
+        case 0x77: { BIT(reg_A, Bit::Bit6); return; }
+        case 0x78: { BIT(reg_B, Bit::Bit7); return; }
+        case 0x79: { BIT(reg_C, Bit::Bit7); return; }
+        case 0x7A: { BIT(reg_D, Bit::Bit7); return; }
+        case 0x7B: { BIT(reg_E, Bit::Bit7); return; }
+        case 0x7C: { BIT(reg_H, Bit::Bit7); return; }
+        case 0x7D: { BIT(reg_L, Bit::Bit7); return; }
+        case 0x7E: { BIT(read_hl(), Bit::Bit7); return; }
+        case 0x7F: { BIT(reg_A, Bit::Bit7); return; }
 
-        case 0x80: { RES(0, reg_B); return; }
-        case 0x81: { RES(0, reg_C); return; }
-        case 0x82: { RES(0, reg_D); return; }
-        case 0x83: { RES(0, reg_E); return; }
-        case 0x84: { RES(0, reg_H); return; }
-        case 0x85: { RES(0, reg_L); return; }
-        case 0x86: { RES_HL(0); return; }
-        case 0x87: { RES(0, reg_A); return; }
-        case 0x88: { RES(1, reg_B); return; }
-        case 0x89: { RES(1, reg_C); return; }
-        case 0x8A: { RES(1, reg_D); return; }
-        case 0x8B: { RES(1, reg_E); return; }
-        case 0x8C: { RES(1, reg_H); return; }
-        case 0x8D: { RES(1, reg_L); return; }
-        case 0x8E: { RES_HL(1); return; }
-        case 0x8F: { RES(1, reg_A); return; }
+        case 0x80: { RES(reg_B, Bit::Bit0); return; }
+        case 0x81: { RES(reg_C, Bit::Bit0); return; }
+        case 0x82: { RES(reg_D, Bit::Bit0); return; }
+        case 0x83: { RES(reg_E, Bit::Bit0); return; }
+        case 0x84: { RES(reg_H, Bit::Bit0); return; }
+        case 0x85: { RES(reg_L, Bit::Bit0); return; }
+        case 0x86: { RES_HL(Bit::Bit0); return; }
+        case 0x87: { RES(reg_A, Bit::Bit0); return; }
+        case 0x88: { RES(reg_B, Bit::Bit1); return; }
+        case 0x89: { RES(reg_C, Bit::Bit1); return; }
+        case 0x8A: { RES(reg_D, Bit::Bit1); return; }
+        case 0x8B: { RES(reg_E, Bit::Bit1); return; }
+        case 0x8C: { RES(reg_H, Bit::Bit1); return; }
+        case 0x8D: { RES(reg_L, Bit::Bit1); return; }
+        case 0x8E: { RES_HL(Bit::Bit1); return; }
+        case 0x8F: { RES(reg_A, Bit::Bit1); return; }
 
-        case 0x90: { RES(2, reg_B); return; }
-        case 0x91: { RES(2, reg_C); return; }
-        case 0x92: { RES(2, reg_D); return; }
-        case 0x93: { RES(2, reg_E); return; }
-        case 0x94: { RES(2, reg_H); return; }
-        case 0x95: { RES(2, reg_L); return; }
-        case 0x96: { RES_HL(2); return; }
-        case 0x97: { RES(2, reg_A); return; }
-        case 0x98: { RES(3, reg_B); return; }
-        case 0x99: { RES(3, reg_C); return; }
-        case 0x9A: { RES(3, reg_D); return; }
-        case 0x9B: { RES(3, reg_E); return; }
-        case 0x9C: { RES(3, reg_H); return; }
-        case 0x9D: { RES(3, reg_L); return; }
-        case 0x9E: { RES_HL(3); return; }
-        case 0x9F: { RES(3, reg_A); return; }
+        case 0x90: { RES(reg_B, Bit::Bit2); return; }
+        case 0x91: { RES(reg_C, Bit::Bit2); return; }
+        case 0x92: { RES(reg_D, Bit::Bit2); return; }
+        case 0x93: { RES(reg_E, Bit::Bit2); return; }
+        case 0x94: { RES(reg_H, Bit::Bit2); return; }
+        case 0x95: { RES(reg_L, Bit::Bit2); return; }
+        case 0x96: { RES_HL(Bit::Bit2); return; }
+        case 0x97: { RES(reg_A, Bit::Bit2); return; }
+        case 0x98: { RES(reg_B, Bit::Bit3); return; }
+        case 0x99: { RES(reg_C, Bit::Bit3); return; }
+        case 0x9A: { RES(reg_D, Bit::Bit3); return; }
+        case 0x9B: { RES(reg_E, Bit::Bit3); return; }
+        case 0x9C: { RES(reg_H, Bit::Bit3); return; }
+        case 0x9D: { RES(reg_L, Bit::Bit3); return; }
+        case 0x9E: { RES_HL(Bit::Bit3); return; }
+        case 0x9F: { RES(reg_A, Bit::Bit3); return; }
 
-        case 0xA0: { RES(4, reg_B); return; }
-        case 0xA1: { RES(4, reg_C); return; }
-        case 0xA2: { RES(4, reg_D); return; }
-        case 0xA3: { RES(4, reg_E); return; }
-        case 0xA4: { RES(4, reg_H); return; }
-        case 0xA5: { RES(4, reg_L); return; }
-        case 0xA6: { RES_HL(4); return; }
-        case 0xA7: { RES(4, reg_A); return; }
-        case 0xA8: { RES(5, reg_B); return; }
-        case 0xA9: { RES(5, reg_C); return; }
-        case 0xAA: { RES(5, reg_D); return; }
-        case 0xAB: { RES(5, reg_E); return; }
-        case 0xAC: { RES(5, reg_H); return; }
-        case 0xAD: { RES(5, reg_L); return; }
-        case 0xAE: { RES_HL(5); return; }
-        case 0xAF: { RES(5, reg_A); return; }
+        case 0xA0: { RES(reg_B, Bit::Bit4); return; }
+        case 0xA1: { RES(reg_C, Bit::Bit4); return; }
+        case 0xA2: { RES(reg_D, Bit::Bit4); return; }
+        case 0xA3: { RES(reg_E, Bit::Bit4); return; }
+        case 0xA4: { RES(reg_H, Bit::Bit4); return; }
+        case 0xA5: { RES(reg_L, Bit::Bit4); return; }
+        case 0xA6: { RES_HL(Bit::Bit4); return; }
+        case 0xA7: { RES(reg_A, Bit::Bit4); return; }
+        case 0xA8: { RES(reg_B, Bit::Bit5); return; }
+        case 0xA9: { RES(reg_C, Bit::Bit5); return; }
+        case 0xAA: { RES(reg_D, Bit::Bit5); return; }
+        case 0xAB: { RES(reg_E, Bit::Bit5); return; }
+        case 0xAC: { RES(reg_H, Bit::Bit5); return; }
+        case 0xAD: { RES(reg_L, Bit::Bit5); return; }
+        case 0xAE: { RES_HL(Bit::Bit5); return; }
+        case 0xAF: { RES(reg_A, Bit::Bit5); return; }
 
-        case 0xB0: { RES(6, reg_B); return; }
-        case 0xB1: { RES(6, reg_C); return; }
-        case 0xB2: { RES(6, reg_D); return; }
-        case 0xB3: { RES(6, reg_E); return; }
-        case 0xB4: { RES(6, reg_H); return; }
-        case 0xB5: { RES(6, reg_L); return; }
-        case 0xB6: { RES_HL(6); return; }
-        case 0xB7: { RES(6, reg_A); return; }
-        case 0xB8: { RES(7, reg_B); return; }
-        case 0xB9: { RES(7, reg_C); return; }
-        case 0xBA: { RES(7, reg_D); return; }
-        case 0xBB: { RES(7, reg_E); return; }
-        case 0xBC: { RES(7, reg_H); return; }
-        case 0xBD: { RES(7, reg_L); return; }
-        case 0xBE: { RES_HL(7); return; }
-        case 0xBF: { RES(7, reg_A); return; }
+        case 0xB0: { RES(reg_B, Bit::Bit6); return; }
+        case 0xB1: { RES(reg_C, Bit::Bit6); return; }
+        case 0xB2: { RES(reg_D, Bit::Bit6); return; }
+        case 0xB3: { RES(reg_E, Bit::Bit6); return; }
+        case 0xB4: { RES(reg_H, Bit::Bit6); return; }
+        case 0xB5: { RES(reg_L, Bit::Bit6); return; }
+        case 0xB6: { RES_HL(Bit::Bit6); return; }
+        case 0xB7: { RES(reg_A, Bit::Bit6); return; }
+        case 0xB8: { RES(reg_B, Bit::Bit7); return; }
+        case 0xB9: { RES(reg_C, Bit::Bit7); return; }
+        case 0xBA: { RES(reg_D, Bit::Bit7); return; }
+        case 0xBB: { RES(reg_E, Bit::Bit7); return; }
+        case 0xBC: { RES(reg_H, Bit::Bit7); return; }
+        case 0xBD: { RES(reg_L, Bit::Bit7); return; }
+        case 0xBE: { RES_HL(Bit::Bit7); return; }
+        case 0xBF: { RES(reg_A, Bit::Bit7); return; }
 
-        case 0xC0: { SET(0, reg_B); return; }
-        case 0xC1: { SET(0, reg_C); return; }
-        case 0xC2: { SET(0, reg_D); return; }
-        case 0xC3: { SET(0, reg_E); return; }
-        case 0xC4: { SET(0, reg_H); return; }
-        case 0xC5: { SET(0, reg_L); return; }
-        case 0xC6: { SET_HL(0); return; }
-        case 0xC7: { SET(0, reg_A); return; }
-        case 0xC8: { SET(1, reg_B); return; }
-        case 0xC9: { SET(1, reg_C); return; }
-        case 0xCA: { SET(1, reg_D); return; }
-        case 0xCB: { SET(1, reg_E); return; }
-        case 0xCC: { SET(1, reg_H); return; }
-        case 0xCD: { SET(1, reg_L); return; }
-        case 0xCE: { SET_HL(1); return; }
-        case 0xCF: { SET(1, reg_A); return; }
+        case 0xC0: { SET(reg_B, Bit::Bit0); return; }
+        case 0xC1: { SET(reg_C, Bit::Bit0); return; }
+        case 0xC2: { SET(reg_D, Bit::Bit0); return; }
+        case 0xC3: { SET(reg_E, Bit::Bit0); return; }
+        case 0xC4: { SET(reg_H, Bit::Bit0); return; }
+        case 0xC5: { SET(reg_L, Bit::Bit0); return; }
+        case 0xC6: { SET_HL(Bit::Bit0); return; }
+        case 0xC7: { SET(reg_A, Bit::Bit0); return; }
+        case 0xC8: { SET(reg_B, Bit::Bit1); return; }
+        case 0xC9: { SET(reg_C, Bit::Bit1); return; }
+        case 0xCA: { SET(reg_D, Bit::Bit1); return; }
+        case 0xCB: { SET(reg_E, Bit::Bit1); return; }
+        case 0xCC: { SET(reg_H, Bit::Bit1); return; }
+        case 0xCD: { SET(reg_L, Bit::Bit1); return; }
+        case 0xCE: { SET_HL(Bit::Bit1); return; }
+        case 0xCF: { SET(reg_A, Bit::Bit1); return; }
 
-        case 0xD0: { SET(2, reg_B); return; }
-        case 0xD1: { SET(2, reg_C); return; }
-        case 0xD2: { SET(2, reg_D); return; }
-        case 0xD3: { SET(2, reg_E); return; }
-        case 0xD4: { SET(2, reg_H); return; }
-        case 0xD5: { SET(2, reg_L); return; }
-        case 0xD6: { SET_HL(2); return; }
-        case 0xD7: { SET(2, reg_A); return; }
-        case 0xD8: { SET(3, reg_B); return; }
-        case 0xD9: { SET(3, reg_C); return; }
-        case 0xDA: { SET(3, reg_D); return; }
-        case 0xDB: { SET(3, reg_E); return; }
-        case 0xDC: { SET(3, reg_H); return; }
-        case 0xDD: { SET(3, reg_L); return; }
-        case 0xDE: { SET_HL(3); return; }
-        case 0xDF: { SET(3, reg_A); return; }
+        case 0xD0: { SET(reg_B, Bit::Bit2); return; }
+        case 0xD1: { SET(reg_C, Bit::Bit2); return; }
+        case 0xD2: { SET(reg_D, Bit::Bit2); return; }
+        case 0xD3: { SET(reg_E, Bit::Bit2); return; }
+        case 0xD4: { SET(reg_H, Bit::Bit2); return; }
+        case 0xD5: { SET(reg_L, Bit::Bit2); return; }
+        case 0xD6: { SET_HL(Bit::Bit2); return; }
+        case 0xD7: { SET(reg_A, Bit::Bit2); return; }
+        case 0xD8: { SET(reg_B, Bit::Bit3); return; }
+        case 0xD9: { SET(reg_C, Bit::Bit3); return; }
+        case 0xDA: { SET(reg_D, Bit::Bit3); return; }
+        case 0xDB: { SET(reg_E, Bit::Bit3); return; }
+        case 0xDC: { SET(reg_H, Bit::Bit3); return; }
+        case 0xDD: { SET(reg_L, Bit::Bit3); return; }
+        case 0xDE: { SET_HL(Bit::Bit3); return; }
+        case 0xDF: { SET(reg_A, Bit::Bit3); return; }
 
-        case 0xE0: { SET(4, reg_B); return; }
-        case 0xE1: { SET(4, reg_C); return; }
-        case 0xE2: { SET(4, reg_D); return; }
-        case 0xE3: { SET(4, reg_E); return; }
-        case 0xE4: { SET(4, reg_H); return; }
-        case 0xE5: { SET(4, reg_L); return; }
-        case 0xE6: { SET_HL(4); return; }
-        case 0xE7: { SET(4, reg_A); return; }
-        case 0xE8: { SET(5, reg_B); return; }
-        case 0xE9: { SET(5, reg_C); return; }
-        case 0xEA: { SET(5, reg_D); return; }
-        case 0xEB: { SET(5, reg_E); return; }
-        case 0xEC: { SET(5, reg_H); return; }
-        case 0xED: { SET(5, reg_L); return; }
-        case 0xEE: { SET_HL(5); return; }
-        case 0xEF: { SET(5, reg_A); return; }
+        case 0xE0: { SET(reg_B, Bit::Bit4); return; }
+        case 0xE1: { SET(reg_C, Bit::Bit4); return; }
+        case 0xE2: { SET(reg_D, Bit::Bit4); return; }
+        case 0xE3: { SET(reg_E, Bit::Bit4); return; }
+        case 0xE4: { SET(reg_H, Bit::Bit4); return; }
+        case 0xE5: { SET(reg_L, Bit::Bit4); return; }
+        case 0xE6: { SET_HL(Bit::Bit4); return; }
+        case 0xE7: { SET(reg_A, Bit::Bit4); return; }
+        case 0xE8: { SET(reg_B, Bit::Bit5); return; }
+        case 0xE9: { SET(reg_C, Bit::Bit5); return; }
+        case 0xEA: { SET(reg_D, Bit::Bit5); return; }
+        case 0xEB: { SET(reg_E, Bit::Bit5); return; }
+        case 0xEC: { SET(reg_H, Bit::Bit5); return; }
+        case 0xED: { SET(reg_L, Bit::Bit5); return; }
+        case 0xEE: { SET_HL(Bit::Bit5); return; }
+        case 0xEF: { SET(reg_A, Bit::Bit5); return; }
 
-        case 0xF0: { SET(6, reg_B); return; }
-        case 0xF1: { SET(6, reg_C); return; }
-        case 0xF2: { SET(6, reg_D); return; }
-        case 0xF3: { SET(6, reg_E); return; }
-        case 0xF4: { SET(6, reg_H); return; }
-        case 0xF5: { SET(6, reg_L); return; }
-        case 0xF6: { SET_HL(6); return; }
-        case 0xF7: { SET(6, reg_A); return; }
-        case 0xF8: { SET(7, reg_B); return; }
-        case 0xF9: { SET(7, reg_C); return; }
-        case 0xFA: { SET(7, reg_D); return; }
-        case 0xFB: { SET(7, reg_E); return; }
-        case 0xFC: { SET(7, reg_H); return; }
-        case 0xFD: { SET(7, reg_L); return; }
-        case 0xFE: { SET_HL(7); return; }
-        case 0xFF: { SET(7, reg_A); return; }
+        case 0xF0: { SET(reg_B, Bit::Bit6); return; }
+        case 0xF1: { SET(reg_C, Bit::Bit6); return; }
+        case 0xF2: { SET(reg_D, Bit::Bit6); return; }
+        case 0xF3: { SET(reg_E, Bit::Bit6); return; }
+        case 0xF4: { SET(reg_H, Bit::Bit6); return; }
+        case 0xF5: { SET(reg_L, Bit::Bit6); return; }
+        case 0xF6: { SET_HL(Bit::Bit6); return; }
+        case 0xF7: { SET(reg_A, Bit::Bit6); return; }
+        case 0xF8: { SET(reg_B, Bit::Bit7); return; }
+        case 0xF9: { SET(reg_C, Bit::Bit7); return; }
+        case 0xFA: { SET(reg_D, Bit::Bit7); return; }
+        case 0xFB: { SET(reg_E, Bit::Bit7); return; }
+        case 0xFC: { SET(reg_H, Bit::Bit7); return; }
+        case 0xFD: { SET(reg_L, Bit::Bit7); return; }
+        case 0xFE: { SET_HL(Bit::Bit7); return; }
+        case 0xFF: { SET(reg_A, Bit::Bit7); return; }
 
         default: { throw std::runtime_error("How did you get here?"); }
     }
