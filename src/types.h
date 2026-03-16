@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <stdexcept>
 
 // Types
 using Byte = uint8_t;

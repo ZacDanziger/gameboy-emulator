@@ -2,9 +2,6 @@
 
 void Emulator::run() {
     while (display.poll_events()) {
-        if (LOGGING) {
-            cpu_logger.log();
-        }
         cpu.step();
     }
 }

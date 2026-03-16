@@ -51,27 +51,6 @@ TEST(BasicTest, TestReadWrite) {
 
 }
 
-TEST(ScreenTest, TestBackgroundLoad) {
-    GTEST_SKIP();
-
-    MMU mmu;
-    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
-            []{});
-    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
-                [&ppu]{ ppu.update(); });
-
-    mmu.init(&timer, &ppu);
-
-    create_data<VRAM_SIZE>();
-
-    ppu.write(LCDC_REGISTER, 0x81);
-
-    mmu.load(VRAM_START, "numbers.txt");
-
-    for (int i = 0; i < 114; i++) {
-        timer.tick();
-    }
-}
 
 TEST(ScreenTest, DMGAcid2) {
 

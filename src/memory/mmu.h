@@ -10,6 +10,7 @@
 #include "../utils/utils.h"
 #include "../timer/timer.h"
 #include "../ppu/ppu.h"
+#include "../mbc/mbc.h"
 
 
 /**
@@ -23,8 +24,6 @@
 class MMU {
     public:
         MMU() :
-            rom_bank_00{},
-            rom_bank_nn{},
             wram_bank_00{},
             wram_bank_nn{},
             io_registers{},
@@ -39,7 +38,6 @@ class MMU {
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
         
-        void load(const Address address, const std::string& filename);
         void load_rom(const std::string& filename);
 
         void request_interrupt(Interrupt interrupt);
@@ -47,10 +45,7 @@ class MMU {
     private:
         Timer *timer;
         PPU *ppu;
-
-        // WILL BE MBC:
-        std::array<Byte, ROM_BANK_SIZE> rom_bank_00;       // 0x0000 - 0x3FFF
-        std::array<Byte, ROM_BANK_SIZE> rom_bank_nn;       // 0x4000 - 0x7FFF
+        std::unique_ptr<MBC> mbc;
 
         std::array<Byte, WRAM_BANK_SIZE> wram_bank_00;     // 0xC000 - 0xCFFF
         std::array<Byte, WRAM_BANK_SIZE> wram_bank_nn;     // 0xD000 - 0xDFFF

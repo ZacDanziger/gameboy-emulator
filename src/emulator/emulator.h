@@ -7,14 +7,10 @@
 #include "../ppu/ppu.h"
 #include "../display/display.h"
 
-#include "../utils/logger.h"
-
 #include <thread>
 #include <chrono>
 
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
-
-const bool LOGGING = false;
 
 class Emulator {
     public:
@@ -27,18 +23,12 @@ class Emulator {
                 [this]{ this->on_frame_ready(); }),
             cpu(),
 
-            last_frame_time(std::chrono::steady_clock::now()),
-
-            cpu_logger(&cpu)
+            last_frame_time(std::chrono::steady_clock::now())
             {
                 mmu.init(&timer, &ppu);
                 cpu.init(&timer, &mmu);
 
                 mmu.load_rom(rom_file);
-
-                if (LOGGING) {
-                    cpu_logger.init_ofstream("/Users/zacdanziger/Documents/Personal/Coding/gameboy-emulator/build/cpu_log.txt");
-                }
             }
 
         void run();
@@ -49,8 +39,6 @@ class Emulator {
         CPU cpu;
         PPU ppu;
         // APU
-
-        CPULogger cpu_logger;
         
         std::chrono::steady_clock::time_point last_frame_time;
         void on_frame_ready();
