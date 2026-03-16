@@ -1,18 +1,20 @@
-#ifndef MBC1_H
-#define MBC1_H
+#ifndef MBC3_H
+#define MBC3_H
 
 #include "mbc.h"
 
-class MBC1 : public MBC {
+class MBC3 : public MBC {
     public:
-        MBC1(std::vector<Byte> rom, size_t ram_size, bool has_battery) :
+        MBC3(std::vector<Byte> rom, size_t ram_size, bool has_battery) :
             rom(std::move(rom)),
             eram(ram_size, 0xFF),
 
             rom_bank(1),
             secondary_bank(0),
+
+            latch_prev(0xFF),
+
             ram_enable(false),
-            banking_mode(false),
             has_battery(has_battery)
         {
             num_rom_banks = rom.size() / ROM_BANK_SIZE;
@@ -28,14 +30,15 @@ class MBC1 : public MBC {
         std::vector<Byte> eram;
 
         Byte rom_bank;
-        Byte secondary_bank;    // either RAM bank number, or upper 2 bits of ROM bank number
+        Byte secondary_bank;
 
+        Byte latch_prev;
         size_t num_rom_banks;
 
         bool ram_enable;
-        bool banking_mode;
-
         bool has_battery;
+
+        Byte rtc_read() const;
 };
 
-#endif  // MBC1_H
+#endif  // MBC3_H

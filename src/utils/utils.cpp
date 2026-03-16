@@ -29,6 +29,17 @@ std::vector<uint8_t> read_file(const std::string& filename) {
     return data;
 }
 
+void write_file(const std::string& filename, const std::vector<Byte>& data) {
+    std::ofstream outfile(filename, std::fstream::binary);
+
+    if (!outfile.is_open()) {
+        throw std::runtime_error("Cannot open file");
+    }
+
+    outfile.write(reinterpret_cast<const char*>(data.data()), data.size());
+    outfile.close();
+}
+
 
 /**
  * Append a line to an output file

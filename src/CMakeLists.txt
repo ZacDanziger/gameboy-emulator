@@ -9,6 +9,7 @@ set (SourceFiles
     display/display.cpp
     mbc/mbc0.cpp
     mbc/mbc1.cpp
+    mbc/mbc3.cpp
     emulator/emulator.cpp
 )
 

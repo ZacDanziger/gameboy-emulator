@@ -1,6 +1,7 @@
 #include "mmu.h"
 #include "../mbc/mbc0.h"
-#include"../mbc/mbc1.h"
+#include "../mbc/mbc1.h"
+#include "../mbc/mbc3.h"
 
  
 void MMU::init(Timer* timer_ptr, PPU* ppu_ptr) {
@@ -182,6 +183,8 @@ void MMU::write(Address address, Byte data) {
  * @param filename the filename containing the data to be read from
 */
 void MMU::load_rom(const std::string& filename) {
+    rom_filename = filename;
+
     std::vector<Byte> data = read_file(filename);
 
     // check header checksum
@@ -197,20 +200,58 @@ void MMU::load_rom(const std::string& filename) {
     Byte mbc_type = data[MBC_TYPE];
     Byte ram_size = data[CART_RAM_SIZE];
 
-    switch (mbc_type) {
+    size_t ram_size_bytes = 0;
+    switch(ram_size) {
     case 0x00:
-        mbc = std::make_unique<MBC0>(std::move(data), ram_size);
-        break;
-    case 0x01:
-        mbc = std::make_unique<MBC1>(std::move(data), 0);
+        ram_size_bytes = 0;
         break;
     case 0x02:
+        ram_size_bytes = ERAM_BANK_SIZE;
+        break;
     case 0x03:
-        mbc = std::make_unique<MBC1>(std::move(data), ram_size);
+        ram_size_bytes = 4 * ERAM_BANK_SIZE;
+        break;
+    case 0x04:
+        ram_size_bytes = 16 * ERAM_BANK_SIZE;
+        break;
+    case 0x05:
+        ram_size_bytes = 8 * ERAM_BANK_SIZE;
+        break;
+    default:
+        throw std::runtime_error("Unsupported RAM size type");
+    }
+
+    switch (mbc_type) {
+    case 0x00:
+        mbc = std::make_unique<MBC0>(std::move(data), ram_size_bytes);
+        break;
+    case 0x01:
+        mbc = std::make_unique<MBC1>(std::move(data), 0, false);
+        break;
+    case 0x02:
+        mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, false);
+        break;
+    case 0x03:
+        mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, true);
+        break;
+    case 0x0F:
+        mbc = std::make_unique<MBC3>(std::move(data), 0, true);
+        break;
+    case 0x11:
+        mbc = std::make_unique<MBC3>(std::move(data), 0, false);
+        break;
+    case 0x12:
+        mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, false);
+        break;
+    case 0x10:
+    case 0x13:
+        mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, true);
         break;
     default:
         throw std::runtime_error("Unsupported MBC type");
     }
+
+    mbc->load(rom_filename);
 }
 
 
@@ -255,6 +296,11 @@ void MMU::set_key(Key key, bool pressed) {
         target = &direction_keys;
         bit = Bit::Bit3;
         break;
+    case Key::L:
+        if(mbc) {
+            mbc->load(rom_filename);
+        }
+        return;
     }
 
     if (pressed) {

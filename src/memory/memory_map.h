@@ -37,7 +37,7 @@ constexpr Address HRAM_START         = 0xFF80;
 
 constexpr uint16_t ROM_BANK_SIZE     = 16 * KiB; 
 constexpr uint16_t VRAM_SIZE         = 8 * KiB;
-constexpr uint16_t ERAM_SIZE         = 8 * KiB;
+constexpr uint16_t ERAM_BANK_SIZE    = 8 * KiB;
 constexpr uint16_t WRAM_BANK_SIZE    = 4 * KiB;
 constexpr uint16_t ECHO_RAM_SIZE     = 0x1E00;
 constexpr uint16_t OAM_SIZE          = 0x00A0;

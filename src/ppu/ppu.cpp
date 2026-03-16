@@ -339,9 +339,9 @@ void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
 
         if (pixel_color_id != 0) {
             background_priority[pixel_column] = true;
-            int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
-            frame_buffer[buffer_index] = color_id_to_argb(pixel_color_id, background_palette);
         }
+        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+        frame_buffer[buffer_index] = color_id_to_argb(pixel_color_id, background_palette);
     }
 
     window_line_counter += 1;
