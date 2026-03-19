@@ -125,8 +125,11 @@ void CPU::handle_interrupts() {
     }
 
     interrupts_enabled = false;
-    // IMPLEMENT 5 M-CYCLE INTERRUPT 
-    // timer->cycle(5);
+
+    // 2 m-cycle delay before calling RST
+    //  https://gbdev.io/pandocs/Interrupts.html#interrupt-handling
+    timer->tick();
+    timer->tick();
 
     //V-Blank interrupt
     if ((ie_register & 0x01) & (if_register & 0x01)) {

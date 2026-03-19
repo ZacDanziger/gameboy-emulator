@@ -6,7 +6,7 @@
 #include "../utils/utils.h"
 #include "../memory/memory_map.h"
 
-
+constexpr int TILES_PER_BANK = 384; // 3 tile blocks of 128 tiles each
 
 constexpr int CYCLES_PER_SCANLINE = 114;
 constexpr int SCANLINES_PER_FRAME = 154;
@@ -62,10 +62,14 @@ class PPU {
             object_palette_1(0x00),
             window_y(0x00),
             window_x(0x00),
+
+            vram_bank(0x00),
+
             mode(Mode::VBLANK),
             cycles(0),
             window_line_counter(0),
-            debug_check(false)
+
+            cgb_mode(false)
         {}
 
         Byte read(const Address address) const;
@@ -76,9 +80,9 @@ class PPU {
         std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> get_frame() const { return frame_buffer; }
 
         void update();
-
+        inline void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
         void dump_oam();
-        bool debug_check;
+
 
     private:
         struct Tile {
@@ -89,11 +93,11 @@ class PPU {
         InterruptCallback request_interrupt;
         FrameCallback frame_ready;
         
-        std::array<Byte, VRAM_SIZE> vram;      // 0x8000 - 0x9FFF
-        std::array<Byte, OAM_SIZE> oam;        // 0xFE00 - 0xFE9F
+        std::array<Byte, 2 * VRAM_SIZE> vram;      // 0x8000 - 0x9FFF, two banks on CGB
+        std::array<Byte, OAM_SIZE> oam;            // 0xFE00 - 0xFE9F
         // TODO: Add Color RAM
 
-        std::array<Tile, 384> tile_cache;      //3 tile blocks of 128 tiles each
+        std::array<Tile, 2 * TILES_PER_BANK> tile_cache;
         std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> frame_buffer;
         
         // PPU's IO Registers
@@ -110,9 +114,13 @@ class PPU {
         Byte window_y;                    // WY REGISTER
         Byte window_x;                    // WX REGISTER
 
+        // CGB Registers
+        Byte vram_bank;                   // VBK REGISTER
+
         Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
         int cycles;
         int window_line_counter;
+        bool cgb_mode;
 
         void draw_scanline();
         void draw_background(std::array<bool, SCREEN_WIDTH>& background_priority);
@@ -121,7 +129,7 @@ class PPU {
         
         // Helper functions
         Address get_tile_address(const Byte tile_id)const ;
-        int address_to_index(const Address tile_address) const { return static_cast<int>((tile_address - VRAM_START) >> 4); }
+        int address_to_index(const Address tile_address) const;
 
         std::array<int, 8> fetch_pixel_slice(const Byte low_byte, const Byte high_byte) const;
         void refresh_tile(const Address tile_address);

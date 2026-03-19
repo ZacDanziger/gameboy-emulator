@@ -6,7 +6,14 @@ Byte PPU::read(const Address address) const {
         if (mode == Mode::TRANSFER) {
             return 0xFF;
         }
-        return vram[address - VRAM_START];
+
+        uint32_t adjusted_address = static_cast<uint32_t>(address);
+        if (cgb_mode) {
+            adjusted_address += vram_bank * VRAM_SIZE;
+        }
+        adjusted_address -= VRAM_START;
+
+        return vram[adjusted_address];
     }
 
     if (address >= OAM_START && address < NOT_USABLE_START) {
@@ -41,6 +48,8 @@ Byte PPU::read(const Address address) const {
         return window_y;
     case WX_REGISTER:
         return window_x;
+    case VBK_REGISTER:
+        return vram_bank;
     default:
         throw std::runtime_error("PPU read called on wrong address");
     }
@@ -49,13 +58,21 @@ Byte PPU::read(const Address address) const {
 
 void PPU::write(const Address address, const Byte value) {
     if (address >= VRAM_START && address < ERAM_START) {
-        if (mode != Mode::TRANSFER) {
-            vram[address - VRAM_START] = value;
+        if (mode == Mode::TRANSFER) {
+            return;
+        }
 
-            if (address < TILE_MAP_0_START) {
-                int index = address_to_index(address);
-                tile_cache[index].dirty = true;
-            }
+        uint32_t adjusted_address = static_cast<uint32_t>(address);
+        if (cgb_mode) {
+            adjusted_address += vram_bank * VRAM_SIZE;
+        }
+        adjusted_address -= VRAM_START;
+
+        vram[adjusted_address] = value;
+
+        if (address < TILE_MAP_0_START) {
+            int index = address_to_index(address);
+            tile_cache[index].dirty = true;
         }
         return;
     }
@@ -67,9 +84,6 @@ void PPU::write(const Address address, const Byte value) {
         return;
     }
 
-    // only used for lcd_stat, but I have to initialize outside of switch statement
-    Byte masked_value = value & 0xF8;
-
     switch(address) {
     case LCDC_REGISTER:
         lcd_control = value;
@@ -79,7 +93,7 @@ void PPU::write(const Address address, const Byte value) {
     // https://gbdev.io/pandocs/STAT.html#spurious-stat-interrupts
     case STAT_REGISTER:
         // Bits 0-2 are read-only
-        lcd_status = masked_value;
+        lcd_status = (value & 0xF8);
         break;
     case SCY_REGISTER:
         viewport_y = value;
@@ -111,6 +125,10 @@ void PPU::write(const Address address, const Byte value) {
     case WX_REGISTER:
         window_x = value;
         break;
+    case VBK_REGISTER:
+        if (!cgb_mode) { break; }
+        vram_bank = (value & 0x01);
+        break;
     default:
         throw std::runtime_error("PPU write called on wrong address");
     }
@@ -128,7 +146,7 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
     switch (address)
     {
     case VRAM_START:
-        size = std::min(data.size(), (size_t)VRAM_SIZE);
+        size = std::min(data.size(), (size_t)(2 * VRAM_SIZE));
         std::copy_n(data.begin(), size, vram.begin());
         break;
     case OAM_START:
@@ -234,7 +252,7 @@ void PPU::draw_scanline() {
     // default initialization is all false
     std::array<bool, SCREEN_WIDTH> background_priority{};
 
-    // Fill scanline with whiter than normal
+    // Fill scanline with white
     int buffer_index = lcd_y * SCREEN_WIDTH;
     std::fill(
         frame_buffer.begin() + buffer_index,
@@ -242,11 +260,10 @@ void PPU::draw_scanline() {
         dmg_palette[0]
     );
 
-    if (is_set(lcd_control, Bit::Bit0)) {
+    if ((cgb_mode) || (is_set(lcd_control, Bit::Bit0))) {
         draw_background(background_priority);
     }
 
-    // change this behavior when converting to CGB
     if ((is_set(lcd_control, Bit::Bit5))) {
         draw_window(background_priority);
     }
@@ -288,6 +305,12 @@ void PPU::draw_background(std::array<bool, SCREEN_WIDTH>& background_priority) {
         int pixel_color_id = tile_cache[index].pixels[((y % 8) << 3) + (x % 8)];
         if (pixel_color_id != 0) {
             background_priority[pixel_column] = true;
+        }
+
+        // CGB Mode - LCDC Bit 0 doesn't disable background - it permanently sets obj prio > bg/window prio
+        bool cgb_check = cgb_mode && is_set(lcd_control, Bit::Bit0);
+        if (cgb_check) {
+            background_priority[pixel_column] = false;
         }
 
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
@@ -347,11 +370,7 @@ void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
     window_line_counter += 1;
 }
 
-/**
- * --- UNTESTED ---
- * 
- * I HOPE TO GOD THIS WORKS, THIS BITCH COMPLICATED
- */
+
 void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority) {
     // stored as height - 1 so boundary checks are lcd_y <= sprite_y + sprite_height
     int sprite_height = is_set(lcd_control, Bit::Bit2) ? 15: 7;
@@ -368,7 +387,8 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 
     std::array<SpritePixel, SCREEN_WIDTH> sprite_buffer{};
 
-    // Do lowest priority sprites first, so higher priority ones will overwrite on overlap
+    // loop over all the sprites, marking which pixel belongs to which sprite according to the
+    //  relevant priority rules
     for (int i = 0; i < 10; i++) {
         // when you get to your first 0 address, there are no more sprites
         if (selected_sprites[i] == 0x0000) {
@@ -386,9 +406,18 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
         bool priority = is_set(sprite_attributes, Bit::Bit7);
         bool flip_y = is_set(sprite_attributes, Bit::Bit6);
         bool flip_x = is_set(sprite_attributes, Bit::Bit5);
-        // DMG palette
-        // TODO: switch to CGB palette system
-        Byte palette = is_set(sprite_attributes, Bit::Bit4) ? object_palette_1 : object_palette_0;
+
+        // int vram_bank = 0;
+        // if (cgb_mode) {
+        //     vram_bank = is_set(sprite_attributes, Bit::Bit4) ? 1 : 0;
+        // }
+
+        Byte palette = 0x00;
+        if (cgb_mode) {
+            palette = sprite_attributes & 0x07;
+        } else {
+            palette = is_set(sprite_attributes, Bit::Bit4) ? object_palette_1 : object_palette_0;
+        }
 
         // if sprite is offscreen, skip it
         if ((sprite_x_pos == 0) || (sprite_x_pos >= 168)) {
@@ -413,7 +442,12 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 
         // sprites only use 8000 addressing mode
         Address tile_address = TILE_DATA_0 + (16 * sprite_tile_index);
-        int index = address_to_index(tile_address);
+
+        // essentially the same as address_to_index(), just using the sprite's selector over the ppu's
+        int index = (tile_address - VRAM_START) >> 4;
+        if (cgb_mode && (is_set(sprite_attributes, Bit::Bit4))) {
+            index += TILES_PER_BANK;
+        }
 
         if (tile_cache[index].dirty) {
             refresh_tile(tile_address);
@@ -437,11 +471,10 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 
             int color_id = tile_cache[index].pixels[(y * 8) + x];
 
-            // weird priority behavior stuff
-            // NOTE: take out x-coord check when moving to CGB
+            // if current pixel is already claimed, check claiming sprites priority vs current sprites
             if (color_id != 0) {
                 if ((sprite_buffer[pixel_column].color_id != 0) &&
-                    (sprite_buffer[pixel_column].x_coord <= sprite_x_pos))
+                    ((cgb_mode) || (sprite_buffer[pixel_column].x_coord <= sprite_x_pos)))
                 {
                     continue;
                 }
@@ -450,6 +483,7 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
         }
     }
 
+    // 2nd pass - set the pixels to the sprite that owns them's pixel value 
     for (int pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
 
         if ((sprite_buffer[pixel_column].color_id == 0) || 
@@ -479,6 +513,12 @@ Address PPU::get_tile_address(const Byte tile_id) const {
         int8_t signed_id = static_cast<int8_t>(tile_id);
         return static_cast<Address>(static_cast<int16_t>(TILE_DATA_1) + (signed_id * 16));
     }
+}
+
+int PPU::address_to_index(const Address tile_address) const {
+    int index = static_cast<int>((tile_address - VRAM_START) >> 4);
+    index += vram_bank * TILES_PER_BANK;
+    return index;
 }
 
 

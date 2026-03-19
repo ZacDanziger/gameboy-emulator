@@ -126,7 +126,7 @@ constexpr Address WX_REGISTER        = 0xFF4B;  // Window X position
 constexpr Address KEY0_SYS_REGISTER  = 0xFF4C;  // CPU mode select
 constexpr Address KEY1_SPD_REGISTER  = 0xFF4D;  // Prepare speed switch
 
-constexpr Address VBK_REGISTER       = 0xFF4F;  // VRAM Bank (only bit 0 matters)
+constexpr Address VBK_REGISTER       = 0xFF4F;  // VRAM Bank
 constexpr Address BANK_REGISTER      = 0xFF50;  // Boot ROM mapping control
 
 constexpr Address HDMA1_REGISTER     = 0xFF51;  // VRAM DMA source high

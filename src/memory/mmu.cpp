@@ -37,11 +37,18 @@ Byte MMU::read(Address address) const {
     }  
 
     // WRAM read
-    if (address < WRAM_BANK_NN_START) {
-        return wram_bank_00[address - WRAM_BANK_00_START];
-    }
     if (address < ECHO_START) {
-        return wram_bank_nn[address - WRAM_BANK_NN_START];
+        // read from bank 0
+        if (address < WRAM_BANK_NN_START) {
+            return wram[address - WRAM_BANK_00_START];
+        }
+
+        // read from switchable bank 1-7
+        uint32_t adjusted_address = static_cast<uint32_t>(address);
+        if (cgb_mode) {
+            adjusted_address += wram_bank * WRAM_BANK_SIZE;
+        }
+        return wram[adjusted_address - WRAM_BANK_00_START];
     }
 
     // OAM read
@@ -49,8 +56,13 @@ Byte MMU::read(Address address) const {
         return ppu->read(address);
     }
 
+    // NOT USABLE read
+    if (address < IO_START) {
+        throw std::runtime_error("MMU read called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
+    }
+
     // IO registers read
-    if (address >= IO_START && address < HRAM_START) {
+    if (address < HRAM_START) {
         if (address == JOYP_REGISTER) {
             Byte joypad = io_registers[JOYP_REGISTER - IO_START];
 
@@ -65,6 +77,9 @@ Byte MMU::read(Address address) const {
                 return 0x3F;
             }
         }
+        if (address == SVBK_WBK_REGISTER) {
+            return wram_bank;
+        }
 
         // Timer IO registers
         if (address >= DIV_REGISTER && address <= TAC_REGISTER) {
@@ -74,14 +89,19 @@ Byte MMU::read(Address address) const {
         // TODO: APU IO registers here
 
         // PPU IO registers
-        if (address >= LCDC_REGISTER && address <= WX_REGISTER) {
+        if ((address >= LCDC_REGISTER && address <= WX_REGISTER) ||
+            (address == VBK_REGISTER) ||
+            (address >= BCPS_BGPI_REGISTER && address <= OPRI_REGISTER))
+        {
             return ppu->read(address);
         }
+
         return io_registers[address - IO_START];
     }
     if (address < IE_REGISTER)       { return hram[address - HRAM_START]; }
     if (address == IE_REGISTER)      { return ie_register; }
-    throw std::runtime_error("Cannot read from that area of memory");
+
+    throw std::runtime_error("MMU read called on invalid address");
 }
 
 
@@ -116,12 +136,19 @@ void MMU::write(Address address, Byte data) {
         address -= 0x2000;
     }
     // WRAM write
-    if (address >= WRAM_BANK_00_START && address < WRAM_BANK_NN_START) {
-        wram_bank_00[address - WRAM_BANK_00_START] = data;
-        return;
-    }
     if (address < ECHO_START) {
-        wram_bank_nn[address - WRAM_BANK_NN_START] = data;
+        // bank 0 write
+        if (address < WRAM_BANK_NN_START) {
+            wram[address - WRAM_BANK_00_START] = data;
+            return;
+        }
+
+        // switchable bank 1-7 write
+        uint32_t adjusted_address = static_cast<uint32_t>(address);
+        if (cgb_mode) {
+            adjusted_address += wram_bank * WRAM_BANK_SIZE;
+        }
+        wram[adjusted_address - WRAM_BANK_00_START] = data;
         return;
     }
 
@@ -131,12 +158,24 @@ void MMU::write(Address address, Byte data) {
         return;
     }
 
+    // NOT USABLE write
+    if (address < IO_START) {
+        throw std::runtime_error("MMU write called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
+    }
+
     // IO registers write
-    if (address >= IO_START && address < HRAM_START) {
+    if (address < HRAM_START) {
         if (address == JOYP_REGISTER) {
             // lower nibble of JOYP is read-only
             data &= 0xF0;
         }
+
+        if (address == SVBK_WBK_REGISTER) {
+            wram_bank = data & 0x07;
+            if (wram_bank == 0) {
+                wram_bank = 1;
+            }
+        } 
 
         // Timer IO registers
         if (address >= DIV_REGISTER && address <= TAC_REGISTER) {
@@ -147,13 +186,17 @@ void MMU::write(Address address, Byte data) {
         // TODO: APU IO registers here
 
         // PPU IO registers
-        if (address >= LCDC_REGISTER && address <= WX_REGISTER) {
+        if ((address >= LCDC_REGISTER && address <= WX_REGISTER) ||
+            (address == VBK_REGISTER) ||
+            (address >= BCPS_BGPI_REGISTER && address <= OPRI_REGISTER)) 
+        {
+
             ppu->write(address, data);
 
             if (address == DMA_REGISTER) {
                 oam_dma_transfer(data);
             }
-        return;
+            return;
         }
 
         io_registers[address - IO_START] = data;
@@ -172,13 +215,15 @@ void MMU::write(Address address, Byte data) {
         return;
     }
 
-    throw std::runtime_error("Cannot write to that area of memory");
+    throw std::runtime_error("MMU write called on invalid address");
 }
 
 
 /**
  * Writes the data in a file to both ROM banks.
  * There must be more than 0x8000 bytes of data in the file or an error will be thrown
+ * 
+ * TODO: Set CGB flag here
  * 
  * @param filename the filename containing the data to be read from
 */
@@ -199,6 +244,8 @@ void MMU::load_rom(const std::string& filename) {
 
     Byte mbc_type = data[MBC_TYPE];
     Byte ram_size = data[CART_RAM_SIZE];
+    cgb_mode = (data[CGB_FLAG] == 0x80) || (data[CGB_FLAG] == 0xC0);
+    ppu->set_cgb_mode(cgb_mode);
 
     size_t ram_size_bytes = 0;
     switch(ram_size) {

@@ -17,21 +17,19 @@
  * Memory Management Unit
  * Represents all memory in the gameboy
  * Byte-addressable 16-bit address size
- *      currently handles ROM, VRAM, WRAM, ECHO RAM, I/O REGISTERS, HRAM, and IE REGISTER
- *      currently does not handle ERAM, and OAM
- * TODO: implement VRAM lockout
 */
 class MMU {
     public:
         MMU() :
-            wram_bank_00{},
-            wram_bank_nn{},
+            wram{},
             io_registers{},
+            wram_bank(0x01),
             hram{},
             ie_register(0x00),
             button_keys(0x0F),
             direction_keys(0x0F),
-            rom_filename()
+            rom_filename(),
+            cgb_mode(false)
         {}
         
         ~MMU() {
@@ -54,11 +52,11 @@ class MMU {
         PPU *ppu;
         std::unique_ptr<MBC> mbc;
 
-        std::array<Byte, WRAM_BANK_SIZE> wram_bank_00;     // 0xC000 - 0xCFFF
-        std::array<Byte, WRAM_BANK_SIZE> wram_bank_nn;     // 0xD000 - 0xDFFF
+        std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
 
         // PROBABLY DIVIDE UP
         std::array<Byte, IO_REG_SIZE> io_registers;        // 0xFF00 - 0xFF7F
+        Byte wram_bank;                                    // SVBK_WBK_REGISTER
 
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
         Byte ie_register;                                  // 0xFFFF
@@ -68,6 +66,7 @@ class MMU {
         Byte direction_keys;
 
         std::string rom_filename;
+        bool cgb_mode;
 
         void oam_dma_transfer(const Byte value);
 };

@@ -133,8 +133,6 @@ void MBC3::save(const std::string& filename) const {
 
     write_file(save_file, eram);
 
-    // dump(eram, "../build/eram_dump.txt");
-
     return;
 }
 
@@ -152,8 +150,6 @@ void MBC3::load(const std::string& filename) {
     file.close();
 
     eram = read_file(save_file);
-
-    dump(eram, "../build/eram_load_dump.txt");
 
     return;
 }
