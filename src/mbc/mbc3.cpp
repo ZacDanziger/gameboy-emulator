@@ -1,7 +1,5 @@
 #include "mbc3.h"
 
-#include <iostream>
-
 Byte MBC3::read(const Address address) const {
     uint32_t adjusted_address = 0x00000000;
 

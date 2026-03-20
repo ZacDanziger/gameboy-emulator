@@ -21,8 +21,8 @@ class CPU {
 
         void step();
         
-        bool is_halted() { return halted; }
-        bool is_stopped() { return stopped; }
+        bool is_halted() const { return halted; }
+        bool is_stopped() const { return stopped; }
 
         std::string serial_buffer;  // probably don't leave in
     private:

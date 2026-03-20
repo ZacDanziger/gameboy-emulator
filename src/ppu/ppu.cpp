@@ -612,8 +612,14 @@ void PPU::draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority
         bool bg_is_occupied = ((background_priority[pixel_column] & BGPriority::Occupied) == BGPriority::Occupied);
         bool bg_has_priority = ((background_priority[pixel_column] & BGPriority::HighPriority) == BGPriority::HighPriority);
         bool oam_defers = sprite_buffer[pixel_column].priority;
-        bool background_wins = (cgb_mode && is_set(lcd_control, Bit::Bit0) && 
-                                (bg_has_priority || oam_defers) && (bg_is_occupied));
+        
+        bool background_wins = false;
+        if (cgb_mode) {
+            background_wins = is_set(lcd_control, Bit::Bit0) && 
+                                (bg_has_priority || oam_defers) && (bg_is_occupied);
+        } else {
+            background_wins = oam_defers && bg_is_occupied;
+        }
 
 
         if ((sprite_buffer[pixel_column].color_id == 0) || 

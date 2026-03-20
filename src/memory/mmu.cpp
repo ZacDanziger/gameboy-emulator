@@ -223,8 +223,6 @@ void MMU::write(Address address, Byte data) {
  * Writes the data in a file to both ROM banks.
  * There must be more than 0x8000 bytes of data in the file or an error will be thrown
  * 
- * TODO: Set CGB flag here
- * 
  * @param filename the filename containing the data to be read from
 */
 void MMU::load_rom(const std::string& filename) {
@@ -303,7 +301,7 @@ void MMU::load_rom(const std::string& filename) {
 
 
 void MMU::request_interrupt(Interrupt interrupt) {
-    io_registers[0x0F] |= static_cast<Byte>(interrupt);
+    io_registers[IF_REGISTER - IO_START] |= static_cast<Byte>(interrupt);
 }
 
 void MMU::set_key(Key key, bool pressed) {
