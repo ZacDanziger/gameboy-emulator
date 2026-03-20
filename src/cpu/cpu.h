@@ -65,6 +65,10 @@ class CPU {
         bool halted;
         bool stopped;
 
+        // one of the many possible outcomes of STOP is entering HALT mode
+        //      which will automatically exit after 0x8000 m-cycles
+        bool stop_call_halt_delay;
+
         constexpr static Byte reset_vector[8]{
             0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38
         };
@@ -104,7 +108,7 @@ class CPU {
         void CCF();
         void SCF();
         void HALT();
-        // void STOP();    // not implemented
+        void STOP();
         void DI();
         void EI();
 

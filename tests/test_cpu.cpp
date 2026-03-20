@@ -524,6 +524,33 @@ TEST(IndividualTest, CPUTest11) {
     EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");
 }
 
+TEST(InstructionTest, CompositeTest) {
+    // GTEST_SKIP();
+    std::string filename = "../../gb-test-roms/cpu_instrs/cpu_instrs.gb";
+
+    CPU cpu;
+    MMU mmu;
+    PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+            []{});
+    Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
+                [&ppu]{ ppu.update(); });
+
+    mmu.init(&timer, &ppu);
+    cpu.init(&timer, &mmu);
+
+    EXPECT_NO_THROW(
+        mmu.load_rom(filename)
+    );
+
+    int i = 0;
+    while(!cpu.is_stopped()) {
+        cpu.step();
+        i++;
+    }
+
+    EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");
+}
+
 TEST(TimingTest, InstrTiming) {
     // GTEST_SKIP();
     std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
@@ -571,9 +598,8 @@ TEST(TimingTest, InstrTiming) {
     EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");
 }
 
-// probably fails due to no MBC, check back when MBC is implemented
 TEST(TimingTest, MemTiming01) {
-    GTEST_SKIP();
+    // GTEST_SKIP();
     std::string filename = "../../gb-test-roms/mem_timing/individual/01-read_timing.gb";
 
     CPU cpu;

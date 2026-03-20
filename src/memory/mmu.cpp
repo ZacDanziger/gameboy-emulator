@@ -343,11 +343,6 @@ void MMU::set_key(Key key, bool pressed) {
         target = &direction_keys;
         bit = Bit::Bit3;
         break;
-    case Key::L:
-        if(mbc) {
-            mbc->load(rom_filename);
-        }
-        return;
     }
 
     if (pressed) {

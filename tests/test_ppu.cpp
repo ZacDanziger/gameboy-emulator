@@ -53,8 +53,16 @@ TEST(BasicTest, TestReadWrite) {
 
 
 TEST(ScreenTest, DMGAcid2) {
-
+    GTEST_SKIP();
     std::string filename = "../../gb-test-roms/dmg-acid2.gb";
+
+    Emulator emulator(filename);
+    emulator.run();
+}
+
+TEST(ScreenTest, CGBAcid2) {
+    // GTEST_SKIP();
+    std::string filename = "../../gb-test-roms/cgb-acid2.gbc";
 
     Emulator emulator(filename);
     emulator.run();

@@ -16,6 +16,9 @@ Byte MBC1::read(const Address address) const {
     // read from bank nn
     if (address < VRAM_START) {
         Address adjusted_rom_bank = (secondary_bank << 5) | rom_bank;
+
+        adjusted_rom_bank %= num_rom_banks;
+
         adjusted_address = address - ROM_BANK_NN_START;
         adjusted_address += (adjusted_rom_bank * ROM_BANK_SIZE);
 
@@ -58,8 +61,8 @@ void MBC1::write(const Address address, const Byte data) {
             rom_bank = 1;
         }
 
-        // clamp rom bank selected to number of rom banks available
-        rom_bank %= num_rom_banks;
+        // // clamp rom bank selected to number of rom banks available
+        // rom_bank %= num_rom_banks;
         return;
     }
 

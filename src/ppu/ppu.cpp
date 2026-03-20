@@ -50,6 +50,16 @@ Byte PPU::read(const Address address) const {
         return window_x;
     case VBK_REGISTER:
         return vram_bank;
+    case BCPS_BGPI_REGISTER:
+        return background_palette_index;
+    case BCPD_BGPD_REGISTER:
+        return background_color_ram[background_palette_index & 0x3F];
+    case OCPS_OGPI_REGISTER:
+        return object_palette_index;
+    case OCPD_OGPD_REGISTER:
+        return object_color_ram[object_palette_index & 0x3F];
+    case OPRI_REGISTER:
+        return object_priority;
     default:
         throw std::runtime_error("PPU read called on wrong address");
     }
@@ -128,6 +138,33 @@ void PPU::write(const Address address, const Byte value) {
     case VBK_REGISTER:
         if (!cgb_mode) { break; }
         vram_bank = (value & 0x01);
+        break;
+    case BCPS_BGPI_REGISTER:
+        if (!cgb_mode) { break; }
+        background_palette_index = value;
+        break;
+    case BCPD_BGPD_REGISTER:
+        if (!cgb_mode) { break; }
+        background_color_ram[background_palette_index & 0x3F] = value;
+        // if increment is set, increment
+        if (is_set(background_palette_index, Bit::Bit7)) {
+            background_palette_index = ((background_palette_index & 0x80) | ((background_palette_index + 1) & 0x3F));
+        }
+        break;
+    case OCPS_OGPI_REGISTER:
+        if (!cgb_mode) { break; }
+        object_palette_index = value;
+        break;
+    case OCPD_OGPD_REGISTER:
+        if (!cgb_mode) { break; }
+        object_color_ram[object_palette_index & 0x3F] = value;
+        if (is_set(object_palette_index, Bit::Bit7)) {
+            object_palette_index = ((object_palette_index & 0x80) | ((object_palette_index + 1) & 0x3F));
+        }
+        break;
+    case OPRI_REGISTER:
+        if (!cgb_mode) { break; }
+        object_priority = value;
         break;
     default:
         throw std::runtime_error("PPU write called on wrong address");
@@ -249,8 +286,8 @@ void PPU::update() {
 
 
 void PPU::draw_scanline() {
-    // default initialization is all false
-    std::array<bool, SCREEN_WIDTH> background_priority{};
+    // default initialization is None
+    std::array<BGPriority, SCREEN_WIDTH> background_priority{};
 
     // Fill scanline with white
     int buffer_index = lcd_y * SCREEN_WIDTH;
@@ -277,7 +314,7 @@ void PPU::draw_scanline() {
 /**
  * Draw one line of the background to the frame buffer
  */
-void PPU::draw_background(std::array<bool, SCREEN_WIDTH>& background_priority) {
+void PPU::draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_priority) {
     uint8_t y = viewport_y + lcd_y;
     // divide by 8 to get the correct tile row
     uint8_t tile_row = y >> 3;  // number between 0-31
@@ -296,33 +333,67 @@ void PPU::draw_background(std::array<bool, SCREEN_WIDTH>& background_priority) {
         // can't use read during Mode 3, which we will always be in during this function call
         Byte tile_id = vram[tile_lookup - VRAM_START];
         Address tile_address = get_tile_address(tile_id);
-        int index = address_to_index(tile_address);
+
+        /**
+         * CGB tile attribute data
+         * All fields will be 0 if not in cgb mode
+         */
+        Byte tile_attributes = cgb_mode ? vram[tile_lookup - VRAM_START + VRAM_SIZE] : 0x00;
+        int tile_bank = is_set(tile_attributes, Bit::Bit3) ? 1 : 0;
+        int palette = tile_attributes & 0x07;
+        bool flip_x = is_set(tile_attributes, Bit::Bit5);
+        bool flip_y = is_set(tile_attributes, Bit::Bit6);
+
+        if (is_set(tile_attributes, Bit::Bit7)) {
+            background_priority[pixel_column] |= BGPriority::HighPriority;
+        }
+
+        int index = address_to_index(tile_address, tile_bank);
 
         if (tile_cache[index].dirty) {
-            refresh_tile(tile_address);
+            refresh_tile(tile_address, tile_bank);
         }
+        
+        int row = flip_y ? (7 - (y % 8)) : (y % 8);
+        int col = flip_x ? (7 - (x % 8)) : (x % 8);
 
-        int pixel_color_id = tile_cache[index].pixels[((y % 8) << 3) + (x % 8)];
+        int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
         if (pixel_color_id != 0) {
-            background_priority[pixel_column] = true;
+            background_priority[pixel_column] |= BGPriority::Occupied;
         }
 
-        // CGB Mode - LCDC Bit 0 doesn't disable background - it permanently sets obj prio > bg/window prio
-        bool cgb_check = cgb_mode && is_set(lcd_control, Bit::Bit0);
-        if (cgb_check) {
-            background_priority[pixel_column] = false;
+        /**
+         * CGB Priority rules
+         * 
+         * LCDC Bit 0 | OAM Attr Bit 7 | BG Attr Bit 7 | Priority
+         * -----------|----------------|---------------|---------
+         *       0    |        0       |        0      |   OBJ
+         *       0    |        0       |        1      |   OBJ
+         *       0    |        1       |        0      |   OBJ
+         *       0    |        1       |        1      |   OBJ
+         *       1    |        0       |        0      |   OBJ
+         *       1    |        0       |        1      |   BG color 1-3, otherwise OBJ
+         *       1    |        1       |        0      |   BG color 1-3, otherwise OBJ
+         *       1    |        1       |        1      |   BG color 1-3, otherwise OBJ
+         * 
+         * Table source: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
+         */
+
+        if (cgb_mode && (!is_set(lcd_control, Bit::Bit0))) {
+            background_priority[pixel_column] = BGPriority::None;
         }
 
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
 
-        frame_buffer[buffer_index] = color_id_to_argb(pixel_color_id, background_palette);
+        frame_buffer[buffer_index] = cgb_mode ? 
+            color_id_to_argb(pixel_color_id, palette) : color_id_to_argb(pixel_color_id, background_palette);
     }
 }
 
 /**
  * Draw one line of the window to the frame buffer
  */
-void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
+void PPU::draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority) {
     if ((lcd_y < window_y) || (window_x >= 167)) {
         return;
     }
@@ -352,26 +423,66 @@ void PPU::draw_window(std::array<bool, SCREEN_WIDTH>& background_priority) {
         // can't use read during Mode 3, which we will always be in during this function call
         Byte tile_id = vram[tile_lookup - VRAM_START];
         Address tile_address = get_tile_address(tile_id);
-        int index = address_to_index(tile_address);
+
+        /**
+         * CGB tile attribute data
+         * All fields will be 0 if not in cgb mode
+         */
+        Byte tile_attributes = cgb_mode ? vram[tile_lookup - VRAM_START + VRAM_SIZE] : 0x00;
+        int tile_bank = is_set(tile_attributes, Bit::Bit3) ? 1 : 0;
+        int palette = tile_attributes & 0x07;
+        bool flip_x = is_set(tile_attributes, Bit::Bit5);
+        bool flip_y = is_set(tile_attributes, Bit::Bit6);
+
+        if (is_set(tile_attributes, Bit::Bit7)) {
+            background_priority[pixel_column] = background_priority[pixel_column] | BGPriority::HighPriority;
+        }
+
+        int index = address_to_index(tile_address, tile_bank);
 
         if (tile_cache[index].dirty) {
-            refresh_tile(tile_address);
+            refresh_tile(tile_address, tile_bank);
         }
 
-        int pixel_color_id = tile_cache[index].pixels[((y % 8) << 3) + (x % 8)];
+        int row = flip_y ? (7 - (y % 8)) : (y % 8);
+        int col = flip_x ? (7 - (x % 8)) : (x % 8);
+
+        int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
 
         if (pixel_color_id != 0) {
-            background_priority[pixel_column] = true;
+            background_priority[pixel_column] = background_priority[pixel_column] | BGPriority::Occupied;
         }
+
+        /**
+         * CGB Priority rules
+         * 
+         * LCDC Bit 0 | OAM Attr Bit 7 | BG Attr Bit 7 | Priority
+         * -----------|----------------|---------------|---------
+         *       0    |        0       |        0      |   OBJ
+         *       0    |        0       |        1      |   OBJ
+         *       0    |        1       |        0      |   OBJ
+         *       0    |        1       |        1      |   OBJ
+         *       1    |        0       |        0      |   OBJ
+         *       1    |        0       |        1      |   BG color 1-3, otherwise OBJ
+         *       1    |        1       |        0      |   BG color 1-3, otherwise OBJ
+         *       1    |        1       |        1      |   BG color 1-3, otherwise OBJ
+         * 
+         * Table source: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
+         */
+        if (cgb_mode && (!is_set(lcd_control, Bit::Bit0))) {
+            background_priority[pixel_column] = BGPriority::None;
+        }
+
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
-        frame_buffer[buffer_index] = color_id_to_argb(pixel_color_id, background_palette);
+        frame_buffer[buffer_index] = cgb_mode ? 
+            color_id_to_argb(pixel_color_id, palette) : color_id_to_argb(pixel_color_id, background_palette);
     }
 
     window_line_counter += 1;
 }
 
 
-void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority) {
+void PPU::draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority) {
     // stored as height - 1 so boundary checks are lcd_y <= sprite_y + sprite_height
     int sprite_height = is_set(lcd_control, Bit::Bit2) ? 15: 7;
 
@@ -407,10 +518,10 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
         bool flip_y = is_set(sprite_attributes, Bit::Bit6);
         bool flip_x = is_set(sprite_attributes, Bit::Bit5);
 
-        // int vram_bank = 0;
-        // if (cgb_mode) {
-        //     vram_bank = is_set(sprite_attributes, Bit::Bit4) ? 1 : 0;
-        // }
+        int bank = is_set(sprite_attributes, Bit::Bit3) ? 1: 0;
+        if (!cgb_mode) {
+            bank = 0;
+        }
 
         Byte palette = 0x00;
         if (cgb_mode) {
@@ -442,18 +553,13 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 
         // sprites only use 8000 addressing mode
         Address tile_address = TILE_DATA_0 + (16 * sprite_tile_index);
-
-        // essentially the same as address_to_index(), just using the sprite's selector over the ppu's
-        int index = (tile_address - VRAM_START) >> 4;
-        if (cgb_mode && (is_set(sprite_attributes, Bit::Bit4))) {
-            index += TILES_PER_BANK;
-        }
+        int index = address_to_index(tile_address, bank);
 
         if (tile_cache[index].dirty) {
-            refresh_tile(tile_address);
+            refresh_tile(tile_address, bank);
         }
 
-        // iterate over the sprite's 8 pixels in this line, as long as they're in [0,159]
+        // 1st pass - iterate over the sprite's 8 pixels in this line, as long as they're in [0,159]
         int pixel_column = -1;
         for (int j = 8; j > 0; j--) {
             pixel_column = sprite_x_pos - j;
@@ -485,15 +591,39 @@ void PPU::draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority
 
     // 2nd pass - set the pixels to the sprite that owns them's pixel value 
     for (int pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
+        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+
+        /**
+         * CGB Priority rules
+         * 
+         * LCDC Bit 0 | OAM Attr Bit 7 | BG Attr Bit 7 | Priority
+         * -----------|----------------|---------------|---------
+         *       0    |        0       |        0      |   OBJ
+         *       0    |        0       |        1      |   OBJ
+         *       0    |        1       |        0      |   OBJ
+         *       0    |        1       |        1      |   OBJ
+         *       1    |        0       |        0      |   OBJ
+         *       1    |        0       |        1      |   BG color 1-3, otherwise OBJ
+         *       1    |        1       |        0      |   BG color 1-3, otherwise OBJ
+         *       1    |        1       |        1      |   BG color 1-3, otherwise OBJ
+         * 
+         * Table source: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
+         */
+        bool bg_is_occupied = ((background_priority[pixel_column] & BGPriority::Occupied) == BGPriority::Occupied);
+        bool bg_has_priority = ((background_priority[pixel_column] & BGPriority::HighPriority) == BGPriority::HighPriority);
+        bool oam_defers = sprite_buffer[pixel_column].priority;
+        bool background_wins = (cgb_mode && is_set(lcd_control, Bit::Bit0) && 
+                                (bg_has_priority || oam_defers) && (bg_is_occupied));
+
 
         if ((sprite_buffer[pixel_column].color_id == 0) || 
-            (sprite_buffer[pixel_column].priority && background_priority[pixel_column]))
+            (background_wins))
         {
             continue;
         }
-        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+        
 
-        frame_buffer[buffer_index] = color_id_to_argb(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette);
+        frame_buffer[buffer_index] = color_id_to_argb(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette, true);
     }
 }
 
@@ -515,9 +645,15 @@ Address PPU::get_tile_address(const Byte tile_id) const {
     }
 }
 
-int PPU::address_to_index(const Address tile_address) const {
+
+int PPU::address_to_index(const Address tile_address, int bank) const {
+    // bank 1 only enabled in CGB mode
+    if (!cgb_mode) {
+        bank = 0;
+    }
+
     int index = static_cast<int>((tile_address - VRAM_START) >> 4);
-    index += vram_bank * TILES_PER_BANK;
+    index += bank * TILES_PER_BANK;
     return index;
 }
 
@@ -549,7 +685,11 @@ std::array<int, 8> PPU::fetch_pixel_slice(const Byte low_byte, const Byte high_b
  * 
  * @param tile_address the starting address of a tile of 16 bytes
  */
-void PPU::refresh_tile(const Address tile_address) {
+void PPU::refresh_tile(const Address tile_address, int bank) {
+    if (!cgb_mode) {
+        bank = 0;
+    }
+
     std::array<int, 64> tile_pixels{};
     std::array<int, 8> pixel_row{};
 
@@ -558,19 +698,21 @@ void PPU::refresh_tile(const Address tile_address) {
     Address byte_address = 0x0000;
 
 
+    uint32_t adjusted_address = tile_address - VRAM_START;
+    adjusted_address += bank * VRAM_SIZE;
     for (int i = 0; i < 8; i++) {
-        byte_address = tile_address + (2 * i);
+        byte_address = adjusted_address + (2 * i);
 
         // can't use read during mode 3, which we are always in when this function is called
-        low_byte = vram[byte_address - VRAM_START];
-        high_byte = vram[byte_address - VRAM_START + 1];
+        low_byte = vram[byte_address];
+        high_byte = vram[byte_address + 1];
 
         pixel_row = fetch_pixel_slice(low_byte, high_byte);
 
         std::copy_n(pixel_row.begin(), 8, tile_pixels.begin() + (8 * i));
     }
 
-    int index = address_to_index(tile_address);
+    int index = address_to_index(tile_address, bank);
     std::copy(tile_pixels.begin(), tile_pixels.end(), tile_cache[index].pixels.begin());
     tile_cache[index].dirty = false;
 }
@@ -578,19 +720,33 @@ void PPU::refresh_tile(const Address tile_address) {
 
 /**
  * Converts color ids to RGBA32, according to the current palette 
- * --- NEED TO IMPLEMENT OTHER PALETTES ---
  * 
  * @param color_id a number in range [0,3]
  * @param palette byte that matches color ids in the range [0,3] to palette indices in the range[0,3]
  * @returns the RGBA32 color value associated with that color id
  */
-RGBA32 PPU::color_id_to_argb(const int color_id, const Byte palette) const {
+RGBA32 PPU::color_id_to_argb(const int color_id, const Byte palette, const bool is_sprite) const {
     if ((color_id < 0) || (color_id >= 4)) {
         throw std::runtime_error("color id must be a value between 0 and 3 (inclusive)");
     }
 
-    int shade = (palette >> (color_id * 2)) & 0x03;
-    return dmg_palette[shade];
+    // DMG mode
+    // TODO: come back and implement DMG compatibility palettes instead of using hardcoded one
+    if (!cgb_mode) {
+        int shade = (palette >> (color_id * 2)) & 0x03;
+        return dmg_palette[shade];
+    }
+
+    int index = (palette * 8) + (color_id * 2);
+    const std::array<Byte, 64>& ram = is_sprite ? object_color_ram : background_color_ram;
+
+    Word color = ram[index + 1] << 8 | ram[index];
+
+    Byte red = (color & 0x1F) << 3;
+    Byte green = ((color >> 5) & 0x1F) << 3;
+    Byte blue = ((color >> 10) & 0x1F) << 3;
+
+    return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
 }
 
 
@@ -619,14 +775,4 @@ std::array<Address, 10> PPU::select_sprites(const int sprite_height) {
     }
 
     return selected_sprites;
-}
-
-
-void PPU::dump_oam() {
-    std::vector<Byte> data(OAM_SIZE);
-    std::copy(oam.begin(), oam.end(), data.begin());
-
-    std::string out_file = "/Users/zacdanziger/Documents/Personal/Coding/gameboy-emulator/build/oam_dump.txt";
-
-    dump(data, out_file);
 }

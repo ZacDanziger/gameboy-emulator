@@ -29,6 +29,25 @@ constexpr RGBA32 dmg_green_palette[4] = {
     0x081820FF  // Darkest / almost black
 };
 
+enum class BGPriority : Byte {
+    None = 0x00,
+    Occupied = 0x01,
+    HighPriority = 0x02
+};
+
+inline BGPriority operator|(BGPriority a, BGPriority b) {
+    return static_cast<BGPriority>(static_cast<Byte>(a) | static_cast<Byte>(b));
+}
+
+inline BGPriority operator&(BGPriority a, BGPriority b) {
+    return static_cast<BGPriority>(static_cast<Byte>(a) & static_cast<Byte>(b)); 
+}
+
+inline BGPriority& operator|=(BGPriority& a, BGPriority b) {
+    a = a | b;
+    return a;
+}
+
 // NOTE: PPU locks VRAM during mode 3, locks OAM during modes 2 & 3
 // NOTE: 1 frame is 16.74 ms, not exactly 1/60th of a second (16.67 ms)
 // NOTE: Until MBC is working, just use bank 0 of VRAM
@@ -47,6 +66,9 @@ class PPU {
             vram{},
             oam{},
 
+            background_color_ram{},
+            object_color_ram{},
+
             tile_cache{},
             frame_buffer{},
 
@@ -64,6 +86,9 @@ class PPU {
             window_x(0x00),
 
             vram_bank(0x00),
+            background_palette_index(0x00),
+            object_palette_index(0x00),
+            object_priority(0x00),
 
             mode(Mode::VBLANK),
             cycles(0),
@@ -81,8 +106,6 @@ class PPU {
 
         void update();
         inline void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
-        void dump_oam();
-
 
     private:
         struct Tile {
@@ -95,7 +118,10 @@ class PPU {
         
         std::array<Byte, 2 * VRAM_SIZE> vram;      // 0x8000 - 0x9FFF, two banks on CGB
         std::array<Byte, OAM_SIZE> oam;            // 0xFE00 - 0xFE9F
-        // TODO: Add Color RAM
+        
+        // CGB only
+        std::array<Byte, 64> background_color_ram;
+        std::array<Byte, 64> object_color_ram;
 
         std::array<Tile, 2 * TILES_PER_BANK> tile_cache;
         std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> frame_buffer;
@@ -116,6 +142,10 @@ class PPU {
 
         // CGB Registers
         Byte vram_bank;                   // VBK REGISTER
+        Byte background_palette_index;    // BCPS/BCPI REGISTER
+        Byte object_palette_index;        // OCPS/OCPI REGISTER
+        Byte object_priority;             // OPRI REGISTER - not currently used, may change in future
+
 
         Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
         int cycles;
@@ -123,18 +153,18 @@ class PPU {
         bool cgb_mode;
 
         void draw_scanline();
-        void draw_background(std::array<bool, SCREEN_WIDTH>& background_priority);
-        void draw_window(std::array<bool, SCREEN_WIDTH>& background_priority);
-        void draw_sprites(const std::array<bool, SCREEN_WIDTH>& background_priority);
+        void draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_priority);
+        void draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority);
+        void draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority);
         
         // Helper functions
         Address get_tile_address(const Byte tile_id)const ;
-        int address_to_index(const Address tile_address) const;
+        int address_to_index(const Address tile_address, int bank = 0) const;
 
         std::array<int, 8> fetch_pixel_slice(const Byte low_byte, const Byte high_byte) const;
-        void refresh_tile(const Address tile_address);
+        void refresh_tile(const Address tile_address, int bank = 0);
 
-        RGBA32 color_id_to_argb(const int color_id, const Byte palette) const;
+        RGBA32 color_id_to_argb(const int color_id, const Byte palette, const bool is_sprite = false) const;
 
         std::array<Address, 10> select_sprites(const int sprite_height);
 };

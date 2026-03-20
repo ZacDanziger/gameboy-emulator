@@ -26,6 +26,7 @@ CPU::CPU() {
     ei_pending = false;
     halted = false;
     stopped = false;
+    stop_call_halt_delay = false;
     timer = nullptr;
     mmu = nullptr;
 }
@@ -43,11 +44,27 @@ void CPU::init(Timer* timer_ptr, MMU* mmu_ptr) {
 
 
 /**
- * Perform one loop of the fetch, decode, execute cycle
+ * Perform one loop of the fetch -> decode -> execute cycle
 */
 void CPU::step() {
-    // need to implement HALT bug
+    while(stopped) {
+        if (mmu->any_button_pressed()) {
+            stopped = false;
+        }
+    }
+
+    // TODO: implement halt bug
      while(halted) {
+        // if we entered HALT from a STOP call when a speed switch was requested, exit HALT after 0x8000 m-cycles
+        int counter = 0;
+        if (stop_call_halt_delay) {
+            if (counter == 0x8000) {
+                halted = false;
+                stop_call_halt_delay = false;
+            }
+            counter++;
+        }
+
         if ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0) {
             handle_interrupts();
             halted = false;
@@ -382,13 +399,61 @@ void CPU::HALT() {
  * Stops the program
  * - - - -
  * 
- * NEED TO IMPLEMENT WEIRD STOP BEHAVIOR
+ * TODO: call speed switch here, when that exists
+ * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
  */
-// void CPU::STOP() {
-//     stopped = true;
-//     // Account for 2nd byte, naive
-//     reg_PC++;
-// }
+void CPU::STOP() {
+    bool interrupt_pending = ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) != 0x00);
+
+    // check if a button is being pressed
+    if (mmu->any_button_pressed()) {
+        if (interrupt_pending) {
+            // stop is a 1 byte opcode, mode doesn't change, DIV is not reset
+            return;
+        } 
+
+        // stop is a 2 byte opcode, HALT mode is entered, DIV is not reset
+        reg_PC++;
+        halted = true;
+        return;
+    }
+
+    // check if a speed switch is requested
+    if (is_set(mmu->read(KEY1_SPD_REGISTER), Bit::Bit0)) {
+        if (interrupt_pending) {
+            if (interrupts_enabled) {
+                // stop is a 1 byte opcode, mode doesn't change, DIV is reset, CPU speed switches
+                mmu->write(DIV_REGISTER, 0x00);
+
+                // TODO: speed switch here, when that exists
+            }
+
+            // CPU glitches non-deterministically
+            // I'm just going to return here and not worry about that
+            return;
+        }
+
+        // stop is a 2 byte opcode, HALT mode is entered, DIV is reset, CPU speed switches
+        reg_PC++;
+        halted = true;
+        mmu->write(DIV_REGISTER, 0x00);
+
+        // TODO: speed switch here, when that exists
+        return;
+    }
+
+    if (interrupt_pending) {
+        // stop is a 1 byte opcode, STOP mode is entered, DIV is reset
+        stopped = true;
+        mmu->write(DIV_REGISTER, 0x00);
+        return;
+    }
+
+    // stop is a 2 byte opcode, STOP mode is entered, DIV is reset
+    reg_PC++;
+    stopped = true;
+    mmu->write(DIV_REGISTER, 0x00);
+}
 
 
 /**

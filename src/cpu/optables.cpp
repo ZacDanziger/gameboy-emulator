@@ -33,7 +33,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x0E: { LD(reg_C, fetch()); return; }                  // C <- n8
         case 0x0F: { RRA(true); return; }                           // RRCA
 
-        case 0x10: { throw std::runtime_error("Cannot do STOP right now"); }    // STOP
+        case 0x10: { STOP(); return; }                              // STOP
         case 0x11: { LD(DE, fetch16()); return; }                   // D <- n16[15:8], E <- n16[7:0]
         case 0x12: { LD(get_pair(DE), reg_A); return; }             // memory[DE] <- A
         case 0x13: { INC(DE); timer->tick(); return; }              // DE++

@@ -3,7 +3,7 @@ My GameBoy Color project to keep from getting rusty on my leave of absence
 
 ## TODO:
 * CPU
-    * Implement weird STOP behavior
+    * Debug STOP loop
     * Implement HALT bug
     * Change code block in step() that deals with serial interrupt, handle that somewhere else
     * Implement double speed mode

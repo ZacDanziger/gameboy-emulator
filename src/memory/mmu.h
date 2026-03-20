@@ -47,6 +47,8 @@ class MMU {
 
         void request_interrupt(Interrupt interrupt);
         void set_key(Key key, bool pressed);
+
+        inline bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
     private:
         Timer *timer;
         PPU *ppu;

@@ -76,9 +76,6 @@ bool Display::poll_events() {
             case SDL_SCANCODE_DOWN:
                 on_key_event(Key::Down, pressed);
                 break;
-            case SDL_SCANCODE_L:
-                on_key_event(Key::L, pressed);
-                break;
             default:
                 break;
             }

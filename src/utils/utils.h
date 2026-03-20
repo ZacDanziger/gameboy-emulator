@@ -18,29 +18,6 @@ inline void reset_bit(Byte& byte, const Bit bit) { byte &= ~static_cast<Byte>(bi
 // functions for testing //
 
 void write_line(std::ofstream& out, const std::string& line);
-
-/**
- * Create a [size] number of random bytes, and write that "numbers.txt"
- */
-template <size_t size>
-void create_data() {
-    std::array<uint8_t, size> array;
-    std::srand(std::time(NULL));
-    std::ofstream out("numbers.txt", std::fstream::binary);
-
-    if (!out.is_open()) {
-        throw std::runtime_error("Cannot open file");
-    }
-
-
-    for (int i = 0; i < size; i++) {
-        array[i] = static_cast<uint8_t> (std::rand() % 0xFF);
-    }
-
-    out.write(reinterpret_cast<const char*>(array.data()), array.size());
-    out.close();
-}
-
 void dump(const std::vector<Byte>& data, const std::string& out_filename);
 
 #endif  // UTILS_H
