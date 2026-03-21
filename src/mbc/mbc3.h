@@ -13,11 +13,17 @@ class MBC3 : public MBC {
             secondary_bank(0),
 
             latch_prev(0xFF),
+            latched_seconds(0x00),
+            latched_minutes(0x00),
+            latched_hours(0x00),
+            latched_days_low(0x00),
+            latched_days_high(0x00),
 
             ram_enable(false),
             has_battery(has_battery)
         {
             num_rom_banks = rom.size() / ROM_BANK_SIZE;
+            rtc_start_time = std::chrono::system_clock::now();
         }
 
         Byte read(const Address address) const override;
@@ -33,12 +39,21 @@ class MBC3 : public MBC {
         Byte secondary_bank;
 
         Byte latch_prev;
+        Byte latched_seconds;
+        Byte latched_minutes;
+        Byte latched_hours;
+        Byte latched_days_low;
+        Byte latched_days_high;
+
+        std::chrono::system_clock::time_point rtc_start_time;
+
         size_t num_rom_banks;
 
         bool ram_enable;
         bool has_battery;
 
         Byte rtc_read() const;
+        void latch_time();
 };
 
 #endif  // MBC3_H

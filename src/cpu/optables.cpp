@@ -246,7 +246,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xD6: { SUB(fetch(), false); return; }                 // A -= n8
         case 0xD7: { RST(reset_vector[2]); return; }                //  memory[SP] <- PC; PC = 0x0000
         case 0xD8: { (RET_IF(FLAG_CARRY, true)); return; }          // RET C
-        case 0xD9: { RET(); EI(); return; }                         // RETI
+        case 0xD9: { RET(); interrupts_enabled = true; return; }    // RETI
         case 0xDA: { (JP_IF(FLAG_CARRY, true)); return; }           // JP C, a16
         case 0xDB: { throw std::runtime_error("Opcode: DB is bad"); } // --- BAD ---
         case 0xDC: { (CALL_IF(FLAG_CARRY, true)); return; }         // CALL C, a16
@@ -293,7 +293,7 @@ void CPU::decode_execute(const Byte opcode) {
 }
 
 /**
- * CBG Rotates, Shifts, and Bit Operations
+ * CB Prefix Rotates, Shifts, and Bit Operations
  * 
  * @return the number of m-cycles taken to execute the command
 */

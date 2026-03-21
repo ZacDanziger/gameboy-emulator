@@ -6,14 +6,14 @@
  *     https://gbdev.io/pandocs/Power_Up_Sequence.html
  */
 CPU::CPU() {    
-    reg_A = 0x01;
-    reg_F = 0xB0;
+    reg_A = 0x11;
+    reg_F = 0x80;
     reg_B = 0x00;
-    reg_C = 0x13;
-    reg_D = 0x00;
-    reg_E = 0xD8;
-    reg_H = 0x01;
-    reg_L = 0x4D;
+    reg_C = 0x00;
+    reg_D = 0xFF;
+    reg_E = 0x56;
+    reg_H = 0x00;
+    reg_L = 0x0D;
     reg_SP = 0xFFFE;
     reg_PC = 0x0100;
 
@@ -26,7 +26,8 @@ CPU::CPU() {
     ei_pending = false;
     halted = false;
     stopped = false;
-    stop_call_halt_delay = false;
+    speed_switch_halt = false;
+
     timer = nullptr;
     mmu = nullptr;
 }
@@ -51,16 +52,21 @@ void CPU::step() {
         if (mmu->any_button_pressed()) {
             stopped = false;
         }
+
+        if (serial_buffer.find("Passed") != std::string::npos ||
+            serial_buffer.find("Failed") != std::string::npos) {
+                stopped = false;
+            }
     }
 
     // TODO: implement halt bug
+    int counter = 0;
      while(halted) {
         // if we entered HALT from a STOP call when a speed switch was requested, exit HALT after 0x8000 m-cycles
-        int counter = 0;
-        if (stop_call_halt_delay) {
+        if (speed_switch_halt) {
             if (counter == 0x8000) {
                 halted = false;
-                stop_call_halt_delay = false;
+                speed_switch_halt = false;
             }
             counter++;
         }
@@ -97,30 +103,6 @@ void CPU::step() {
         // clear 
         mmu->write(SC_REGISTER, 0x00);
     }
-}
-
-
-/**
- * Resets the CPU Registers and flags to their post boot ROM state
- */
-void CPU::reset() {
-    reg_A = 0x11;
-    reg_F = 0x80;
-    reg_B = 0x00;
-    reg_C = 0x00;
-    reg_D = 0xFF;
-    reg_E = 0x56;
-    reg_H = 0x00;
-    reg_L = 0x0D;
-    AF = {&reg_A, &reg_F};
-    BC = {&reg_B, &reg_C};
-    DE = {&reg_D, &reg_E};
-    HL = {&reg_H, &reg_L};
-    reg_SP = 0xFFFE;
-    reg_PC = 0x0100;
-    interrupts_enabled = false;
-    halted = false;
-    stopped = false;
 }
 
 
@@ -425,7 +407,14 @@ void CPU::STOP() {
                 // stop is a 1 byte opcode, mode doesn't change, DIV is reset, CPU speed switches
                 mmu->write(DIV_REGISTER, 0x00);
 
-                // TODO: speed switch here, when that exists
+                // true if currently double speed, false if currently normal speed
+                bool current_speed = timer->get_double_speed();
+
+                // change current speed
+                timer->set_double_speed(!current_speed);
+
+                // clear the switch armed bit in KEY1
+                mmu->write(KEY1_SPD_REGISTER, 0x00);
             }
 
             // CPU glitches non-deterministically
@@ -436,9 +425,14 @@ void CPU::STOP() {
         // stop is a 2 byte opcode, HALT mode is entered, DIV is reset, CPU speed switches
         reg_PC++;
         halted = true;
+        speed_switch_halt = true;
         mmu->write(DIV_REGISTER, 0x00);
 
-        // TODO: speed switch here, when that exists
+        // true if currently double speed, false if currently normal speed
+        bool current_speed = is_set(mmu->read(KEY1_SPD_REGISTER), Bit::Bit7);
+
+        // change current speed
+        timer->set_double_speed(!current_speed);
         return;
     }
 
@@ -547,15 +541,6 @@ void CPU::CALL() {
     PUSH_PC();
     reg_PC = destination;
     timer->tick();
-
-    // OLD IMPLEMENTATION - SAVING IN CASE CLAUDE IS WRONG
-    // // + and - 2 to account for the 2 bytes read in that are imm16, not instructions
-    // reg_PC += 2;
-    // PUSH_PC();
-    // reg_PC -= 2;
-
-    // reg_PC = fetch16();
-    // timer->tick();
 }
 
 

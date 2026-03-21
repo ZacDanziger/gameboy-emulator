@@ -16,7 +16,11 @@ void Timer::tick() {
     }
 
     divider_internal += 1;
-    on_tick();
+
+    // Update the PPU every tick in regular mode, or every other tick in double speed mode
+    if (!double_speed_mode || (divider_internal & 0x0001)) {
+        on_tick();
+    }
 
     // check timer enable bit
     bool set = is_set(divider_internal, div_bit);
@@ -106,16 +110,12 @@ Byte Timer::read(const Address address) const {
     switch (address) {
     case DIV_REGISTER:
         return ((divider_internal >> 6) & 0xFF);
-        break;
     case TIMA_REGISTER:
         return timer;
-        break;
     case TMA_REGISTER:
         return timer_modulo;
-        break;
     case TAC_REGISTER:
         return timer_control;
-        break;
     default:
         throw std::runtime_error("Timer read called on wrong address");
     }

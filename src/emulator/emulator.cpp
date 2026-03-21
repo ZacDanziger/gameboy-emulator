@@ -1,6 +1,7 @@
 #include "emulator.h"
 
 void Emulator::run() {
+
     while (display.poll_events()) {
         cpu.step();
     }

@@ -10,6 +10,8 @@
 #include <thread>
 #include <chrono>
 
+#include "../utils/logger.h"
+
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
 
 class Emulator {
@@ -19,9 +21,10 @@ class Emulator {
             display("GameBoy v1", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
             timer([this](Interrupt i){ mmu.request_interrupt(i); },
                    [this]{ ppu.update(); }),
-            ppu([this](Interrupt i){ mmu.request_interrupt(i); },
-                [this]{ this->on_frame_ready(); }),
             cpu(),
+            ppu([this](Interrupt i){ mmu.request_interrupt(i); },
+                [this]{ this->on_frame_ready(); },
+                [this]{ mmu.hdma_tick(); }),
 
             last_frame_time(std::chrono::steady_clock::now())
             {
@@ -33,8 +36,8 @@ class Emulator {
 
         void run();
     private:
-        Display display;
         MMU mmu;
+        Display display;
         Timer timer;
         CPU cpu;
         PPU ppu;

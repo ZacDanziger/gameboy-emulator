@@ -6,7 +6,8 @@
 TEST(TimerTest, TestReadWrite) {
         MMU mmu;
     PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
-            []{});
+            []{},
+            [&mmu]{ mmu.hdma_tick(); });
     Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
                 [&ppu]{ ppu.update(); });
 
@@ -33,7 +34,8 @@ TEST(TimerTest, TestReadWrite) {
 TEST(TimerTest, TestTick) {
     MMU mmu;
     PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
-            []{});
+            []{},
+            [&mmu]{ mmu.hdma_tick(); });
     Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
                 [&ppu]{ ppu.update(); });
 
@@ -55,7 +57,8 @@ TEST(TimerTest, TestTick) {
 TEST(TimerTest, TestOverflow) {
     MMU mmu;
     PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
-            []{});
+            []{},
+            [&mmu]{ mmu.hdma_tick(); });
     Timer timer([&mmu](Interrupt i){ mmu.request_interrupt(i); },
                 [&ppu]{ ppu.update(); });
 

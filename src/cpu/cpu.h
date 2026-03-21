@@ -8,6 +8,11 @@
 
 using Flag = Bit;
 
+static constexpr Flag FLAG_ZERO       = Bit::Bit7;    // 0b10000000
+static constexpr Flag FLAG_SUB        = Bit::Bit6;    // 0b01000000
+static constexpr Flag FLAG_HALF_CARRY = Bit::Bit5;    // 0b00100000
+static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
+
 /**
  * Central Processing Unit
  */
@@ -34,11 +39,6 @@ class CPU {
             Byte *reg_high;
             Byte *reg_low;
         };
-
-        Flag FLAG_ZERO       = Bit::Bit7;    // 0b10000000
-        Flag FLAG_SUB        = Bit::Bit6;    // 0b01000000
-        Flag FLAG_HALF_CARRY = Bit::Bit5;    // 0b00100000
-        Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
 
         
         // Gameboy's Eight 8-bit registers
@@ -67,7 +67,7 @@ class CPU {
 
         // one of the many possible outcomes of STOP is entering HALT mode
         //      which will automatically exit after 0x8000 m-cycles
-        bool stop_call_halt_delay;
+        bool speed_switch_halt;
 
         constexpr static Byte reset_vector[8]{
             0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38
@@ -81,7 +81,6 @@ class CPU {
             0x60    // IVT[4] - Joypad
         };
         
-        void reset();
         void handle_interrupts();
         
         // Fetch -> Decode -> Execute loop

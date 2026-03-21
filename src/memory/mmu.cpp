@@ -77,8 +77,23 @@ Byte MMU::read(Address address) const {
                 return 0x3F;
             }
         }
+        if (address == HDMA1_REGISTER) {
+            return cgb_mode ? vram_source_high : 0xFF;
+        }
+        if (address == HDMA2_REGISTER) {
+            return cgb_mode ? vram_source_low : 0xFF;
+        }
+        if (address == HDMA3_REGISTER) {
+            return cgb_mode ? vram_dest_high : 0xFF;
+        }
+        if (address == HDMA4_REGISTER) {
+            return cgb_mode ? vram_dest_low : 0xFF;
+        }
+        if (address == HDMA5_REGISTER) {
+            return cgb_mode ? vram_dma_control : 0xFF;
+        }
         if (address == SVBK_WBK_REGISTER) {
-            return wram_bank;
+            return cgb_mode ? wram_bank : 0xFF;
         }
 
         // Timer IO registers
@@ -87,6 +102,14 @@ Byte MMU::read(Address address) const {
         }
 
         // TODO: APU IO registers here
+
+        if (address == KEY1_SPD_REGISTER) {
+            if (timer->get_double_speed()) {
+                return 0x80 | prep_speed_switch;
+            } else {
+                return prep_speed_switch;
+            }
+        }
 
         // PPU IO registers
         if ((address >= LCDC_REGISTER && address <= WX_REGISTER) ||
@@ -170,11 +193,40 @@ void MMU::write(Address address, Byte data) {
             data &= 0xF0;
         }
 
+        if (address == HDMA1_REGISTER) {
+            vram_source_high = data;
+            return;
+        }
+        if (address == HDMA2_REGISTER) {
+            vram_source_low = data;
+            return;
+        }
+        if (address == HDMA3_REGISTER) {
+            vram_dest_high = data;
+            return;
+        }
+        if (address == HDMA4_REGISTER) {
+            vram_dest_low = data;
+            return;
+        }
+        if (address == HDMA5_REGISTER) {
+            vram_dma_control = data;
+            
+            // Manually terminate HBlank transfer
+            if (hdma_state.active && !is_set(data, Bit::Bit7)) {
+                hdma_state.active = false;
+                set_bit(vram_dma_control, Bit::Bit7);
+                return;
+            }
+            vram_dma_transfer(data);
+            return;
+        }
         if (address == SVBK_WBK_REGISTER) {
             wram_bank = data & 0x07;
             if (wram_bank == 0) {
                 wram_bank = 1;
             }
+            return;
         } 
 
         // Timer IO registers
@@ -185,6 +237,10 @@ void MMU::write(Address address, Byte data) {
 
         // TODO: APU IO registers here
 
+        if (address == KEY1_SPD_REGISTER) {
+            prep_speed_switch = data & 0x01;
+            return;
+        }
         // PPU IO registers
         if ((address >= LCDC_REGISTER && address <= WX_REGISTER) ||
             (address == VBK_REGISTER) ||
@@ -361,4 +417,72 @@ void MMU::oam_dma_transfer(const Byte value) {
     }
     
     ppu->load(OAM_START, dma_data);
+}
+
+
+void MMU::vram_dma_transfer(const Byte value) {
+    if (!cgb_mode) {
+        return;
+    }
+
+    bool is_hdma = is_set(value, Bit::Bit7);
+    Byte len = value & 0x7F;
+    Word length = (static_cast<Word>(len) + 1) << 4;
+
+    Address source_address = (vram_source_high << 8) | (vram_source_low & 0xF0);
+    Address destination_address = VRAM_START | ((vram_dest_high & 0x1F) << 8) | (vram_dest_low & 0xF0);
+
+
+
+    if (is_hdma) {
+        // HBlank DMA
+        reset_bit(vram_dma_control, Bit::Bit7);
+        hdma_state.active = true;
+        hdma_state.source = source_address;
+        hdma_state.destination = destination_address;
+        hdma_state.remaining = length;
+    } else {
+        // General Purpose DMA
+        std::vector<Byte> dma_data(length);
+        for (int i = 0; i < length; i++) {
+            dma_data[i] = read(source_address + i);
+        }
+        ppu->load(destination_address, dma_data);
+
+        // signal transfer is complete
+        vram_dma_control = 0xFF;
+    }
+}
+
+
+void MMU::hdma_tick() {
+    if (!hdma_state.active) {
+        return;
+    }
+
+
+    if (hdma_state.remaining == 0) {
+        hdma_state.active = false;
+
+        //signal transfer is complete
+        vram_dma_control = 0xFF;
+    }
+
+    int chunk_size = 16;
+
+    std::vector<Byte> chunk(chunk_size);
+
+    for (int i = 0; i < chunk_size; i++) {
+        chunk[i] = read(hdma_state.source + i);
+    }
+
+    ppu->load(hdma_state.destination, chunk);
+
+    hdma_state.source += chunk_size;
+    hdma_state.destination += chunk_size;
+    hdma_state.remaining -= chunk_size;
+
+    Byte new_val = (hdma_state.remaining >> 4) - 1;
+    vram_dma_control &= 0x80;
+    vram_dma_control |= (new_val & 0x7F);
 }

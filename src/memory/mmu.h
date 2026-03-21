@@ -23,14 +23,29 @@ class MMU {
         MMU() :
             wram{},
             io_registers{},
+
+            prep_speed_switch(0x7E),
+            vram_source_high(0xFF),
+            vram_source_low(0xFF),
+            vram_dest_high(0xFF),
+            vram_dest_low(0xFF),
+            vram_dma_control(0xFF),
             wram_bank(0x01),
+
             hram{},
             ie_register(0x00),
+
             button_keys(0x0F),
             direction_keys(0x0F),
+
             rom_filename(),
-            cgb_mode(false)
-        {}
+
+            cgb_mode(false),
+            hdma_state{}
+        {
+            io_registers[IF_REGISTER - IO_START] = 0xE1;
+            write(SVBK_WBK_REGISTER, 0xF8);
+        }
         
         ~MMU() {
             if (mbc) {
@@ -48,6 +63,8 @@ class MMU {
         void request_interrupt(Interrupt interrupt);
         void set_key(Key key, bool pressed);
 
+        void hdma_tick();
+
         inline bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
     private:
         Timer *timer;
@@ -58,6 +75,14 @@ class MMU {
 
         // PROBABLY DIVIDE UP
         std::array<Byte, IO_REG_SIZE> io_registers;        // 0xFF00 - 0xFF7F
+
+        // CGB Registers
+        Byte prep_speed_switch;                            // KEY1_SPD_REGISTER
+        Byte vram_source_high;                             // HDMA1_REGISTER
+        Byte vram_source_low;                              // HDMA2_REGISTER
+        Byte vram_dest_high;                               // HDMA3_REGISTER
+        Byte vram_dest_low;                                // HDMA4_REGISTER
+        Byte vram_dma_control;                             // HDMA5_REGISTER
         Byte wram_bank;                                    // SVBK_WBK_REGISTER
 
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
@@ -70,7 +95,18 @@ class MMU {
         std::string rom_filename;
         bool cgb_mode;
 
+        struct HDMAState {
+            bool active = false;
+            Address source = 0x0000;
+            Address destination = 0x0000;
+            Word remaining = 0x0000;
+        };
+
+        HDMAState hdma_state;
+
         void oam_dma_transfer(const Byte value);
+        void vram_dma_transfer(const Byte value);
+        
 };
 
 #endif // MEMORY_H

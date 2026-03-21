@@ -6,6 +6,9 @@
 #include "../utils/utils.h"
 #include "../memory/memory_map.h"
 
+using FrameCallback = std::function<void()>;
+using HBlankCallback = std::function<void()>;
+
 constexpr int TILES_PER_BANK = 384; // 3 tile blocks of 128 tiles each
 
 constexpr int CYCLES_PER_SCANLINE = 114;
@@ -59,9 +62,10 @@ inline BGPriority& operator|=(BGPriority& a, BGPriority b) {
  */
 class PPU {
     public:
-        PPU(InterruptCallback i, FrameCallback f) :
+        PPU(InterruptCallback i, FrameCallback f, HBlankCallback h) :
             request_interrupt(i),
             frame_ready(f),
+            hblank(h),
 
             vram{},
             oam{},
@@ -72,14 +76,14 @@ class PPU {
             tile_cache{},
             frame_buffer{},
 
-            lcd_control(0x00),
+            lcd_control(0x91),
             lcd_status(0x00),
             viewport_y(0x00),
             viewport_x(0x00),
             lcd_y(0x00),
             ly_compare(0x00),
             oam_dma(0x00),
-            background_palette(0x00),
+            background_palette(0xFC),
             object_palette_0(0x00),
             object_palette_1(0x00),
             window_y(0x00),
@@ -115,6 +119,7 @@ class PPU {
 
         InterruptCallback request_interrupt;
         FrameCallback frame_ready;
+        HBlankCallback hblank;
         
         std::array<Byte, 2 * VRAM_SIZE> vram;      // 0x8000 - 0x9FFF, two banks on CGB
         std::array<Byte, OAM_SIZE> oam;            // 0xFE00 - 0xFE9F

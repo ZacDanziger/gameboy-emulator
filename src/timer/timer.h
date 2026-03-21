@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include "../memory/memory_map.h"
 #include "../utils/utils.h"
-#include "../ppu/ppu.h"
 
 using TickCallback = std::function<void()>;
 
@@ -19,19 +18,23 @@ class Timer {
             divider_internal(0x0000),
             timer(0x00),
             timer_modulo(0x00),
-            timer_control(0x00),
 
-            div_bit(Bit::Bit7),
-            enabled(false),
             previous_high(false),
             overflow_delay(false),
-            timer_reload_cycle(false)
-        {}
+            timer_reload_cycle(false),
+            double_speed_mode(false)
+        {
+            // initialize timer_control, div_bit, and enabled
+            write(TAC_REGISTER, 0xF8);
+        }
 
         void tick();
 
         void write(const Address address, const Byte value);
         Byte read(const Address address) const;
+
+        bool get_double_speed() const { return double_speed_mode; }
+        void set_double_speed(const bool ds) { double_speed_mode = ds; }
     private:
         InterruptCallback request_interrupt;
         TickCallback on_tick;
@@ -46,6 +49,8 @@ class Timer {
         bool previous_high;
         bool overflow_delay;
         bool timer_reload_cycle;
+
+        bool double_speed_mode;
 };
 
 #endif // TIMER_H

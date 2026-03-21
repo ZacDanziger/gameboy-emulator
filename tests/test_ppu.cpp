@@ -4,12 +4,15 @@
 #include "../emulator/emulator.h"
 #include "gtest/gtest.h"
 
+bool CGB_CHECK = false;
+
 TEST(BasicTest, TestReadWrite) {
     GTEST_SKIP();
 
     MMU mmu;
     PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
-            []{});
+            []{},
+            [&mmu]{ mmu.hdma_tick(); });
 
     EXPECT_NO_THROW(
         ppu.write(LCDC_REGISTER, 0x01);
@@ -53,7 +56,9 @@ TEST(BasicTest, TestReadWrite) {
 
 
 TEST(ScreenTest, DMGAcid2) {
-    GTEST_SKIP();
+    if (CGB_CHECK) {
+        GTEST_SKIP();
+    }
     std::string filename = "../../gb-test-roms/dmg-acid2.gb";
 
     Emulator emulator(filename);
@@ -61,7 +66,9 @@ TEST(ScreenTest, DMGAcid2) {
 }
 
 TEST(ScreenTest, CGBAcid2) {
-    // GTEST_SKIP();
+    if (!CGB_CHECK) {
+        GTEST_SKIP();
+    }
     std::string filename = "../../gb-test-roms/cgb-acid2.gbc";
 
     Emulator emulator(filename);

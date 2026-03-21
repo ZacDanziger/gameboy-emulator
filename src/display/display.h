@@ -5,6 +5,8 @@
 #include <string>
 #include "../types.h"
 
+using KeyCallback = std::function<void(Key, bool)>;
+
 constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
 
 class Display {

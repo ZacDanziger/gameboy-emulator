@@ -174,25 +174,41 @@ void PPU::write(const Address address, const Byte value) {
 /**
  * Loads the data into a section of memory owned by the PPU
  * 
- * @param address either the start of VRAM (0x8000) or the start of OAM (0xFE00)
+ * @param address either a value in VRAM [0x8000, 0x9FFF] or the start of OAM (0xFE00)
  * @param data the data to be loaded into VRAM or OAM
  */
 void PPU::load(const Address address, const std::vector<Byte>& data) {
     size_t size = 0;
 
-    switch (address)
-    {
-    case VRAM_START:
-        size = std::min(data.size(), (size_t)(2 * VRAM_SIZE));
-        std::copy_n(data.begin(), size, vram.begin());
-        break;
-    case OAM_START:
-        size = std::min(data.size(), (size_t)OAM_SIZE);
-        std::copy_n(data.begin(), size, oam.begin());
-        break;
-    default:
-        throw std::runtime_error("PPU Load called on incorrect starting address");
+    if (address >= VRAM_START && address < ERAM_START) {
+        if (!cgb_mode) {
+            return;
+        }
+        
+        size = std::min(data.size(), static_cast<size_t>(ERAM_START - address));
+        size_t offset = (address - VRAM_START) + (vram_bank * VRAM_SIZE);
+        std::copy_n(data.begin(), size, vram.begin() + offset);
+
+        // Mark any affected tiles as dirty
+        for (size_t i = 0; i < size; i += 16) {
+            Address tile_address = address + i;
+            if (tile_address < TILE_MAP_0_START) {
+                int index = address_to_index(tile_address, vram_bank);
+                tile_cache[index].dirty = true;
+            }
+        }
+
+        return;
     }
+
+    if (address == OAM_START) {
+        size = std::min(data.size(), static_cast<size_t>(OAM_SIZE));
+
+        std::copy_n(data.begin(), size, oam.begin());
+        return;
+    }
+
+    throw std::runtime_error("PPU Load called on incorrect starting address");
 }
 
 /**
@@ -612,7 +628,7 @@ void PPU::draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority
         bool bg_is_occupied = ((background_priority[pixel_column] & BGPriority::Occupied) == BGPriority::Occupied);
         bool bg_has_priority = ((background_priority[pixel_column] & BGPriority::HighPriority) == BGPriority::HighPriority);
         bool oam_defers = sprite_buffer[pixel_column].priority;
-        
+
         bool background_wins = false;
         if (cgb_mode) {
             background_wins = is_set(lcd_control, Bit::Bit0) && 
@@ -748,9 +764,13 @@ RGBA32 PPU::color_id_to_argb(const int color_id, const Byte palette, const bool 
 
     Word color = ram[index + 1] << 8 | ram[index];
 
-    Byte red = (color & 0x1F) << 3;
-    Byte green = ((color >> 5) & 0x1F) << 3;
-    Byte blue = ((color >> 10) & 0x1F) << 3;
+    Byte red = (color & 0x1F);
+    Byte green = ((color >> 5) & 0x1F);
+    Byte blue = ((color >> 10) & 0x1F);
+
+    red = (red << 3) | (red >> 2);
+    green = (green << 3) | (green >> 2);
+    blue = (blue << 3) | (blue >> 2);
 
     return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
 }

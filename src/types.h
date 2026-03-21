@@ -50,8 +50,8 @@ enum class Mode {
 constexpr std::size_t SCREEN_WIDTH = 160;
 constexpr std::size_t SCREEN_HEIGHT = 144;
 
-using FrameCallback = std::function<void()>;
+
 using InterruptCallback = std::function<void(Interrupt)>;
-using KeyCallback = std::function<void(Key, bool)>;
+
 
 #endif // TYPES_H
