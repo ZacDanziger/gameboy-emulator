@@ -32,24 +32,6 @@ constexpr RGBA32 dmg_green_palette[4] = {
     0x081820FF  // Darkest / almost black
 };
 
-enum class BGPriority : Byte {
-    None = 0x00,
-    Occupied = 0x01,
-    HighPriority = 0x02
-};
-
-inline BGPriority operator|(BGPriority a, BGPriority b) {
-    return static_cast<BGPriority>(static_cast<Byte>(a) | static_cast<Byte>(b));
-}
-
-inline BGPriority operator&(BGPriority a, BGPriority b) {
-    return static_cast<BGPriority>(static_cast<Byte>(a) & static_cast<Byte>(b)); 
-}
-
-inline BGPriority& operator|=(BGPriority& a, BGPriority b) {
-    a = a | b;
-    return a;
-}
 
 // NOTE: PPU locks VRAM during mode 3, locks OAM during modes 2 & 3
 // NOTE: 1 frame is 16.74 ms, not exactly 1/60th of a second (16.67 ms)
@@ -158,9 +140,9 @@ class PPU {
         bool cgb_mode;
 
         void draw_scanline();
-        void draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_priority);
-        void draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority);
-        void draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority);
+        void draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority);
+        void draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority);
+        void draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const std::array<bool, SCREEN_WIDTH>& bg_high_priority);
         
         // Helper functions
         Address get_tile_address(const Byte tile_id)const ;

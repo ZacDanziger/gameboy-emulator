@@ -429,7 +429,7 @@ void CPU::STOP() {
         mmu->write(DIV_REGISTER, 0x00);
 
         // true if currently double speed, false if currently normal speed
-        bool current_speed = is_set(mmu->read(KEY1_SPD_REGISTER), Bit::Bit7);
+        bool current_speed = timer->get_double_speed();
 
         // change current speed
         timer->set_double_speed(!current_speed);

@@ -18,7 +18,7 @@ class Emulator {
     public:
         Emulator(const std::string& rom_file):
             mmu(),
-            display("GameBoy v1", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
+            display("GameBoy Color Emulator", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
             timer([this](Interrupt i){ mmu.request_interrupt(i); },
                    [this]{ ppu.update(); }),
             cpu(),

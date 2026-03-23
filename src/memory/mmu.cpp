@@ -466,6 +466,7 @@ void MMU::hdma_tick() {
 
         //signal transfer is complete
         vram_dma_control = 0xFF;
+        return;
     }
 
     int chunk_size = 16;

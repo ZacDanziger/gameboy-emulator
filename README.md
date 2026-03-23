@@ -8,10 +8,15 @@ My GameBoy Color project to keep from getting rusty on my leave of absence
     * Debug STOP loop
     * Implement HALT bug
     * Change code block in step() that deals with serial interrupt, handle that somewhere else
-    * Implement double speed mode
+    * Debug double speed mode
+* Timer 
+    * Debug double speed mode
+* MMU
+    * Debug double speed mode
 * PPU
-    * Implement VRAM DMA
-
+    * Implement DMG compatibility palettes
+* APU 
+    * Implement
 
     
 

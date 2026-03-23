@@ -81,7 +81,7 @@ void PPU::write(const Address address, const Byte value) {
         vram[adjusted_address] = value;
 
         if (address < TILE_MAP_0_START) {
-            int index = address_to_index(address);
+            int index = address_to_index(address, vram_bank);
             tile_cache[index].dirty = true;
         }
         return;
@@ -184,7 +184,7 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
         if (!cgb_mode) {
             return;
         }
-        
+
         size = std::min(data.size(), static_cast<size_t>(ERAM_START - address));
         size_t offset = (address - VRAM_START) + (vram_bank * VRAM_SIZE);
         std::copy_n(data.begin(), size, vram.begin() + offset);
@@ -291,6 +291,9 @@ void PPU::update() {
             mode = Mode::HBLANK;
             reset_bit(lcd_status, Bit::Bit1);
             reset_bit(lcd_status, Bit::Bit0);
+
+            // call MMU::hdma_tick()
+            hblank();
         
             // if interrupt on HBlank is set, request interrupt
             if (is_set(lcd_status, Bit::Bit3)) {
@@ -302,27 +305,28 @@ void PPU::update() {
 
 
 void PPU::draw_scanline() {
-    // default initialization is None
-    std::array<BGPriority, SCREEN_WIDTH> background_priority{};
+    std::array<int, SCREEN_WIDTH> bg_color_ids{};
+    std::array<bool, SCREEN_WIDTH> bg_high_priority{};
 
-    // Fill scanline with white
+    // Fill scanline with white if DMG, and background palette 0 color 0 if CGB
     int buffer_index = lcd_y * SCREEN_WIDTH;
+    RGBA32 fill_color = cgb_mode ? color_id_to_argb(0, 0x00, false) : dmg_palette[0];
     std::fill(
         frame_buffer.begin() + buffer_index,
         frame_buffer.begin() + buffer_index + SCREEN_WIDTH,
-        dmg_palette[0]
+        fill_color
     );
 
     if ((cgb_mode) || (is_set(lcd_control, Bit::Bit0))) {
-        draw_background(background_priority);
+        draw_background(bg_color_ids, bg_high_priority);
     }
 
     if ((is_set(lcd_control, Bit::Bit5))) {
-        draw_window(background_priority);
+        draw_window(bg_color_ids, bg_high_priority);
     }
 
     if (is_set(lcd_control, Bit::Bit1)) {
-        draw_sprites(background_priority);
+        draw_sprites(bg_color_ids, bg_high_priority);
     }
 }
 
@@ -330,7 +334,7 @@ void PPU::draw_scanline() {
 /**
  * Draw one line of the background to the frame buffer
  */
-void PPU::draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_priority) {
+void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     uint8_t y = viewport_y + lcd_y;
     // divide by 8 to get the correct tile row
     uint8_t tile_row = y >> 3;  // number between 0-31
@@ -361,7 +365,7 @@ void PPU::draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_prior
         bool flip_y = is_set(tile_attributes, Bit::Bit6);
 
         if (is_set(tile_attributes, Bit::Bit7)) {
-            background_priority[pixel_column] |= BGPriority::HighPriority;
+            bg_high_priority[pixel_column] = true;
         }
 
         int index = address_to_index(tile_address, tile_bank);
@@ -374,30 +378,7 @@ void PPU::draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_prior
         int col = flip_x ? (7 - (x % 8)) : (x % 8);
 
         int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
-        if (pixel_color_id != 0) {
-            background_priority[pixel_column] |= BGPriority::Occupied;
-        }
-
-        /**
-         * CGB Priority rules
-         * 
-         * LCDC Bit 0 | OAM Attr Bit 7 | BG Attr Bit 7 | Priority
-         * -----------|----------------|---------------|---------
-         *       0    |        0       |        0      |   OBJ
-         *       0    |        0       |        1      |   OBJ
-         *       0    |        1       |        0      |   OBJ
-         *       0    |        1       |        1      |   OBJ
-         *       1    |        0       |        0      |   OBJ
-         *       1    |        0       |        1      |   BG color 1-3, otherwise OBJ
-         *       1    |        1       |        0      |   BG color 1-3, otherwise OBJ
-         *       1    |        1       |        1      |   BG color 1-3, otherwise OBJ
-         * 
-         * Table source: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
-         */
-
-        if (cgb_mode && (!is_set(lcd_control, Bit::Bit0))) {
-            background_priority[pixel_column] = BGPriority::None;
-        }
+        bg_color_ids[pixel_column] = pixel_color_id;
 
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
 
@@ -409,7 +390,7 @@ void PPU::draw_background(std::array<BGPriority, SCREEN_WIDTH>& background_prior
 /**
  * Draw one line of the window to the frame buffer
  */
-void PPU::draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority) {
+void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     if ((lcd_y < window_y) || (window_x >= 167)) {
         return;
     }
@@ -451,7 +432,7 @@ void PPU::draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority)
         bool flip_y = is_set(tile_attributes, Bit::Bit6);
 
         if (is_set(tile_attributes, Bit::Bit7)) {
-            background_priority[pixel_column] = background_priority[pixel_column] | BGPriority::HighPriority;
+            bg_high_priority[pixel_column] = true;
         }
 
         int index = address_to_index(tile_address, tile_bank);
@@ -464,30 +445,7 @@ void PPU::draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority)
         int col = flip_x ? (7 - (x % 8)) : (x % 8);
 
         int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
-
-        if (pixel_color_id != 0) {
-            background_priority[pixel_column] = background_priority[pixel_column] | BGPriority::Occupied;
-        }
-
-        /**
-         * CGB Priority rules
-         * 
-         * LCDC Bit 0 | OAM Attr Bit 7 | BG Attr Bit 7 | Priority
-         * -----------|----------------|---------------|---------
-         *       0    |        0       |        0      |   OBJ
-         *       0    |        0       |        1      |   OBJ
-         *       0    |        1       |        0      |   OBJ
-         *       0    |        1       |        1      |   OBJ
-         *       1    |        0       |        0      |   OBJ
-         *       1    |        0       |        1      |   BG color 1-3, otherwise OBJ
-         *       1    |        1       |        0      |   BG color 1-3, otherwise OBJ
-         *       1    |        1       |        1      |   BG color 1-3, otherwise OBJ
-         * 
-         * Table source: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
-         */
-        if (cgb_mode && (!is_set(lcd_control, Bit::Bit0))) {
-            background_priority[pixel_column] = BGPriority::None;
-        }
+        bg_color_ids[pixel_column] = pixel_color_id;
 
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
         frame_buffer[buffer_index] = cgb_mode ? 
@@ -498,7 +456,7 @@ void PPU::draw_window(std::array<BGPriority, SCREEN_WIDTH>& background_priority)
 }
 
 
-void PPU::draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority) {
+void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     // stored as height - 1 so boundary checks are lcd_y <= sprite_y + sprite_height
     int sprite_height = is_set(lcd_control, Bit::Bit2) ? 15: 7;
 
@@ -625,8 +583,8 @@ void PPU::draw_sprites(std::array<BGPriority, SCREEN_WIDTH>& background_priority
          * 
          * Table source: https://gbdev.io/pandocs/Tile_Maps.html#bg-to-obj-priority-in-cgb-mode
          */
-        bool bg_is_occupied = ((background_priority[pixel_column] & BGPriority::Occupied) == BGPriority::Occupied);
-        bool bg_has_priority = ((background_priority[pixel_column] & BGPriority::HighPriority) == BGPriority::HighPriority);
+        bool bg_is_occupied = (bg_color_ids[pixel_column] != 0);
+        bool bg_has_priority = (bg_high_priority[pixel_column]);
         bool oam_defers = sprite_buffer[pixel_column].priority;
 
         bool background_wins = false;
