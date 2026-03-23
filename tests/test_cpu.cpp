@@ -541,6 +541,8 @@ TEST(InstructionTest, CompositeTest) {
     // GTEST_SKIP();
     std::string filename = "../../gb-test-roms/cpu_instrs/cpu_instrs.gb";
 
+    bool LOGGING = true;
+
     CPU cpu;
     MMU mmu;
     PPU ppu([&mmu](Interrupt i){ mmu.request_interrupt(i); },
@@ -556,10 +558,17 @@ TEST(InstructionTest, CompositeTest) {
         mmu.load_rom(filename)
     );
 
-    int i = 0;
+    CPULogger logger(&cpu);
+    if (LOGGING) {
+        logger.init_ofstream("../../build/composite_test.txt");
+        logger.log();
+    }
+
     while(!cpu.is_stopped()) {
         cpu.step();
-        i++;
+        if (LOGGING) {
+            logger.log();
+        }
     }
 
     EXPECT_EQ(cpu.serial_buffer.substr(cpu.serial_buffer.length() - 6), "Passed");

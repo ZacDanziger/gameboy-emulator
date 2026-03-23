@@ -13,9 +13,10 @@
 #include "../mbc/mbc.h"
 
 
+constexpr Byte OPEN_BUS_VALUE = 0xFF;
+
 /**
  * Memory Management Unit
- * Represents all memory in the gameboy
  * Byte-addressable 16-bit address size
 */
 class MMU {
@@ -43,8 +44,7 @@ class MMU {
             cgb_mode(false),
             hdma_state{}
         {
-            io_registers[IF_REGISTER - IO_START] = 0xE1;
-            write(SVBK_WBK_REGISTER, 0xF8);
+            write(IF_REGISTER, 0xE1);
         }
         
         ~MMU() {
@@ -53,7 +53,7 @@ class MMU {
             }
         }
 
-        void init(Timer* timer_ptr, PPU* ppu_ptr);
+        inline void init(Timer* timer_ptr, PPU* ppu_ptr) { timer = timer_ptr; ppu = ppu_ptr; }
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);

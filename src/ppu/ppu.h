@@ -25,19 +25,6 @@ constexpr RGBA32 dmg_palette[4] = {
     0x0F0F0FFF  // Black
 };
 
-constexpr RGBA32 dmg_green_palette[4] = {
-    0xE0F8D0FF, // Lightest green
-    0x88C070FF, // Light green
-    0x346856FF, // Dark green
-    0x081820FF  // Darkest / almost black
-};
-
-
-// NOTE: PPU locks VRAM during mode 3, locks OAM during modes 2 & 3
-// NOTE: 1 frame is 16.74 ms, not exactly 1/60th of a second (16.67 ms)
-// NOTE: Until MBC is working, just use bank 0 of VRAM
-// NOTE: Need a way to signal that frame is ready
-
 
 /**
  * Pixel Processing Unit
@@ -62,7 +49,7 @@ class PPU {
             lcd_status(0x00),
             viewport_y(0x00),
             viewport_x(0x00),
-            lcd_y(0x00),
+            lcd_y(0xFF),
             ly_compare(0x00),
             oam_dma(0x00),
             background_palette(0xFC),
@@ -77,7 +64,7 @@ class PPU {
             object_priority(0x00),
 
             mode(Mode::VBLANK),
-            cycles(0),
+            cycles(-1),
             window_line_counter(0),
 
             cgb_mode(false)

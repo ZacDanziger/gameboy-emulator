@@ -15,7 +15,7 @@ class Timer {
             request_interrupt(i),
             on_tick(t),
             
-            divider_internal(0x0000),
+            divider_internal(0x00AB),
             timer(0x00),
             timer_modulo(0x00),
 

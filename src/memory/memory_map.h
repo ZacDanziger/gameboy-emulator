@@ -3,23 +3,24 @@
 
 #include "../types.h"
 
-constexpr uint16_t KiB = 0x0400;
+constexpr size_t KiB = 0x0400;
 
-/*
-Memory Map and Sizes
---------------------------------------------------
-ROM bank 00------------------------0x0000 - 0x3FFF (16 KiB)
-ROM banks 01-NN--------------------0x4000 - 0x7FFF (16 KiB)
-Video RAM--------------------------0x8000 - 0x9FFF (8 KiB)
-External RAM-----------------------0xA000 - 0xBFFF (8 KiB)
-Work RAM---------------------------0xC000 - 0xCFFF (4 KiB)
-Switchable Banks 1-7---------------0xD000 - 0xDFFF (4 KiB)
-Echo RAM---------------------------0xE000 - 0xFDFF (7680 Bytes)
-Object Attribute Memory (OAM)------0xFE00 - 0xFE9F (160 Bytes)
-NOT USABLE!!!----------------------0xFEA0 - 0xFEFF (96 Bytes)
-I/O Registers----------------------0xFF00 - 0xFF7F (128 Bytes)
-High RAM---------------------------0xFF80 - 0xFFFE (127 Bytes)
-Interrupt Enable Register----------0xFFFF          (1 Byte)
+
+/**
+ * Memory Map and Sizes
+ * --------------------------------------------------
+ * ROM bank 00------------------------0x0000 - 0x3FFF (16 KiB)
+ * ROM banks 01-NN--------------------0x4000 - 0x7FFF (16 KiB)
+ * Video RAM--------------------------0x8000 - 0x9FFF (8 KiB)
+ * External RAM-----------------------0xA000 - 0xBFFF (8 KiB)
+ * Work RAM---------------------------0xC000 - 0xCFFF (4 KiB)
+ * Switchable Banks 1-7---------------0xD000 - 0xDFFF (4 KiB)
+ * Echo RAM---------------------------0xE000 - 0xFDFF (7680 Bytes)
+ * Object Attribute Memory (OAM)------0xFE00 - 0xFE9F (160 Bytes)
+ * NOT USABLE!!!----------------------0xFEA0 - 0xFEFF (96 Bytes)
+ * I/O Registers----------------------0xFF00 - 0xFF7F (128 Bytes)
+ * High RAM---------------------------0xFF80 - 0xFFFE (127 Bytes)
+ * Interrupt Enable Register----------0xFFFF          (1 Byte)
 */
 
 constexpr Address ROM_BANK_00_START  = 0x0000;
@@ -35,14 +36,14 @@ constexpr Address IO_START           = 0xFF00;
 constexpr Address HRAM_START         = 0xFF80;
 
 
-constexpr uint16_t ROM_BANK_SIZE     = 16 * KiB; 
-constexpr uint16_t VRAM_SIZE         = 8 * KiB;
-constexpr uint16_t ERAM_BANK_SIZE    = 8 * KiB;
-constexpr uint16_t WRAM_BANK_SIZE    = 4 * KiB;
-constexpr uint16_t ECHO_RAM_SIZE     = 0x1E00;
-constexpr uint16_t OAM_SIZE          = 0x00A0;
-constexpr uint16_t IO_REG_SIZE       = 0x0080;
-constexpr uint16_t HRAM_SIZE         = 0x007F;
+constexpr size_t ROM_BANK_SIZE       = 16 * KiB; 
+constexpr size_t VRAM_SIZE           = 8 * KiB;
+constexpr size_t ERAM_BANK_SIZE      = 8 * KiB;
+constexpr size_t WRAM_BANK_SIZE      = 4 * KiB;
+constexpr size_t ECHO_RAM_SIZE       = 0x1E00;
+constexpr size_t OAM_SIZE            = 0x00A0;
+constexpr size_t IO_REG_SIZE         = 0x0080;
+constexpr size_t HRAM_SIZE           = 0x007F;
 
 /**
  * Tile data--------0x8000 - 0x97FF
@@ -54,10 +55,10 @@ constexpr uint16_t HRAM_SIZE         = 0x007F;
  * Tile map 2-------0x9C00 - 0x9FFF (32 x 32 tiles)
  */
 
-constexpr Address TILE_DATA_0      = 0x8000;
-constexpr Address TILE_DATA_1      = 0x9000;
-constexpr Address TILE_MAP_0_START = 0x9800;
-constexpr Address TILE_MAP_1_START = 0x9C00;
+constexpr Address TILE_DATA_0        = 0x8000;
+constexpr Address TILE_DATA_1        = 0x9000;
+constexpr Address TILE_MAP_0_START   = 0x9800;
+constexpr Address TILE_MAP_1_START   = 0x9C00;
 
 // Cartrige Header
 constexpr Address TITLE_START        = 0x0134;

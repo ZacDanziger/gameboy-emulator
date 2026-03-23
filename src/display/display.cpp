@@ -8,10 +8,11 @@ Display::Display(const std::string& title, KeyCallback k) {
     }
 
     if (!SDL_CreateWindowAndRenderer(
-            title.c_str(),
-            DISPLAY_SCALE * SCREEN_WIDTH,
-            DISPLAY_SCALE * SCREEN_HEIGHT, 
-            SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+        title.c_str(),
+        DISPLAY_SCALE * SCREEN_WIDTH,
+        DISPLAY_SCALE * SCREEN_HEIGHT, 
+        SDL_WINDOW_RESIZABLE, &window, &renderer))
+    {
         teardown();
         throw std::runtime_error(std::string("Failed to create window and renderer ") + SDL_GetError());
     }

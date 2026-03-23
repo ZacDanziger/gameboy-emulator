@@ -1,6 +1,11 @@
 #include "ppu.h"
 
-
+/**
+ * Read from VRAM, OAM, or any PPU owned IO registers
+ * 
+ * @param address the address to be read from
+ * @returns the value in memory at address
+ */
 Byte PPU::read(const Address address) const {
     if (address >= VRAM_START && address < ERAM_START) {
         if (mode == Mode::TRANSFER) {
@@ -66,6 +71,12 @@ Byte PPU::read(const Address address) const {
 }
 
 
+/**
+ * Write to VRAM, OAM, or any PPU owned IO registers
+ * 
+ * @param address the address to be written to
+ * @param value the data to be written in the address
+ */
 void PPU::write(const Address address, const Byte value) {
     if (address >= VRAM_START && address < ERAM_START) {
         if (mode == Mode::TRANSFER) {
@@ -171,6 +182,7 @@ void PPU::write(const Address address, const Byte value) {
     }
 }
 
+
 /**
  * Loads the data into a section of memory owned by the PPU
  * 
@@ -210,6 +222,7 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
 
     throw std::runtime_error("PPU Load called on incorrect starting address");
 }
+
 
 /**
  * Step the PPU through 1 m-cycle
@@ -252,11 +265,6 @@ void PPU::update() {
 
             frame_ready();
             window_line_counter = 0;
-
-            // if (!debug_check) {
-            //     dump_oam();
-            //     debug_check = true;
-            // }
         }
 
         return;
@@ -303,7 +311,9 @@ void PPU::update() {
     }
 }
 
-
+/**
+ * Draw one scanline to the frame
+ */
 void PPU::draw_scanline() {
     std::array<int, SCREEN_WIDTH> bg_color_ids{};
     std::array<bool, SCREEN_WIDTH> bg_high_priority{};
@@ -333,6 +343,9 @@ void PPU::draw_scanline() {
 
 /**
  * Draw one line of the background to the frame buffer
+ * 
+ * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
+ * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
 void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     uint8_t y = viewport_y + lcd_y;
@@ -389,6 +402,9 @@ void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::arra
 
 /**
  * Draw one line of the window to the frame buffer
+ * 
+ * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
+ * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
 void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     if ((lcd_y < window_y) || (window_x >= 167)) {
@@ -455,7 +471,12 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
     window_line_counter += 1;
 }
 
-
+/**
+ * Draw any sprites that belong on the current scanline to the frame buffer
+ * 
+ * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
+ * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
+ */
 void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     // stored as height - 1 so boundary checks are lcd_y <= sprite_y + sprite_height
     int sprite_height = is_set(lcd_control, Bit::Bit2) ? 15: 7;

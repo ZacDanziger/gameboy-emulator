@@ -3,17 +3,12 @@
 #include "../mbc/mbc1.h"
 #include "../mbc/mbc3.h"
 
- 
-void MMU::init(Timer* timer_ptr, PPU* ppu_ptr) {
-    timer = timer_ptr;
-    ppu = ppu_ptr;
-}
-
 
 /**
- * Read memory[address]
+ * Read from memory
  * 
- * @param address the address to be read
+ * @param address the address to be read from, not allowed to be in range [0xFEA0, 0xFEFF]
+ * @returns the value in memory at address
 */
 Byte MMU::read(Address address) const {
     // ROM read
@@ -58,7 +53,8 @@ Byte MMU::read(Address address) const {
 
     // NOT USABLE read
     if (address < IO_START) {
-        throw std::runtime_error("MMU read called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
+        return OPEN_BUS_VALUE;
+        // throw std::runtime_error("MMU read called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
     }
 
     // IO registers read
@@ -77,23 +73,25 @@ Byte MMU::read(Address address) const {
                 return 0x3F;
             }
         }
+
+        // CGB registers
         if (address == HDMA1_REGISTER) {
-            return cgb_mode ? vram_source_high : 0xFF;
+            return cgb_mode ? vram_source_high : OPEN_BUS_VALUE;
         }
         if (address == HDMA2_REGISTER) {
-            return cgb_mode ? vram_source_low : 0xFF;
+            return cgb_mode ? vram_source_low : OPEN_BUS_VALUE;
         }
         if (address == HDMA3_REGISTER) {
-            return cgb_mode ? vram_dest_high : 0xFF;
+            return cgb_mode ? vram_dest_high : OPEN_BUS_VALUE;
         }
         if (address == HDMA4_REGISTER) {
-            return cgb_mode ? vram_dest_low : 0xFF;
+            return cgb_mode ? vram_dest_low : OPEN_BUS_VALUE;
         }
         if (address == HDMA5_REGISTER) {
-            return cgb_mode ? vram_dma_control : 0xFF;
+            return cgb_mode ? vram_dma_control : OPEN_BUS_VALUE;
         }
         if (address == SVBK_WBK_REGISTER) {
-            return cgb_mode ? wram_bank : 0xFF;
+            return cgb_mode ? wram_bank : OPEN_BUS_VALUE;
         }
 
         // Timer IO registers
@@ -121,21 +119,25 @@ Byte MMU::read(Address address) const {
 
         return io_registers[address - IO_START];
     }
-    if (address < IE_REGISTER)       { return hram[address - HRAM_START]; }
-    if (address == IE_REGISTER)      { return ie_register; }
+    if (address < IE_REGISTER)       {
+        return hram[address - HRAM_START];
+    }
+    if (address == IE_REGISTER)      {
+        return ie_register;
+    }
 
+    // not sure how you would get here
     throw std::runtime_error("MMU read called on invalid address");
 }
 
 
 /**
- * Write to memory[address]
+ * Write to memory
  * 
- * @param address the address to be written to
+ * @param address the address to be written to, not allowed to be in range [0xFEA0, 0xFEFF]
  * @param data the data to be written in the address
 */
 void MMU::write(Address address, Byte data) {
-
     // ROM write
     if (address < VRAM_START) {
         mbc->write(address, data);
@@ -158,6 +160,7 @@ void MMU::write(Address address, Byte data) {
     if (address >= ECHO_START && address < OAM_START) {
         address -= 0x2000;
     }
+
     // WRAM write
     if (address < ECHO_START) {
         // bank 0 write
@@ -183,7 +186,8 @@ void MMU::write(Address address, Byte data) {
 
     // NOT USABLE write
     if (address < IO_START) {
-        throw std::runtime_error("MMU write called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
+        return;
+        // throw std::runtime_error("MMU write called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
     }
 
     // IO registers write
@@ -193,6 +197,7 @@ void MMU::write(Address address, Byte data) {
             data &= 0xF0;
         }
 
+        // CGB registers - writes in DMG mode are fine, but reads in DMG mode will be 0xFF
         if (address == HDMA1_REGISTER) {
             vram_source_high = data;
             return;
@@ -271,13 +276,14 @@ void MMU::write(Address address, Byte data) {
         return;
     }
 
+    // not sure how you would get here
     throw std::runtime_error("MMU write called on invalid address");
 }
 
 
 /**
- * Writes the data in a file to both ROM banks.
- * There must be more than 0x8000 bytes of data in the file or an error will be thrown
+ * Read data from a file and write it to ROM
+ * --data in header section must pass gameboy rom checksum
  * 
  * @param filename the filename containing the data to be read from
 */
@@ -355,11 +361,22 @@ void MMU::load_rom(const std::string& filename) {
     mbc->load(rom_filename);
 }
 
-
+/**
+ * Given an interrupt type, sets the corresponding bit in the interrupt request register
+ * 
+ * @param interrupt the type of interrupt
+ */
 void MMU::request_interrupt(Interrupt interrupt) {
     io_registers[IF_REGISTER - IO_START] |= static_cast<Byte>(interrupt);
 }
 
+
+/**
+ * Given a key press or release, set or reset the corresponding bit in the 2x4 joypad register
+ * 
+ * @param key the key that has been changed
+ * @param pressed true if pressed, false if released
+ */
 void MMU::set_key(Key key, bool pressed) {
     Byte* target = nullptr;
     Bit bit = Bit::Bit0;
@@ -408,6 +425,11 @@ void MMU::set_key(Key key, bool pressed) {
 }
 
 
+/**
+ * Transfer a section of data exactly the size of OAM to OAM
+ * 
+ * @param value the upper byte of the address to start transferring data from
+ */
 void MMU::oam_dma_transfer(const Byte value) {
     Address address = static_cast<Address>(value) << 8;
     std::vector<Byte> dma_data(OAM_SIZE);
@@ -420,6 +442,12 @@ void MMU::oam_dma_transfer(const Byte value) {
 }
 
 
+/**
+ * Transfer a section of data to VRAM
+ * CGB only
+ * 
+ * @param value whether to use HBlank DMA or general DMA, as well as the length of data to be transferred
+ */
 void MMU::vram_dma_transfer(const Byte value) {
     if (!cgb_mode) {
         return;
@@ -454,7 +482,10 @@ void MMU::vram_dma_transfer(const Byte value) {
     }
 }
 
-
+/**
+ * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
+ * CGB only
+ */
 void MMU::hdma_tick() {
     if (!hdma_state.active) {
         return;
@@ -462,9 +493,8 @@ void MMU::hdma_tick() {
 
 
     if (hdma_state.remaining == 0) {
-        hdma_state.active = false;
-
         //signal transfer is complete
+        hdma_state.active = false;
         vram_dma_control = 0xFF;
         return;
     }

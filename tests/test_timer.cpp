@@ -73,9 +73,9 @@ TEST(TimerTest, TestOverflow) {
     EXPECT_EQ(timer.read(TIMA_REGISTER), 0x00);
 
     // expect interrupt request to be delayed 1 m-cycle
-    EXPECT_EQ(mmu.read(IF_REGISTER), 0x00);
+    EXPECT_EQ(mmu.read(IF_REGISTER), 0xE1);
     timer.tick();
-    EXPECT_EQ(mmu.read(IF_REGISTER), 0x04);
+    EXPECT_EQ(mmu.read(IF_REGISTER), 0xE5);
 
     // expect write during reload cycle to fail
     timer.write(TIMA_REGISTER, 0xDE);
