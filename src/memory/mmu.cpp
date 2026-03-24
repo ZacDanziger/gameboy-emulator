@@ -414,7 +414,10 @@ void MMU::set_key(Key key, bool pressed) {
         target = &direction_keys;
         bit = Bit::Bit3;
         break;
-    }
+    case Key::S:
+        // ppu->dump_tiles_ppm("../build/tiles.png");
+        return;
+    }   
 
     if (pressed) {
         reset_bit(*target, bit);
@@ -465,9 +468,11 @@ void MMU::vram_dma_transfer(const Byte value) {
     if (is_hdma) {
         // HBlank DMA
         reset_bit(vram_dma_control, Bit::Bit7);
+        if (!hdma_state.active) {
+            hdma_state.source = source_address;
+            hdma_state.destination = destination_address;
+        }
         hdma_state.active = true;
-        hdma_state.source = source_address;
-        hdma_state.destination = destination_address;
         hdma_state.remaining = length;
     } else {
         // General Purpose DMA
@@ -491,14 +496,6 @@ void MMU::hdma_tick() {
         return;
     }
 
-
-    if (hdma_state.remaining == 0) {
-        //signal transfer is complete
-        hdma_state.active = false;
-        vram_dma_control = 0xFF;
-        return;
-    }
-
     int chunk_size = 16;
 
     std::vector<Byte> chunk(chunk_size);
@@ -507,13 +504,25 @@ void MMU::hdma_tick() {
         chunk[i] = read(hdma_state.source + i);
     }
 
+    if (hdma_state.destination + chunk_size > ERAM_START) {
+        hdma_state.active = false;
+        vram_dma_control = 0xFF;
+        return;
+    }
+
     ppu->load(hdma_state.destination, chunk);
 
     hdma_state.source += chunk_size;
     hdma_state.destination += chunk_size;
     hdma_state.remaining -= chunk_size;
 
-    Byte new_val = (hdma_state.remaining >> 4) - 1;
-    vram_dma_control &= 0x80;
-    vram_dma_control |= (new_val & 0x7F);
+    if (hdma_state.remaining == 0) {
+        // std::cout << "HDMA Remaining = 0\n";
+        hdma_state.active = false;
+        vram_dma_control = 0xFF;
+    } else {
+        Byte new_val = (hdma_state.remaining >> 4) - 1;
+        vram_dma_control &= 0x80;
+        vram_dma_control |= (new_val & 0x7F);
+    }
 }

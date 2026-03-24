@@ -26,9 +26,11 @@ class CPULogger: public Logger {
     public:
         CPULogger(CPU* cpu_ptr);
         void log_serial_buffer(const std::string& buffer_filename);
+        Word get_PC() const { return cpu->reg_PC; }
     private:
         void update_line() override;
         CPU *cpu;
+        bool start;
 };
 
 class TimerLogger: public Logger {

@@ -22,7 +22,8 @@ class Timer {
             previous_high(false),
             overflow_delay(false),
             timer_reload_cycle(false),
-            double_speed_mode(false)
+            double_speed_mode(false),
+            cycle_count(0)
         {
             // initialize timer_control, div_bit, and enabled
             write(TAC_REGISTER, 0xF8);
@@ -32,6 +33,8 @@ class Timer {
 
         void write(const Address address, const Byte value);
         Byte read(const Address address) const;
+
+        int get_cycle_count() const { return cycle_count; }
 
         bool get_double_speed() const { return double_speed_mode; }
         void set_double_speed(const bool ds) { double_speed_mode = ds; }
@@ -51,6 +54,8 @@ class Timer {
         bool timer_reload_cycle;
 
         bool double_speed_mode;
+
+        int cycle_count;
 };
 
 #endif // TIMER_H

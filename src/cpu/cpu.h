@@ -39,7 +39,6 @@ class CPU {
             Byte *reg_high;
             Byte *reg_low;
         };
-
         
         // Gameboy's Eight 8-bit registers
         Byte reg_A;   // Accumulator

@@ -1,5 +1,7 @@
 #include "ppu.h"
 
+static int count = 0;
+
 /**
  * Read from VRAM, OAM, or any PPU owned IO registers
  * 
@@ -9,7 +11,7 @@
 Byte PPU::read(const Address address) const {
     if (address >= VRAM_START && address < ERAM_START) {
         if (mode == Mode::TRANSFER) {
-            return 0xFF;
+            return OPEN_BUS_VALUE;
         }
 
         uint32_t adjusted_address = static_cast<uint32_t>(address);
@@ -190,6 +192,7 @@ void PPU::write(const Address address, const Byte value) {
  * @param data the data to be loaded into VRAM or OAM
  */
 void PPU::load(const Address address, const std::vector<Byte>& data) {
+    
     size_t size = 0;
 
     if (address >= VRAM_START && address < ERAM_START) {
@@ -311,6 +314,7 @@ void PPU::update() {
     }
 }
 
+
 /**
  * Draw one scanline to the frame
  */
@@ -354,7 +358,6 @@ void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::arra
 
     Address tile_map = is_set(lcd_control, Bit::Bit3) ? TILE_MAP_1_START : TILE_MAP_0_START;
 
-    // make sure no bugs from using uint8_t here
     for (uint8_t pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
         uint8_t x = viewport_x + pixel_column;
         // divide by 8 again for correct tile column
@@ -399,6 +402,7 @@ void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::arra
             color_id_to_argb(pixel_color_id, palette) : color_id_to_argb(pixel_color_id, background_palette);
     }
 }
+
 
 /**
  * Draw one line of the window to the frame buffer
@@ -471,6 +475,7 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
     window_line_counter += 1;
 }
 
+
 /**
  * Draw any sprites that belong on the current scanline to the frame buffer
  * 
@@ -531,7 +536,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         }
 
         // get the relative row of the sprite  - [0,7] on an 8x8, and [0,15] on an 8x16
-        int y = 16 - sprite_y_pos + lcd_y;
+        int y = 16 - sprite_y_pos + lcd_y;  // translates to lcd_y - top edge of sprite
 
         if (flip_y) {
             y = sprite_height - y;
@@ -642,7 +647,7 @@ Address PPU::get_tile_address(const Byte tile_id) const {
     } else {
         // 8800 method
         int8_t signed_id = static_cast<int8_t>(tile_id);
-        return static_cast<Address>(static_cast<int16_t>(TILE_DATA_1) + (signed_id * 16));
+        return static_cast<Address>(static_cast<int32_t>(TILE_DATA_1) + (signed_id * 16));
     }
 }
 
@@ -780,4 +785,89 @@ std::array<Address, 10> PPU::select_sprites(const int sprite_height) {
     }
 
     return selected_sprites;
+}
+
+
+std::vector<Byte> PPU::dump_tiles() {
+    std::vector<Byte> tile_data(0x3000);
+
+    std::copy_n(vram.begin(), 0x1800, tile_data.begin());
+    std::copy_n(vram.begin() + VRAM_SIZE, 0x1800, tile_data.begin() + 0x1800);
+
+    // dump(tile_data, "../build/tile_data.txt");
+    return tile_data;
+}
+
+void PPU::print_tiles(const std::string& filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+
+    std::vector<Byte> tiles = dump_tiles();
+    int num_tiles = tiles.size() / 16;
+
+    for (int t = 0; t < num_tiles; t++) {
+        file << "Tile " << t << " (bank " << (t >= TILES_PER_BANK ? 1 : 0) << "):\n";
+        
+        for (int row = 0; row < 8; row++) {
+            Byte low  = tiles[t * 16 + row * 2];
+            Byte high = tiles[t * 16 + row * 2 + 1];
+            
+            for (int col = 7; col >= 0; col--) {
+                int color_id = (((high >> col) & 1) << 1) | ((low >> col) & 1);
+                file << ".░▒█"[color_id];
+            }
+            file << "\n";
+        }
+        file << "\n";
+    }
+}
+
+void PPU::dump_tiles_ppm(const std::string& filename) {
+    std::vector<Byte> tiles = dump_tiles();
+    int num_tiles = tiles.size() / 16;
+
+    // lay tiles out in a grid, 16 tiles wide
+    int tiles_wide = 16;
+    int tiles_tall = (num_tiles + tiles_wide - 1) / tiles_wide;
+    int img_width  = tiles_wide * 8;
+    int img_height = tiles_tall * 8;
+
+    std::ofstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+
+    // PPM header
+    file << "P6\n" << img_width << " " << img_height << "\n255\n";
+
+    for (int ty = 0; ty < tiles_tall; ty++) {
+        for (int row = 0; row < 8; row++) {
+            for (int tx = 0; tx < tiles_wide; tx++) {
+                int t = ty * tiles_wide + tx;
+
+                for (int col = 7; col >= 0; col--) {
+                    if (t >= num_tiles) {
+                        // pad with black if we're past the last tile
+                        file.put(0); file.put(0); file.put(0);
+                        continue;
+                    }
+
+                    Byte low  = tiles[t * 16 + row * 2];
+                    Byte high = tiles[t * 16 + row * 2 + 1];
+                    int color_id = (((high >> col) & 1) << 1) | ((low >> col) & 1);
+
+                    // use palette 0 for background tiles, is_sprite=false
+                    RGBA32 color = color_id_to_argb(color_id, 0, false);
+
+                    // RGBA32 is (R << 24 | G << 16 | B << 8 | A)
+                    file.put((color >> 24) & 0xFF); // R
+                    file.put((color >> 16) & 0xFF); // G
+                    file.put((color >>  8) & 0xFF); // B
+                    // PPM has no alpha channel
+                }
+            }
+        }
+    }
 }

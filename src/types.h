@@ -35,7 +35,8 @@ enum class Interrupt : Byte {
 
 enum class Key {
     A, B, Select, Start,    // button keys
-    Right, Left, Up, Down   // direction keys
+    Right, Left, Up, Down,   // direction keys
+    S
 };
 
 
@@ -50,6 +51,7 @@ enum class Mode {
 constexpr std::size_t SCREEN_WIDTH = 160;
 constexpr std::size_t SCREEN_HEIGHT = 144;
 
+constexpr Byte OPEN_BUS_VALUE = 0xFF;
 
 using InterruptCallback = std::function<void(Interrupt)>;
 

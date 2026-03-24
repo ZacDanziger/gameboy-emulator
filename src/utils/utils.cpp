@@ -63,16 +63,16 @@ void dump(const std::vector<Byte>& data, const std::string& out_filename) {
         throw std::runtime_error("Cannot open out file");
     }
 
-    outfile << "Size: " << data.size() << " bytes (0x" 
-            << std::hex << std::uppercase << data.size() << std::dec << ")\n";
-    outfile << std::string(70, '-') << "\n";
-    outfile << "Address  | 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F |\n";
-    outfile << std::string(70, '-') << "\n";
+    // outfile << "Size: " << data.size() << " bytes (0x" 
+    //         << std::hex << std::uppercase << data.size() << std::dec << ")\n";
+    // outfile << std::string(70, '-') << "\n";
+    // outfile << "Address  | 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F |\n";
+    // outfile << std::string(70, '-') << "\n";
 
     for (size_t i = 0; i < data.size(); i += BYTES_PER_LINE) {
         // Address
-        outfile << "0x" << std::hex << std::uppercase 
-                << std::setw(4) << std::setfill('0') << i << "   | ";
+        // outfile << "0x" << std::hex << std::uppercase 
+        //         << std::setw(4) << std::setfill('0') << i << "   | ";
  
         // Hex bytes
         for (int j = 0; j < BYTES_PER_LINE; j++) {
@@ -85,7 +85,7 @@ void dump(const std::vector<Byte>& data, const std::string& out_filename) {
             }
         }
  
-        outfile << "| ";
+        // outfile << "| ";
  
         // // ASCII representation
         // for (int j = 0; j < BYTES_PER_LINE && i + j < data.size(); j++) {

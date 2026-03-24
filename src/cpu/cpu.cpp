@@ -52,11 +52,6 @@ void CPU::step() {
         if (mmu->any_button_pressed()) {
             stopped = false;
         }
-
-        if (serial_buffer.find("Passed") != std::string::npos ||
-            serial_buffer.find("Failed") != std::string::npos) {
-                stopped = false;
-            }
     }
 
     // TODO: implement halt bug
@@ -74,6 +69,7 @@ void CPU::step() {
         if ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0) {
             handle_interrupts();
             halted = false;
+            break;
         }
         timer->tick();
     }

@@ -6,6 +6,8 @@
 #include "../utils/utils.h"
 #include "../memory/memory_map.h"
 
+#include <iostream>
+
 using FrameCallback = std::function<void()>;
 using HBlankCallback = std::function<void()>;
 
@@ -67,7 +69,8 @@ class PPU {
             cycles(-1),
             window_line_counter(0),
 
-            cgb_mode(false)
+            cgb_mode(false),
+            DEBUG_REGISTER(0x00)
         {}
 
         Byte read(const Address address) const;
@@ -79,6 +82,10 @@ class PPU {
 
         void update();
         inline void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
+
+        std::vector<Byte> dump_tiles();
+        void print_tiles(const std::string& filename);
+        void dump_tiles_ppm(const std::string& filename);
 
     private:
         struct Tile {
@@ -119,6 +126,8 @@ class PPU {
         Byte background_palette_index;    // BCPS/BCPI REGISTER
         Byte object_palette_index;        // OCPS/OCPI REGISTER
         Byte object_priority;             // OPRI REGISTER - not currently used, may change in future
+
+        Byte DEBUG_REGISTER;    // 0x8D50
 
 
         Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10

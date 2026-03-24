@@ -13,7 +13,7 @@
 #include "../mbc/mbc.h"
 
 
-constexpr Byte OPEN_BUS_VALUE = 0xFF;
+
 
 /**
  * Memory Management Unit
@@ -66,6 +66,8 @@ class MMU {
         void hdma_tick();
 
         inline bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
+
+        void print_tiles(const std::string& filename) { ppu->dump_tiles_ppm(filename); }
     private:
         Timer *timer;
         PPU *ppu;

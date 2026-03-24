@@ -5,6 +5,7 @@
  * Move the timer forward one m-cycle
  */
 void Timer::tick() {
+    cycle_count++;
     timer_reload_cycle  = false;
 
     if (overflow_delay) {

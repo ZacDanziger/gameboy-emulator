@@ -41,6 +41,7 @@ void Logger::log() {
 
 CPULogger::CPULogger(CPU* cpu_ptr) {
     cpu = cpu_ptr;
+    start = false;
 }
 
 void CPULogger::log_serial_buffer(const std::string& buffer_filename) {
