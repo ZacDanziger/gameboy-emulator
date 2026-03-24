@@ -43,7 +43,7 @@ Byte MMU::read(Address address) const {
         if (cgb_mode) {
             adjusted_address += wram_bank * WRAM_BANK_SIZE;
         }
-        return wram[adjusted_address - WRAM_BANK_00_START];
+        return wram[adjusted_address - WRAM_BANK_NN_START];
     }
 
     // OAM read
@@ -174,7 +174,7 @@ void MMU::write(Address address, Byte data) {
         if (cgb_mode) {
             adjusted_address += wram_bank * WRAM_BANK_SIZE;
         }
-        wram[adjusted_address - WRAM_BANK_00_START] = data;
+        wram[adjusted_address - WRAM_BANK_NN_START] = data;
         return;
     }
 
@@ -415,7 +415,7 @@ void MMU::set_key(Key key, bool pressed) {
         bit = Bit::Bit3;
         break;
     case Key::S:
-        // ppu->dump_tiles_ppm("../build/tiles.png");
+        ppu->dump_tiles_ppm("../build/tiles.png");
         return;
     }   
 
@@ -490,6 +490,8 @@ void MMU::vram_dma_transfer(const Byte value) {
 /**
  * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
  * CGB only
+ * 
+ * --- LIKELY SOURCE OF TILE CORRUPTION BUG ---
  */
 void MMU::hdma_tick() {
     if (!hdma_state.active) {

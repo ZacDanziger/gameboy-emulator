@@ -4,7 +4,7 @@
 #include "../emulator/emulator.h"
 #include "gtest/gtest.h"
 
-bool CGB_CHECK = false;
+bool CGB_CHECK = true;
 
 TEST(BasicTest, TestReadWrite) {
     GTEST_SKIP();

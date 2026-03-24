@@ -710,6 +710,9 @@ void CPU::LD(Byte& dest, const Address address) {
  * @param value the value to load into the destination
 */
 void CPU::LD(const Address address, Byte value) {
+    if (address == 0xdff0 && value == 0x1f) {
+        std::cout << "Here\n";
+    }
     mmu->write(address, value);
     timer->tick();
 }
