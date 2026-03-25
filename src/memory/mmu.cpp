@@ -490,8 +490,6 @@ void MMU::vram_dma_transfer(const Byte value) {
 /**
  * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
  * CGB only
- * 
- * --- LIKELY SOURCE OF TILE CORRUPTION BUG ---
  */
 void MMU::hdma_tick() {
     if (!hdma_state.active) {
@@ -519,7 +517,6 @@ void MMU::hdma_tick() {
     hdma_state.remaining -= chunk_size;
 
     if (hdma_state.remaining == 0) {
-        // std::cout << "HDMA Remaining = 0\n";
         hdma_state.active = false;
         vram_dma_control = 0xFF;
     } else {

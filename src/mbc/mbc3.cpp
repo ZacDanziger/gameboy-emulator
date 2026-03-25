@@ -162,7 +162,7 @@ void MBC3::load(const std::string& filename) {
     for (int i = 0; i < 8; i++) {
         timestamp |= static_cast<uint64_t>(data[eram_size + 5 + i]) << (i * 8);
     }
-    if (timestamp == 0) {
+    if (timestamp != 0) {
         rtc_start_time = std::chrono::system_clock::time_point(std::chrono::seconds(timestamp));
     }
 

@@ -69,8 +69,7 @@ class PPU {
             cycles(-1),
             window_line_counter(0),
 
-            cgb_mode(false),
-            DEBUG_REGISTER(0x00)
+            cgb_mode(false)
         {}
 
         Byte read(const Address address) const;
@@ -126,8 +125,6 @@ class PPU {
         Byte background_palette_index;    // BCPS/BCPI REGISTER
         Byte object_palette_index;        // OCPS/OCPI REGISTER
         Byte object_priority;             // OPRI REGISTER - not currently used, may change in future
-
-        Byte DEBUG_REGISTER;    // 0x8D50
 
 
         Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10

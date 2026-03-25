@@ -48,9 +48,7 @@ class MMU {
         }
         
         ~MMU() {
-            if (mbc) {
-                mbc->save(rom_filename);
-            }
+            save();
         }
 
         inline void init(Timer* timer_ptr, PPU* ppu_ptr) { timer = timer_ptr; ppu = ppu_ptr; }
@@ -66,6 +64,8 @@ class MMU {
         void hdma_tick();
 
         inline bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
+
+        inline void save () {if (mbc) { mbc->save(rom_filename); }}
 
         void print_tiles(const std::string& filename) { ppu->dump_tiles_ppm(filename); }
     private:

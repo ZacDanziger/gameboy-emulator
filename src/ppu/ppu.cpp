@@ -231,16 +231,6 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
  * Step the PPU through 1 m-cycle
  */
 void PPU::update() {
-    static bool flag = false;
-    if (vram[0x0D50] == 0xC0) {
-        flag = true;
-    }
-
-    if (flag && vram[0x0D50] != 0xC0) {
-        std::cout << "tile 213 changed here";
-        flag = false;
-    }
-
     // if screen is disabled, just return
     if (!is_set(lcd_control, Bit::Bit7)) {
         return;

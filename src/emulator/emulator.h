@@ -13,6 +13,7 @@
 #include "../utils/logger.h"
 
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
+constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
 
 class Emulator {
     public:
@@ -26,7 +27,8 @@ class Emulator {
                 [this]{ this->on_frame_ready(); },
                 [this]{ mmu.hdma_tick(); }),
 
-            last_frame_time(std::chrono::steady_clock::now())
+            last_frame_time(std::chrono::steady_clock::now()),
+            last_save_time(std::chrono::steady_clock::now())
             {
                 mmu.init(&timer, &ppu);
                 cpu.init(&timer, &mmu);
@@ -44,6 +46,7 @@ class Emulator {
         // APU
         
         std::chrono::steady_clock::time_point last_frame_time;
+        std::chrono::steady_clock::time_point last_save_time;
         void on_frame_ready();
 };
 
