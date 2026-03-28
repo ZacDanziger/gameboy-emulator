@@ -188,11 +188,10 @@ void PPU::write(const Address address, const Byte value) {
 /**
  * Loads the data into a section of memory owned by the PPU
  * 
- * @param address either a value in VRAM [0x8000, 0x9FFF] or the start of OAM (0xFE00)
+ * @param address either a value in VRAM [0x8000, 0x9FFF] (CGB mode only) or the start of OAM [0xFE00]
  * @param data the data to be loaded into VRAM or OAM
  */
 void PPU::load(const Address address, const std::vector<Byte>& data) {
-    
     size_t size = 0;
 
     if (address >= VRAM_START && address < ERAM_START) {
@@ -229,6 +228,7 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
 
 /**
  * Step the PPU through 1 m-cycle
+ * Modes: (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
  */
 void PPU::update() {
     // if screen is disabled, just return
@@ -324,7 +324,7 @@ void PPU::draw_scanline() {
 
     // Fill scanline with white if DMG, and background palette 0 color 0 if CGB
     int buffer_index = lcd_y * SCREEN_WIDTH;
-    RGBA32 fill_color = cgb_mode ? color_id_to_argb(0, 0x00, false) : dmg_palette[0];
+    RGBA32 fill_color = cgb_mode ? color_id_to_rgba(0, 0x00, false) : dmg_palette[0];
     std::fill(
         frame_buffer.begin() + buffer_index,
         frame_buffer.begin() + buffer_index + SCREEN_WIDTH,
@@ -399,7 +399,7 @@ void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::arra
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
 
         frame_buffer[buffer_index] = cgb_mode ? 
-            color_id_to_argb(pixel_color_id, palette) : color_id_to_argb(pixel_color_id, background_palette);
+            color_id_to_rgba(pixel_color_id, palette) : color_id_to_rgba(pixel_color_id, background_palette);
     }
 }
 
@@ -411,7 +411,7 @@ void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::arra
  * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
 void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
-    if ((lcd_y < window_y) || (window_x >= 167)) {
+    if ((lcd_y < window_y) || (window_x >= SCREEN_WIDTH + 7)) {
         return;
     }
 
@@ -469,7 +469,7 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
 
         int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
         frame_buffer[buffer_index] = cgb_mode ? 
-            color_id_to_argb(pixel_color_id, palette) : color_id_to_argb(pixel_color_id, background_palette);
+            color_id_to_rgba(pixel_color_id, palette) : color_id_to_rgba(pixel_color_id, background_palette);
     }
 
     window_line_counter += 1;
@@ -531,7 +531,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         }
 
         // if sprite is offscreen, skip it
-        if ((sprite_x_pos == 0) || (sprite_x_pos >= 168)) {
+        if ((sprite_x_pos == 0) || (sprite_x_pos >= SCREEN_WIDTH + 8)) {
             continue;
         }
 
@@ -629,7 +629,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         }
         
 
-        frame_buffer[buffer_index] = color_id_to_argb(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette, true);
+        frame_buffer[buffer_index] = color_id_to_rgba(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette, true);
     }
 }
 
@@ -652,6 +652,14 @@ Address PPU::get_tile_address(const Byte tile_id) const {
 }
 
 
+/**
+ * Convert a given tile address to  tile cache index
+ * 
+ * @param tile_address an address in range [0x8000, 0x97FF]
+ * @param bank the tile bank to index into, in DMG mode only bank 0 is usable
+ * @returns an index in the range [0, 767] where values from [0, 383] correspond to tiles in bank 0 
+ *  and values from [384, 767] correspond to tiles in bank 1
+ */
 int PPU::address_to_index(const Address tile_address, int bank) const {
     // bank 1 only enabled in CGB mode
     if (!cgb_mode) {
@@ -731,7 +739,7 @@ void PPU::refresh_tile(const Address tile_address, int bank) {
  * @param palette byte that matches color ids in the range [0,3] to palette indices in the range[0,3]
  * @returns the RGBA32 color value associated with that color id
  */
-RGBA32 PPU::color_id_to_argb(const int color_id, const Byte palette, const bool is_sprite) const {
+RGBA32 PPU::color_id_to_rgba(const int color_id, const Byte palette, const bool is_sprite) const {
     if ((color_id < 0) || (color_id >= 4)) {
         throw std::runtime_error("color id must be a value between 0 and 3 (inclusive)");
     }
@@ -760,6 +768,12 @@ RGBA32 PPU::color_id_to_argb(const int color_id, const Byte palette, const bool 
 }
 
 
+/**
+ * Scan the OAM for the first 10 sprites that belong on the current scanline
+ * 
+ * @param sprite_height the currently selected height of sprites, either 8 or 16
+ * @returns an array of 10 addresses corresponding to each of the 10 sprites first address in memory
+ */
 std::array<Address, 10> PPU::select_sprites(const int sprite_height) {
     std::array<Address, 10> selected_sprites{};
     int index = 0;
@@ -788,6 +802,12 @@ std::array<Address, 10> PPU::select_sprites(const int sprite_height) {
 }
 
 
+/**
+ * DEBUG FUNCTION
+ * Get all of the tiles currently in VRAM
+ * 
+ * @returns a vector of all tiles in both banks of VRAM
+ */
 std::vector<Byte> PPU::dump_tiles() {
     std::vector<Byte> tile_data(0x3000);
 
@@ -798,33 +818,14 @@ std::vector<Byte> PPU::dump_tiles() {
     return tile_data;
 }
 
-void PPU::print_tiles(const std::string& filename) {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
-    }
 
-    std::vector<Byte> tiles = dump_tiles();
-    int num_tiles = tiles.size() / 16;
-
-    for (int t = 0; t < num_tiles; t++) {
-        file << "Tile " << t << " (bank " << (t >= TILES_PER_BANK ? 1 : 0) << "):\n";
-        
-        for (int row = 0; row < 8; row++) {
-            Byte low  = tiles[t * 16 + row * 2];
-            Byte high = tiles[t * 16 + row * 2 + 1];
-            
-            for (int col = 7; col >= 0; col--) {
-                int color_id = (((high >> col) & 1) << 1) | ((low >> col) & 1);
-                file << ".░▒█"[color_id];
-            }
-            file << "\n";
-        }
-        file << "\n";
-    }
-}
-
-void PPU::dump_tiles_ppm(const std::string& filename) {
+/**
+ * DEBUG FUNCTION
+ * Print the tile data currently in VRAM to the file given, in ppm format
+ * 
+ * @param filename the file to write the ppm data to
+ */
+void PPU::print_tiles_ppm(const std::string& filename) {
     std::vector<Byte> tiles = dump_tiles();
     int num_tiles = tiles.size() / 16;
 
@@ -859,7 +860,7 @@ void PPU::dump_tiles_ppm(const std::string& filename) {
                     int color_id = (((high >> col) & 1) << 1) | ((low >> col) & 1);
 
                     // use palette 0 for background tiles, is_sprite=false
-                    RGBA32 color = color_id_to_argb(color_id, 0, false);
+                    RGBA32 color = color_id_to_rgba(color_id, 0, false);
 
                     // RGBA32 is (R << 24 | G << 16 | B << 8 | A)
                     file.put((color >> 24) & 0xFF); // R

@@ -3,6 +3,9 @@
 
 #include "mbc.h"
 
+/**
+ * AKA no MBC
+ */
 class MBC0 : public MBC {
     public:
         MBC0(std::vector<Byte> rom, size_t ram_size) :

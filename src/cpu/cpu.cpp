@@ -35,8 +35,8 @@ CPU::CPU() {
 /**
  * Initialize the timer and memory pointers
  * 
- * @param tim a pointer to the emulator's timer
- * @param mem a pointer to the emulator's memory
+ * @param timer_ptr a pointer to the emulator's timer
+ * @param mmu_ptr a pointer to the emulator's memory
  */
 void CPU::init(Timer* timer_ptr, MMU* mmu_ptr) {
     timer = timer_ptr;
@@ -56,17 +56,19 @@ void CPU::step() {
 
     // TODO: implement halt bug
     int counter = 0;
-     while(halted) {
+    while(halted) {
         // if we entered HALT from a STOP call when a speed switch was requested, exit HALT after 0x8000 m-cycles
         if (speed_switch_halt) {
             if (counter == 0x8000) {
                 halted = false;
                 speed_switch_halt = false;
+                counter = 0;
+                break;
             }
             counter++;
         }
 
-        if ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0) {
+        if (interrupt_pending()) {
             handle_interrupts();
             halted = false;
             break;
@@ -104,6 +106,9 @@ void CPU::step() {
 
 /**
  * Handle interrupts
+ * If IME is enabled and any requesting interrupts are enabled in the IE register,
+ * store the current PC and index into the IVT to get the interrupt handler address
+ * NOTE: only calls highest priority interrupt, if any
 */
 void CPU::handle_interrupts() {
     // check that interrupts are enabled
@@ -115,7 +120,7 @@ void CPU::handle_interrupts() {
     Byte if_register = mmu->read(IF_REGISTER);
 
     //check that the specific interrupts that are enabled are requesting an interrupt
-    if  (!(ie_register & if_register)) {
+    if  (!interrupt_pending()) {
         return;
     }
 
@@ -129,40 +134,40 @@ void CPU::handle_interrupts() {
     //V-Blank interrupt
     if ((ie_register & 0x01) & (if_register & 0x01)) {
         RST(interrupt_vector[0]);
-        if_register &= ~0x01;
-        mmu->write(IF_REGISTER, if_register);
+        // if_register &= ~0x01;
+        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x01));
         return;
     }
 
     // LCD interrupt
     if ((ie_register & 0x02) & (if_register & 0x02)) {
         RST(interrupt_vector[1]);
-        if_register &= ~0x02;
-        mmu->write(IF_REGISTER, if_register);
+        // if_register &= ~0x02;
+        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x02));
         return;
     }
 
     // Timer interrupt
     if ((ie_register & 0x04) & (if_register & 0x04)) {
         RST(interrupt_vector[2]);
-        if_register &= ~0x04;
-        mmu->write(IF_REGISTER, if_register);
+        // if_register &= ~0x04;
+        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x04));
         return;
     }
 
     // Serial Interrupt
     if ((ie_register & 0x08) & (if_register & 0x08)) {
         RST(interrupt_vector[3]);
-        if_register &= ~0x08;
-        mmu->write(IF_REGISTER, if_register);
+        // if_register &= ~0x08;
+        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x08));
         return;
     }
 
     // Joypad Interrupt
     if ((ie_register & 0x10) & (if_register & 0x10)) {
         RST(interrupt_vector[4]);
-        if_register &= ~0x10;
-        mmu->write(IF_REGISTER, if_register);
+        // if_register &= ~0x10;
+        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x10));
         return;
     }
 }
@@ -171,7 +176,7 @@ void CPU::handle_interrupts() {
 /**
  * Fetch the next instruction and increment PC
  * 
- * @return the value in mmu[PC]
+ * @return the value in mem[PC]
 */
 Byte CPU::fetch() {
     Byte opcode = mmu->read(reg_PC++);
@@ -183,7 +188,7 @@ Byte CPU::fetch() {
 /**
  * Fetch the next 16 bits, in little endian format
  * 
- * @return [mem[SP+1] | mem[SP]]
+ * @return [mem[PC+1] | mem[PC]]
 */
 Word CPU::fetch16() {
     Byte low = fetch();
@@ -377,15 +382,13 @@ void CPU::HALT() {
  * Stops the program
  * - - - -
  * 
- * TODO: call speed switch here, when that exists
  * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
  */
 void CPU::STOP() {
-    bool interrupt_pending = ((mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) != 0x00);
 
     // check if a button is being pressed
     if (mmu->any_button_pressed()) {
-        if (interrupt_pending) {
+        if (interrupt_pending()) {
             // stop is a 1 byte opcode, mode doesn't change, DIV is not reset
             return;
         } 
@@ -398,7 +401,7 @@ void CPU::STOP() {
 
     // check if a speed switch is requested
     if (is_set(mmu->read(KEY1_SPD_REGISTER), Bit::Bit0)) {
-        if (interrupt_pending) {
+        if (interrupt_pending()) {
             if (interrupts_enabled) {
                 // stop is a 1 byte opcode, mode doesn't change, DIV is reset, CPU speed switches
                 mmu->write(DIV_REGISTER, 0x00);
@@ -432,7 +435,7 @@ void CPU::STOP() {
         return;
     }
 
-    if (interrupt_pending) {
+    if (interrupt_pending()) {
         // stop is a 1 byte opcode, STOP mode is entered, DIV is reset
         stopped = true;
         mmu->write(DIV_REGISTER, 0x00);
@@ -456,7 +459,7 @@ void CPU::DI() {
 
 
 /**
- * Enable interrupts
+ * Enable interrupts 1 m-cycle after this is executed
  * - - - -
 */
 void CPU::EI() {
@@ -626,6 +629,7 @@ void CPU::BIT(const Byte reg, const Bit bit) {
     update_flag(FLAG_HALF_CARRY, true);
 }
 
+
 /**
  * Sets registers's bit[pos] 
  * - - - -
@@ -636,6 +640,7 @@ void CPU::BIT(const Byte reg, const Bit bit) {
 void CPU::SET(Byte& reg, const Bit bit) {
     set_bit(reg, bit);
 }
+
 
 /**
  * Set memory[HL]'s bit[pos]
@@ -660,6 +665,7 @@ void CPU::SET_HL(const Bit bit) {
 void CPU::RES(Byte& reg, const Bit bit) {
     reset_bit(reg, bit);
 }
+
 
 /**
  * Reset memory[HL]'s bit[pos]
@@ -733,6 +739,7 @@ void CPU::LDH(const Byte value, bool into_A) {
     }
 }
 
+
 /***
  * 16-bit load
  * dest = value
@@ -745,6 +752,7 @@ void CPU::LD(Word& dest, const Word value) {
     dest = value;
 }
 
+
 /***
  * 16-bit load
  * [high | low] = [value 15:8 | value 7:0]
@@ -756,6 +764,7 @@ void CPU::LD(Word& dest, const Word value) {
 void CPU::LD(Pair& pair, const Word value) {
     set_pair(pair, value);
 }
+
 
 /***
  * 16-bit load (write)
@@ -935,7 +944,7 @@ void CPU::OR(const Byte value) {
  * 8-bit compare
  * Z 1 H C
  * 
- * @param value the byte to be or'd with the accumulator (reg A) (usually a register, though can be imm value)
+ * @param value the byte to be compared with the accumulator (reg A) (usually a register, though can be imm value)
 */
 void CPU::CP(const Byte value) {
     // do math in 16-bit to check for carrys on bit [8]
@@ -1121,7 +1130,7 @@ void CPU::DEC(Pair& pair) {
 /**
  * Rotate Left, Register A
  * (Both circular and non circular)
- * (Why does this one have to be different?)
+ * Differs from RL(A) in that the Zero flag is always reset
  * 0 0 0 C 
  * 
  * @param circular true if opcode is RLCA, false if RLA
@@ -1187,7 +1196,7 @@ void CPU::RL_HL(bool circular) {
 /**
  * Rotate Right, Register A
  * (Both circular and non circular)
- * (Why does this one have to be different?)
+ * Differs from RR(A) in that the Zero flag is always reset
  * 0 0 0 C 
  * 
  * @param circular true if opcode is RRCA, false if RRA

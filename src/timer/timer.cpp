@@ -49,6 +49,7 @@ void Timer::tick() {
 void Timer::write(const Address address, const Byte value) {
     switch(address) {
     case DIV_REGISTER:
+        // any write to DIV resets it to 0
         divider_internal = 0x0000;
         break;
     case TIMA_REGISTER:

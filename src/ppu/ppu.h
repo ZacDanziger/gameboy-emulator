@@ -11,6 +11,9 @@
 using FrameCallback = std::function<void()>;
 using HBlankCallback = std::function<void()>;
 
+constexpr int MAX_SPRITES = 40;
+constexpr int MAX_SPRITES_PER_SCANLINE = 10;
+
 constexpr int TILES_PER_BANK = 384; // 3 tile blocks of 128 tiles each
 
 constexpr int CYCLES_PER_SCANLINE = 114;
@@ -77,19 +80,17 @@ class PPU {
 
         void load(const Address address, const std::vector<Byte>& data);
 
-        std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> get_frame() const { return frame_buffer; }
+        inline std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> get_frame() const { return frame_buffer; }
 
         void update();
         inline void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
 
-        std::vector<Byte> dump_tiles();
-        void print_tiles(const std::string& filename);
-        void dump_tiles_ppm(const std::string& filename);
-
+        // Debug Function
+        void print_tiles_ppm(const std::string& filename);
     private:
         struct Tile {
             bool dirty = true;
-            std::array<int, 64> pixels = {0}; // Tiles are 8x8 -> 64 pixels
+            std::array<int, 64> pixels{}; // Tiles are 8x8 -> 64 pixels
         };
 
         InterruptCallback request_interrupt;
@@ -127,7 +128,7 @@ class PPU {
         Byte object_priority;             // OPRI REGISTER - not currently used, may change in future
 
 
-        Mode mode;                        // (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
+        Mode mode;                        // 
         int cycles;
         int window_line_counter;
         bool cgb_mode;
@@ -144,9 +145,12 @@ class PPU {
         std::array<int, 8> fetch_pixel_slice(const Byte low_byte, const Byte high_byte) const;
         void refresh_tile(const Address tile_address, int bank = 0);
 
-        RGBA32 color_id_to_argb(const int color_id, const Byte palette, const bool is_sprite = false) const;
+        RGBA32 color_id_to_rgba(const int color_id, const Byte palette, const bool is_sprite = false) const;
 
         std::array<Address, 10> select_sprites(const int sprite_height);
+
+        // Debug function
+        std::vector<Byte> dump_tiles();
 };
 
 #endif // PPU_H

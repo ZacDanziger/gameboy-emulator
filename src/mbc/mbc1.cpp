@@ -1,5 +1,11 @@
 #include "mbc1.h"
 
+/**
+ * Read from ROM or ERAM
+ * 
+ * @param address the address to read from, in range [0x0000, 0x7FFF] U [0xA000, 0xBFFF]
+ * @returns the data stored at that address, or an error if out of bounds
+ */
 Byte MBC1::read(const Address address) const {
     uint32_t adjusted_address = 0x00000000;
 
@@ -46,7 +52,17 @@ Byte MBC1::read(const Address address) const {
     throw std::runtime_error("MBC read called on incorrect address");
 }
 
-
+/**
+ * Write to ROM or ERAM
+ * Writes to ROM work as follows:
+ * in range [0x0000, 0x1FFF] if the lower byte of data is A, enable RAM
+ * in range [0x2000, 0x3FFF] set the current ROM bank - if 0, ROM bank becomes 1
+ * in range [0x4000, 0x5FFF] set the secondary bank, either RAM bank select or upper 2 bits of ROM bank select
+ * in range [0x6000, 0x7FFF] set the banking mode, determining what the value of the secondary bank means
+ * 
+ * @param address the address to write to
+ * @param data the data to write to the address
+ */
 void MBC1::write(const Address address, const Byte data) {
     // enable RAM
     if (address < 0x2000) {

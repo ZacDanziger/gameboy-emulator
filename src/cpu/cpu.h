@@ -96,6 +96,7 @@ class CPU {
         Word get_pair(const Pair& pair) const;
         void set_pair(const Pair& pair, const Word value);
         Byte read_hl() const;
+        inline bool interrupt_pending() const { return (mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0; }
 
         // Control and Miscellaneous Instructions
 

@@ -12,7 +12,6 @@
  * Matches opcode to operation and executes that operation
  * 
  * @param opcode an 8-bit opcode to be executed
- * @return the number of m-cycles taken to execute the command
 */
 void CPU::decode_execute(const Byte opcode) {
     switch(opcode) {
@@ -244,7 +243,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xD4: { (CALL_IF(FLAG_CARRY, false)); return; }        // CALL NC, a16
         case 0xD5: { PUSH(DE); return; }                            // memory[--SP] <- D; memory[--SP] <- E
         case 0xD6: { SUB(fetch(), false); return; }                 // A -= n8
-        case 0xD7: { RST(reset_vector[2]); return; }                //  memory[SP] <- PC; PC = 0x0000
+        case 0xD7: { RST(reset_vector[2]); return; }                // memory[SP] <- PC; PC = 0x0010
         case 0xD8: { (RET_IF(FLAG_CARRY, true)); return; }          // RET C
         case 0xD9: { RET(); interrupts_enabled = true; return; }    // RETI
         case 0xDA: { (JP_IF(FLAG_CARRY, true)); return; }           // JP C, a16
@@ -263,7 +262,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xE6: { AND(fetch()); return; }                        // A &= n8
         case 0xE7: { RST(reset_vector[4]); return; }                // memory[SP] <- PC; PC = 0x0020
         case 0xE8: { reg_SP = ADD_SP(); timer->tick(); return; }    // SP += e8
-        case 0xE9: { JP(get_pair(HL)); return; }                    // SP <- HL
+        case 0xE9: { JP(get_pair(HL)); return; }                    // PC <- HL
         case 0xEA: { LD(fetch16(), reg_A); return; }                // memory[n16] <- A
         case 0xEB: { throw std::runtime_error("Opcode: EB is bad"); } // --- BAD ---
         case 0xEC: { throw std::runtime_error("Opcode: EC is bad"); } // --- BAD ---
@@ -294,8 +293,6 @@ void CPU::decode_execute(const Byte opcode) {
 
 /**
  * CB Prefix Rotates, Shifts, and Bit Operations
- * 
- * @return the number of m-cycles taken to execute the command
 */
 void CPU::decode_execute_cb() {
     Byte opcode = fetch();

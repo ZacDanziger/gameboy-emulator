@@ -3,11 +3,24 @@
 #include "../mbc/mbc1.h"
 #include "../mbc/mbc3.h"
 
+enum class MBC_Type : Byte{
+    MBC0 = 0x00,
+    MBC1 = 0x01,
+    MBC1_RAM = 0x02,
+    MBC1_RAM_BATTERY = 0x03,
+    MBC3_TIMER_BATTERY = 0x0F,
+    MBC3_TIMER_RAM_BATTERY = 0x10,
+    MBC3 = 0x11,
+    MBC3_RAM = 0x12,
+    MBC3_RAM_BATTERY = 0x13
+};
+
 
 /**
  * Read from memory
+ * NOTE: reads on memory locations [0xFEA0, 0xFEFF] will return the open bus value (0xFF)
  * 
- * @param address the address to be read from, not allowed to be in range [0xFEA0, 0xFEFF]
+ * @param address the address to be read from
  * @returns the value in memory at address
 */
 Byte MMU::read(Address address) const {
@@ -28,7 +41,7 @@ Byte MMU::read(Address address) const {
 
     // Echo RAM adjust (maps to WRAM)
     if (address >= ECHO_START && address < OAM_START) {
-        address -= 0x2000;
+        address -= (ECHO_START - WRAM_BANK_00_START);
     }  
 
     // WRAM read
@@ -38,10 +51,12 @@ Byte MMU::read(Address address) const {
             return wram[address - WRAM_BANK_00_START];
         }
 
-        // read from switchable bank 1-7
+        // read from bank 1 (DMG) or switchable banks 1-7 (CGB)
         uint32_t adjusted_address = static_cast<uint32_t>(address);
         if (cgb_mode) {
             adjusted_address += wram_bank * WRAM_BANK_SIZE;
+        } else {
+            adjusted_address += WRAM_BANK_SIZE;
         }
         return wram[adjusted_address - WRAM_BANK_NN_START];
     }
@@ -54,7 +69,6 @@ Byte MMU::read(Address address) const {
     // NOT USABLE read
     if (address < IO_START) {
         return OPEN_BUS_VALUE;
-        // throw std::runtime_error("MMU read called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
     }
 
     // IO registers read
@@ -74,7 +88,7 @@ Byte MMU::read(Address address) const {
             }
         }
 
-        // CGB registers
+        // CGB registers - return open bus value if in DMG mode
         if (address == HDMA1_REGISTER) {
             return cgb_mode ? vram_source_high : OPEN_BUS_VALUE;
         }
@@ -119,9 +133,13 @@ Byte MMU::read(Address address) const {
 
         return io_registers[address - IO_START];
     }
+
+    // HRAM read
     if (address < IE_REGISTER)       {
         return hram[address - HRAM_START];
     }
+
+    // IE register read
     if (address == IE_REGISTER)      {
         return ie_register;
     }
@@ -133,8 +151,9 @@ Byte MMU::read(Address address) const {
 
 /**
  * Write to memory
+ * NOTE: writes to memory locations [0xFEA0, 0xFEFF] will do nothing
  * 
- * @param address the address to be written to, not allowed to be in range [0xFEA0, 0xFEFF]
+ * @param address the address to be written to
  * @param data the data to be written in the address
 */
 void MMU::write(Address address, Byte data) {
@@ -158,7 +177,7 @@ void MMU::write(Address address, Byte data) {
 
     // Echo RAM adjust (maps to WRAM)
     if (address >= ECHO_START && address < OAM_START) {
-        address -= 0x2000;
+        address -= (ECHO_START - WRAM_BANK_00_START);
     }
 
     // WRAM write
@@ -187,7 +206,6 @@ void MMU::write(Address address, Byte data) {
     // NOT USABLE write
     if (address < IO_START) {
         return;
-        // throw std::runtime_error("MMU write called on NOT USABLE section of memory (0xFEA0 - 0xFEFF)");
     }
 
     // IO registers write
@@ -218,8 +236,8 @@ void MMU::write(Address address, Byte data) {
             vram_dma_control = data;
             
             // Manually terminate HBlank transfer
-            if (hdma_state.active && !is_set(data, Bit::Bit7)) {
-                hdma_state.active = false;
+            if (hdma_active && !is_set(data, Bit::Bit7)) {
+                hdma_active = false;
                 set_bit(vram_dma_control, Bit::Bit7);
                 return;
             }
@@ -246,6 +264,7 @@ void MMU::write(Address address, Byte data) {
             prep_speed_switch = data & 0x01;
             return;
         }
+
         // PPU IO registers
         if ((address >= LCDC_REGISTER && address <= WX_REGISTER) ||
             (address == VBK_REGISTER) ||
@@ -283,7 +302,7 @@ void MMU::write(Address address, Byte data) {
 
 /**
  * Read data from a file and write it to ROM
- * --data in header section must pass gameboy rom checksum
+ * NOTE: data in header section must pass gameboy rom checksum
  * 
  * @param filename the filename containing the data to be read from
 */
@@ -302,7 +321,7 @@ void MMU::load_rom(const std::string& filename) {
         throw std::runtime_error("ROM header checksum failed");
     }
 
-    Byte mbc_type = data[MBC_TYPE];
+    MBC_Type mbc_type = static_cast<MBC_Type>(data[MBC_TYPE]);
     Byte ram_size = data[CART_RAM_SIZE];
     cgb_mode = (data[CGB_FLAG] == 0x80) || (data[CGB_FLAG] == 0xC0);
     ppu->set_cgb_mode(cgb_mode);
@@ -329,29 +348,29 @@ void MMU::load_rom(const std::string& filename) {
     }
 
     switch (mbc_type) {
-    case 0x00:
+    case MBC_Type::MBC0:
         mbc = std::make_unique<MBC0>(std::move(data), ram_size_bytes);
         break;
-    case 0x01:
+    case MBC_Type::MBC1:
         mbc = std::make_unique<MBC1>(std::move(data), 0, false);
         break;
-    case 0x02:
+    case MBC_Type::MBC1_RAM:
         mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, false);
         break;
-    case 0x03:
+    case MBC_Type::MBC1_RAM_BATTERY:
         mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, true);
         break;
-    case 0x0F:
+    case MBC_Type::MBC3_TIMER_BATTERY:
         mbc = std::make_unique<MBC3>(std::move(data), 0, true);
         break;
-    case 0x11:
+    case MBC_Type::MBC3:
         mbc = std::make_unique<MBC3>(std::move(data), 0, false);
         break;
-    case 0x12:
+    case MBC_Type::MBC3_RAM:
         mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, false);
         break;
-    case 0x10:
-    case 0x13:
+    case MBC_Type::MBC3_TIMER_RAM_BATTERY:
+    case MBC_Type::MBC3_RAM_BATTERY:
         mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, true);
         break;
     default:
@@ -415,7 +434,7 @@ void MMU::set_key(Key key, bool pressed) {
         bit = Bit::Bit3;
         break;
     case Key::S:
-        ppu->dump_tiles_ppm("../build/tiles.png");
+        save();
         return;
     }   
 
@@ -468,12 +487,12 @@ void MMU::vram_dma_transfer(const Byte value) {
     if (is_hdma) {
         // HBlank DMA
         reset_bit(vram_dma_control, Bit::Bit7);
-        if (!hdma_state.active) {
-            hdma_state.source = source_address;
-            hdma_state.destination = destination_address;
+        if (!hdma_active) {
+            hdma_source = source_address;
+            hdma_destination = destination_address;
         }
-        hdma_state.active = true;
-        hdma_state.remaining = length;
+        hdma_active = true;
+        hdma_remaining = length;
     } else {
         // General Purpose DMA
         std::vector<Byte> dma_data(length);
@@ -492,7 +511,7 @@ void MMU::vram_dma_transfer(const Byte value) {
  * CGB only
  */
 void MMU::hdma_tick() {
-    if (!hdma_state.active) {
+    if (!hdma_active) {
         return;
     }
 
@@ -501,26 +520,26 @@ void MMU::hdma_tick() {
     std::vector<Byte> chunk(chunk_size);
 
     for (int i = 0; i < chunk_size; i++) {
-        chunk[i] = read(hdma_state.source + i);
+        chunk[i] = read(hdma_source + i);
     }
 
-    if (hdma_state.destination + chunk_size > ERAM_START) {
-        hdma_state.active = false;
+    if (hdma_destination + chunk_size > ERAM_START) {
+        hdma_active = false;
         vram_dma_control = 0xFF;
         return;
     }
 
-    ppu->load(hdma_state.destination, chunk);
+    ppu->load(hdma_destination, chunk);
 
-    hdma_state.source += chunk_size;
-    hdma_state.destination += chunk_size;
-    hdma_state.remaining -= chunk_size;
+    hdma_source += chunk_size;
+    hdma_destination += chunk_size;
+    hdma_remaining -= chunk_size;
 
-    if (hdma_state.remaining == 0) {
-        hdma_state.active = false;
+    if (hdma_remaining == 0) {
+        hdma_active = false;
         vram_dma_control = 0xFF;
     } else {
-        Byte new_val = (hdma_state.remaining >> 4) - 1;
+        Byte new_val = (hdma_remaining >> 4) - 1;
         vram_dma_control &= 0x80;
         vram_dma_control |= (new_val & 0x7F);
     }

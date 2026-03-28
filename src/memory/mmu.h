@@ -42,7 +42,11 @@ class MMU {
             rom_filename(),
 
             cgb_mode(false),
-            hdma_state{}
+            hdma_state{},
+            hdma_active(false),
+            hdma_source(0x0000),
+            hdma_destination(0x0000),
+            hdma_remaining(0x0000)
         {
             write(IF_REGISTER, 0xE1);
         }
@@ -67,7 +71,8 @@ class MMU {
 
         inline void save () {if (mbc) { mbc->save(rom_filename); }}
 
-        void print_tiles(const std::string& filename) { ppu->dump_tiles_ppm(filename); }
+        // debug function
+        void print_tiles(const std::string& filename) { ppu->print_tiles_ppm(filename); }
     private:
         Timer *timer;
         PPU *ppu;
@@ -96,6 +101,11 @@ class MMU {
 
         std::string rom_filename;
         bool cgb_mode;
+
+        bool hdma_active;
+        Address hdma_source;
+        Address hdma_destination;
+        Word hdma_remaining;
 
         struct HDMAState {
             bool active = false;

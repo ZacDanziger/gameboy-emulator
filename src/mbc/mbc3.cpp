@@ -1,5 +1,11 @@
 #include "mbc3.h"
 
+/**
+ * Read from ROM or ERAM
+ * 
+ * @param address the address to read from, in range [0x0000, 0x7FFF] U [0xA000, 0xBFFF]
+ * @returns the data stored at that address, or an error if out of bounds
+ */
 Byte MBC3::read(const Address address) const {
     uint32_t adjusted_address = 0x00000000;
 
@@ -42,7 +48,17 @@ Byte MBC3::read(const Address address) const {
     throw std::runtime_error("MBC read called on incorrect address");
 }
 
-
+/**
+ * Write to ROM or ERAM
+ * Writes to ROM work as follows:
+ * in range [0x0000, 0x1FFF] if the lower byte of data is A, enable RAM
+ * in range [0x2000, 0x3FFF] set the current ROM bank - if 0, ROM bank becomes 1
+ * in range [0x4000, 0x5FFF] set the secondary bank, either RAM bank select or upper 2 bits of ROM bank select
+ * in range [0x6000, 0x7FFF] set the banking mode, determining what the value of the secondary bank means
+ * 
+ * @param address the address to write to
+ * @param data the data to write to the address
+ */
 void MBC3::write(const Address address, const Byte data) {
     // enable RAM
     if (address < 0x2000) {
@@ -102,6 +118,11 @@ void MBC3::write(const Address address, const Byte data) {
 }
 
 
+/**
+ * Save the current ERAM, latched time, and timestamp to a file
+ * 
+ * @param filename the file to write the current ERAM and time to
+ */
 void MBC3::save(const std::string& filename) const {
     if (!has_battery) {
         return;
@@ -129,6 +150,11 @@ void MBC3::save(const std::string& filename) const {
 }
 
 
+/**
+ * Load ERAM, latched time, and timestamp from a file
+ * 
+ * @param filename the file to load from
+ */
 void MBC3::load(const std::string& filename) {
     if (!has_battery) {
         return;
@@ -170,6 +196,11 @@ void MBC3::load(const std::string& filename) {
 }
 
 
+/**
+ * Read a selected latched time register
+ * 
+ * @return a latched time register, selected by the current value of the secondary bank
+ */
 Byte MBC3::rtc_read() const {
     switch(secondary_bank) {
     case 0x08:
@@ -188,6 +219,10 @@ Byte MBC3::rtc_read() const {
 }
 
 
+/**
+ * Save the current seconds, minutes, hours, and days since 
+ * the start time from the save file if it exists, or the MBC if it does not
+ */
 void MBC3::latch_time() {
     auto now = std::chrono::system_clock::now();
     auto elapsed = now - rtc_start_time;

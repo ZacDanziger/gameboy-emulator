@@ -35,8 +35,8 @@ enum class Interrupt : Byte {
 
 enum class Key {
     A, B, Select, Start,    // button keys
-    Right, Left, Up, Down,   // direction keys
-    S
+    Right, Left, Up, Down,  // direction keys
+    S                       // save
 };
 
 

@@ -8,13 +8,15 @@
 #include "../utils/utils.h"
 
 /**
- * Abstract Base Class
+ * Memory Bank Controller
  */
 class MBC {
     public:
         virtual ~MBC() = default;
+        
         virtual Byte read(const Address address) const = 0;
         virtual void write(const Address address, const Byte data) = 0;
+
         virtual void save(const std::string& filename) const = 0;
         virtual void load(const std::string& filename) = 0;
 };
