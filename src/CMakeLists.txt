@@ -1,6 +1,7 @@
 set (SourceFiles
     utils/utils.cpp
-    memory/mmu.cpp
+    interrupt/interrupt_controller.cpp
+    memory/memory_bus.cpp
     timer/timer.cpp
     cpu/cpu.cpp
     cpu/optables.cpp
@@ -15,6 +16,6 @@ set (SourceFiles
 
 add_library(gameboy ${SourceFiles})
 target_include_directories(gameboy PUBLIC
-    utils memory mbc timer cpu ppu apu frontend emulator 
+    utils interrupt memory mbc timer cpu ppu apu frontend emulator 
 )
 target_link_libraries(gameboy vendored)

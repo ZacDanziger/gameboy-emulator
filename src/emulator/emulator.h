@@ -1,7 +1,7 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
-#include "../memory/mmu.h"
+#include "../memory/memory_bus.h"
 #include "../timer/timer.h"
 #include "../cpu/cpu.h"
 #include "../ppu/ppu.h"
@@ -16,27 +16,28 @@ constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
 class Emulator {
     public:
         Emulator(const std::string& rom_file):
-            mmu(),
-            frontend("GameBoy Color Emulator", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
-            timer([this](Interrupt i){ mmu.request_interrupt(i); },
+            interrupt(),
+            memory_bus(interrupt),
+            frontend("GameBoy Color Emulator", [this](Key key, bool pressed){ memory_bus.set_key(key, pressed); }),
+            timer(interrupt,
                    [this]{ ppu.update(); }),
-            cpu(),
-            ppu([this](Interrupt i){ mmu.request_interrupt(i); },
+            cpu(memory_bus, timer, interrupt),
+            ppu(interrupt,
                 [this]{ this->on_frame_ready(); },
-                [this]{ mmu.hdma_tick(); }),
+                [this]{ memory_bus.hdma_tick(); }),
             
             last_frame_time(std::chrono::steady_clock::now()),
             last_save_time(std::chrono::steady_clock::now())
             {
-                mmu.init(&timer, &ppu);
-                cpu.init(&timer, &mmu);
+                memory_bus.init(&timer, &ppu);
 
-                mmu.load_rom(rom_file);
+                memory_bus.load_rom(rom_file);
             }
 
         void run();
     private:
-        MMU mmu;
+        InterruptController interrupt;
+        MemoryBus memory_bus;
         Frontend frontend;
         Timer timer;
         CPU cpu;

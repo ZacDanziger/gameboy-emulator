@@ -2,7 +2,7 @@
 #define CPU_H
 
 #include "../timer/timer.h"
-#include "../memory/mmu.h"
+#include "../memory/memory_bus.h"
 
 using Flag = Bit;
 
@@ -16,17 +16,42 @@ static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
  */
 class CPU {
     public:
-        CPU();
+        CPU(MemoryBus& memory_bus, Timer& timer, InterruptController& i) :
+            timer(timer),
+            memory_bus(memory_bus),
+            interrupt(i),
 
-        void init(Timer* timer_ptr, MMU* mmu_ptr);
+            reg_A(0x11),
+            reg_F(0x80),
+            reg_B(0x00),
+            reg_C(0x00),
+            reg_D(0xFF),
+            reg_E(0x56),
+            reg_H(0x00),
+            reg_L(0x0D),
+            reg_SP(0xFFFE),
+            reg_PC(0x0100),
+
+            AF({&reg_A, &reg_F}),
+            BC({&reg_B, &reg_C}),
+            DE({&reg_D, &reg_E}),
+            HL({&reg_H, &reg_L}),
+            
+            interrupts_enabled(false),
+            ei_pending(false),
+            halted(false),
+            stopped(false),
+            speed_switch_halt(false)
+        {}
 
         void step();
         
         bool is_halted() const { return halted; }
         bool is_stopped() const { return stopped; }
     private:
-        MMU *mmu;
-        Timer *timer;
+        MemoryBus& memory_bus;
+        Timer& timer;
+        InterruptController& interrupt;
 
         // Pair of 8-bit registers
         struct Pair {
@@ -90,7 +115,6 @@ class CPU {
         Word get_pair(const Pair& pair) const;
         void set_pair(const Pair& pair, const Word value);
         Byte read_hl() const;
-        bool interrupt_pending() const { return (mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0; }
 
         // Control and Miscellaneous Instructions
 

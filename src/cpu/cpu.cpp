@@ -1,48 +1,6 @@
 #include "cpu.h"
 #include <iostream>
 
-/**
- * Initialize the non-pointer member variables to their post boot ROM state
- *     https://gbdev.io/pandocs/Power_Up_Sequence.html
- */
-CPU::CPU() {    
-    reg_A = 0x11;
-    reg_F = 0x80;
-    reg_B = 0x00;
-    reg_C = 0x00;
-    reg_D = 0xFF;
-    reg_E = 0x56;
-    reg_H = 0x00;
-    reg_L = 0x0D;
-    reg_SP = 0xFFFE;
-    reg_PC = 0x0100;
-
-    AF = {&reg_A, &reg_F};
-    BC = {&reg_B, &reg_C};
-    DE = {&reg_D, &reg_E};
-    HL = {&reg_H, &reg_L};
-    
-    interrupts_enabled = false;
-    ei_pending = false;
-    halted = false;
-    stopped = false;
-    speed_switch_halt = false;
-
-    timer = nullptr;
-    mmu = nullptr;
-}
-
-/**
- * Initialize the timer and memory pointers
- * 
- * @param timer_ptr a pointer to the emulator's timer
- * @param mmu_ptr a pointer to the emulator's memory
- */
-void CPU::init(Timer* timer_ptr, MMU* mmu_ptr) {
-    timer = timer_ptr;
-    mmu = mmu_ptr;
-}
-
 
 /**
  * Perform one loop of the fetch -> decode -> execute cycle
@@ -54,7 +12,7 @@ void CPU::step() {
     }
 
     while(stopped) {
-        if (mmu->any_button_pressed()) {
+        if (memory_bus.any_button_pressed()) {
             stopped = false;
         }
     }
@@ -73,12 +31,12 @@ void CPU::step() {
             counter++;
         }
 
-        if (interrupt_pending()) {
+        if (interrupt.interrupt_pending()) {
             handle_interrupts();
             halted = false;
             break;
         }
-        timer->tick();
+        timer.tick();
     }
 
     handle_interrupts();
@@ -100,11 +58,9 @@ void CPU::handle_interrupts() {
         return;
     }
 
-    Byte ie_register = mmu->read(IE_REGISTER);
-    Byte if_register = mmu->read(IF_REGISTER);
 
     //check that the specific interrupts that are enabled are requesting an interrupt
-    if  (!interrupt_pending()) {
+    if  (!interrupt.interrupt_pending()) {
         return;
     }
 
@@ -112,47 +68,27 @@ void CPU::handle_interrupts() {
 
     // 2 m-cycle delay before calling RST
     //  https://gbdev.io/pandocs/Interrupts.html#interrupt-handling
-    timer->tick();
-    timer->tick();
+    timer.tick();
+    timer.tick();
 
-    //V-Blank interrupt
-    if ((ie_register & 0x01) & (if_register & 0x01)) {
-        RST(interrupt_vector[0]);
-        // if_register &= ~0x01;
-        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x01));
-        return;
-    }
-
-    // LCD interrupt
-    if ((ie_register & 0x02) & (if_register & 0x02)) {
-        RST(interrupt_vector[1]);
-        // if_register &= ~0x02;
-        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x02));
-        return;
-    }
-
-    // Timer interrupt
-    if ((ie_register & 0x04) & (if_register & 0x04)) {
-        RST(interrupt_vector[2]);
-        // if_register &= ~0x04;
-        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x04));
-        return;
-    }
-
-    // Serial Interrupt
-    if ((ie_register & 0x08) & (if_register & 0x08)) {
-        RST(interrupt_vector[3]);
-        // if_register &= ~0x08;
-        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x08));
-        return;
-    }
-
-    // Joypad Interrupt
-    if ((ie_register & 0x10) & (if_register & 0x10)) {
-        RST(interrupt_vector[4]);
-        // if_register &= ~0x10;
-        mmu->write(IF_REGISTER, (mmu->read(IF_REGISTER) & ~0x10));
-        return;
+    switch(interrupt.acknowledge_interrupt()) {
+        case Interrupt::VBlank:
+            RST(interrupt_vector[0]);
+            return;
+        case Interrupt::LCDStat:
+            RST(interrupt_vector[1]);
+            return;
+        case Interrupt::Timer:
+            RST(interrupt_vector[2]);
+            return;
+        case Interrupt::Serial:
+            RST(interrupt_vector[3]);
+            return;
+        case Interrupt::Joypad:
+            RST(interrupt_vector[4]);
+            return;
+        default:
+            throw std::runtime_error("How did you get here?");
     }
 }
 
@@ -163,8 +99,8 @@ void CPU::handle_interrupts() {
  * @return the value in mem[PC]
 */
 Byte CPU::fetch() {
-    Byte opcode = mmu->read(reg_PC++);
-    timer->tick();
+    Byte opcode = memory_bus.read(reg_PC++);
+    timer.tick();
     return opcode;
 }
 
@@ -234,8 +170,8 @@ void CPU::set_pair(const Pair &pair, const Word value) {
  * @return memory[HL]
 */
 Byte CPU::read_hl() const {
-    Byte res = mmu->read(get_pair(HL));
-    timer->tick();
+    Byte res = memory_bus.read(get_pair(HL));
+    timer.tick();
     return res;
 }
 
@@ -371,8 +307,8 @@ void CPU::HALT() {
 void CPU::STOP() {
 
     // check if a button is being pressed
-    if (mmu->any_button_pressed()) {
-        if (interrupt_pending()) {
+    if (memory_bus.any_button_pressed()) {
+        if (interrupt.interrupt_pending()) {
             // stop is a 1 byte opcode, mode doesn't change, DIV is not reset
             return;
         } 
@@ -384,20 +320,20 @@ void CPU::STOP() {
     }
 
     // check if a speed switch is requested
-    if (is_set(mmu->read(KEY1_SPD_REGISTER), Bit::Bit0)) {
-        if (interrupt_pending()) {
+    if (is_set(memory_bus.read(KEY1_SPD_REGISTER), Bit::Bit0)) {
+        if (interrupt.interrupt_pending()) {
             if (interrupts_enabled) {
                 // stop is a 1 byte opcode, mode doesn't change, DIV is reset, CPU speed switches
-                mmu->write(DIV_REGISTER, 0x00);
+                memory_bus.write(DIV_REGISTER, 0x00);
 
                 // true if currently double speed, false if currently normal speed
-                bool current_speed = timer->get_double_speed();
+                bool current_speed = timer.get_double_speed();
 
                 // change current speed
-                timer->set_double_speed(!current_speed);
+                timer.set_double_speed(!current_speed);
 
                 // clear the switch armed bit in KEY1
-                mmu->write(KEY1_SPD_REGISTER, 0x00);
+                memory_bus.write(KEY1_SPD_REGISTER, 0x00);
             }
 
             // CPU glitches non-deterministically
@@ -409,27 +345,27 @@ void CPU::STOP() {
         reg_PC++;
         halted = true;
         speed_switch_halt = true;
-        mmu->write(DIV_REGISTER, 0x00);
+        memory_bus.write(DIV_REGISTER, 0x00);
 
         // true if currently double speed, false if currently normal speed
-        bool current_speed = timer->get_double_speed();
+        bool current_speed = timer.get_double_speed();
 
         // change current speed
-        timer->set_double_speed(!current_speed);
+        timer.set_double_speed(!current_speed);
         return;
     }
 
-    if (interrupt_pending()) {
+    if (interrupt.interrupt_pending()) {
         // stop is a 1 byte opcode, STOP mode is entered, DIV is reset
         stopped = true;
-        mmu->write(DIV_REGISTER, 0x00);
+        memory_bus.write(DIV_REGISTER, 0x00);
         return;
     }
 
     // stop is a 2 byte opcode, STOP mode is entered, DIV is reset
     reg_PC++;
     stopped = true;
-    mmu->write(DIV_REGISTER, 0x00);
+    memory_bus.write(DIV_REGISTER, 0x00);
 }
 
 
@@ -475,7 +411,7 @@ bool CPU::JP_IF(const Flag flag, bool set) {
     Address destination = fetch16();
     if (get_flag(flag) == set) {
         JP(destination);
-        timer->tick();
+        timer.tick();
         return true;
     }
 
@@ -490,7 +426,7 @@ bool CPU::JP_IF(const Flag flag, bool set) {
 void CPU::JR() {
     int16_t imm = (int16_t)(int8_t)(fetch());
     reg_PC = (Word)((int16_t)(reg_PC) + imm);
-    timer->tick();
+    timer.tick();
 }
 
 
@@ -510,7 +446,7 @@ bool CPU::JR_IF(const Flag flag, bool set) {
     }
     // Account for the byte that would have been (signed) imm8
     reg_PC += 1;
-    timer->tick();
+    timer.tick();
     return false;
 }
 
@@ -523,7 +459,7 @@ void CPU::CALL() {
     Address destination = fetch16();
     PUSH_PC();
     reg_PC = destination;
-    timer->tick();
+    timer.tick();
 }
 
 
@@ -544,8 +480,8 @@ bool CPU::CALL_IF(const Flag flag, bool set) {
 
     // Account for the two bytes that would have been imm16
     reg_PC += 2;
-    timer->tick();
-    timer->tick();
+    timer.tick();
+    timer.tick();
     return false;
 }
 
@@ -558,7 +494,7 @@ bool CPU::CALL_IF(const Flag flag, bool set) {
 void CPU::RST(const Byte offset) {
     PUSH_PC();
     reg_PC = 0x0000 + offset;
-    timer->tick();
+    timer.tick();
 }
 
 
@@ -567,15 +503,15 @@ void CPU::RST(const Byte offset) {
  * - - - -
 */
 void CPU::RET() {
-    Byte low = mmu->read(reg_SP);
+    Byte low = memory_bus.read(reg_SP);
     reg_SP++;
-    timer->tick();
+    timer.tick();
 
-    reg_PC = ((mmu->read(reg_SP) << 8) | low);
+    reg_PC = ((memory_bus.read(reg_SP) << 8) | low);
     reg_SP++;
-    timer->tick();
+    timer.tick();
 
-    timer->tick();
+    timer.tick();
 }
 
 /**
@@ -588,7 +524,7 @@ void CPU::RET() {
  * @return true if a return occured, false otherwise
 */
 bool CPU::RET_IF(const Flag flag, bool set) {
-    timer->tick();  
+    timer.tick();  
     if (get_flag(flag) == set) {
         RET();
         return true;
@@ -686,8 +622,8 @@ void CPU::LD(Byte& dest, const Byte value) {
  * @param address the address of the value to load into the destination
 */
 void CPU::LD(Byte& dest, const Address address) {
-    dest = mmu->read(address);
-    timer->tick();
+    dest = memory_bus.read(address);
+    timer.tick();
 }
 
 
@@ -700,8 +636,8 @@ void CPU::LD(Byte& dest, const Address address) {
  * @param value the value to load into the destination
 */
 void CPU::LD(const Address address, Byte value) {
-    mmu->write(address, value);
-    timer->tick();
+    memory_bus.write(address, value);
+    timer.tick();
 }
 
 
@@ -758,10 +694,10 @@ void CPU::LD(Pair& pair, const Word value) {
  * @param address the address in memory to hold least significant byte of SP
 */
 void CPU::write_SP(const Address address) {
-    mmu->write(address, (reg_SP & 0xFF));        // low byte
-    timer->tick();
-    mmu->write((address + 1), (reg_SP >> 8));    // high byte
-    timer->tick();
+    memory_bus.write(address, (reg_SP & 0xFF));        // low byte
+    timer.tick();
+    memory_bus.write((address + 1), (reg_SP >> 8));    // high byte
+    timer.tick();
 }
 
 
@@ -773,14 +709,14 @@ void CPU::write_SP(const Address address) {
 */
 void CPU::PUSH(const Pair& pair) {
     reg_SP--;
-    mmu->write(reg_SP, *(pair.reg_high));
-    timer->tick();
+    memory_bus.write(reg_SP, *(pair.reg_high));
+    timer.tick();
     
     reg_SP--;
-    mmu->write(reg_SP, *(pair.reg_low));
-    timer->tick();
+    memory_bus.write(reg_SP, *(pair.reg_low));
+    timer.tick();
 
-    timer->tick();
+    timer.tick();
 }
 
 
@@ -790,12 +726,12 @@ void CPU::PUSH(const Pair& pair) {
 */
 void CPU::PUSH_PC() {
     reg_SP--;
-    mmu->write(reg_SP, (reg_PC >> 8));   // high byte
-    timer->tick();
+    memory_bus.write(reg_SP, (reg_PC >> 8));   // high byte
+    timer.tick();
 
     reg_SP--;
-    mmu->write(reg_SP, (reg_PC & 0xFF));   // low byte
-    timer->tick();
+    memory_bus.write(reg_SP, (reg_PC & 0xFF));   // low byte
+    timer.tick();
 }
 
 
@@ -806,13 +742,13 @@ void CPU::PUSH_PC() {
  * @param pair the pair to be popped from the stack
 */
 void CPU::POP(Pair& pair) {
-    *(pair.reg_low) = mmu->read(reg_SP);
+    *(pair.reg_low) = memory_bus.read(reg_SP);
     reg_SP++;
-    timer->tick();
+    timer.tick();
 
-    *(pair.reg_high) = mmu->read(reg_SP);
+    *(pair.reg_high) = memory_bus.read(reg_SP);
     reg_SP++;
-    timer->tick();
+    timer.tick();
 }
 
 
@@ -964,15 +900,15 @@ void CPU::INC(Byte &reg) {
 */
 void CPU::INC_HL() {
     // Get memory[HL]
-    Byte value = mmu->read(get_pair(HL));
-    timer->tick();
+    Byte value = memory_bus.read(get_pair(HL));
+    timer.tick();
 
     // Increment memory[HL] and set flags
     INC(value);
 
     // Update memory[HL] to incremented value
-    mmu->write(get_pair(HL), value);
-    timer->tick();
+    memory_bus.write(get_pair(HL), value);
+    timer.tick();
 }
 
 
@@ -998,15 +934,15 @@ void CPU::DEC(Byte &reg) {
 */
 void CPU::DEC_HL() {
     // Get memory[HL]
-    Byte value = mmu->read(get_pair(HL));
-    timer->tick();
+    Byte value = memory_bus.read(get_pair(HL));
+    timer.tick();
 
     // Decrement memory[HL] and set flags
     DEC(value);
 
     // Update memory[HL] to decremented value
-    mmu->write(get_pair(HL), value);
-    timer->tick();
+    memory_bus.write(get_pair(HL), value);
+    timer.tick();
 }
 
 
@@ -1025,7 +961,7 @@ void CPU::ADD_HL(const Word value) {
 
     
     set_pair(HL, (res & 0xFFFF));
-    timer->tick();
+    timer.tick();
 
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
@@ -1045,7 +981,7 @@ Word CPU::ADD_SP() {
     int16_t imm = (int16_t)(int8_t)(fetch());
     Word res = (Word)((int16_t)(reg_SP) + imm);
 
-    timer->tick();
+    timer.tick();
 
     bool carry = (res & 0xFF) < (reg_SP & 0xFF);
     bool half_carry = (res & 0xF) < (reg_SP & 0xF);
@@ -1067,7 +1003,7 @@ Word CPU::ADD_SP() {
 */
 void CPU::INC(Word& reg) {
     reg++;
-    timer->tick();
+    timer.tick();
 }
 
 
@@ -1093,7 +1029,7 @@ void CPU::INC(Pair& pair) {
 */
 void CPU::DEC(Word& reg) {
     reg--;
-    timer->tick();
+    timer.tick();
 }
 
 

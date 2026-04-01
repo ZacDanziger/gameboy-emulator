@@ -13,7 +13,7 @@ void Emulator::on_frame_ready() {
     auto now = std::chrono::steady_clock::now();
 
     if (now - last_save_time >= AUTOSAVE_INTERVAL) {
-        mmu.save();
+        memory_bus.save();
         last_save_time = now;
     }
 

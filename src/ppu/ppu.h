@@ -5,6 +5,7 @@
 #include <array>
 #include "../utils/utils.h"
 #include "../memory/memory_map.h"
+#include "../interrupt/interrupt_controller.h"
 
 using FrameCallback = std::function<void()>;
 using HBlankCallback = std::function<void()>;
@@ -34,8 +35,8 @@ constexpr RGBA32 dmg_palette[4] = {
  */
 class PPU {
     public:
-        PPU(InterruptCallback i, FrameCallback f, HBlankCallback h) :
-            request_interrupt(i),
+        PPU(InterruptController& i, FrameCallback f, HBlankCallback h) :
+            interrupt(i),
             frame_ready(f),
             hblank(h),
 
@@ -91,7 +92,7 @@ class PPU {
             std::array<int, 64> pixels{}; // Tiles are 8x8 -> 64 pixels
         };
 
-        InterruptCallback request_interrupt;
+        InterruptController& interrupt;
         FrameCallback frame_ready;
         HBlankCallback hblank;
         

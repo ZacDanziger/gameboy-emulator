@@ -1,6 +1,3 @@
-#include "../src/ppu/ppu.h"
-#include "../src/memory/mmu.h"
-#include "../src/cpu/cpu.h"
 #include "../emulator/emulator.h"
 #include "gtest/gtest.h"
 

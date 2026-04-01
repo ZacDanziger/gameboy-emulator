@@ -15,9 +15,4 @@ inline void set_bit(Byte& byte, const Bit bit) { byte |= static_cast<Byte>(bit);
 inline void reset_bit(Byte& byte, const Bit bit) { byte &= ~static_cast<Byte>(bit); }
 
 
-// functions for testing //
-
-void write_line(std::ofstream& out, const std::string& line);
-void dump(const std::vector<Byte>& data, const std::string& out_filename);
-
 #endif  // UTILS_H

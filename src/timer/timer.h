@@ -5,6 +5,7 @@
 #include "../memory/memory_map.h"
 #include "../types.h"
 #include "../utils/utils.h"
+#include "../interrupt/interrupt_controller.h"
 
 using TickCallback = std::function<void()>;
 
@@ -14,8 +15,8 @@ using TickCallback = std::function<void()>;
  */
 class Timer {
     public:
-        Timer(InterruptCallback i, TickCallback t):
-            request_interrupt(i),
+        Timer(InterruptController& i, TickCallback t):
+            interrupt(i),
             on_tick(t),
             
             divider_internal(0x00AB),
@@ -41,7 +42,7 @@ class Timer {
         bool get_double_speed() const { return double_speed_mode; }
         void set_double_speed(const bool ds) { double_speed_mode = ds; }
     private:
-        InterruptCallback request_interrupt;
+        InterruptController& interrupt;
         TickCallback on_tick;
 
         Word divider_internal;      // SYSCLK (DIV_REGISTER)

@@ -1,5 +1,5 @@
-#ifndef MEMORY_H
-#define MEMORY_H
+#ifndef MEMORY_BUS_H
+#define MEMORY_BUS_H
 
 #include <array>
 #include <vector>
@@ -16,9 +16,10 @@
  * Memory Management Unit
  * Byte-addressable 16-bit address size
 */
-class MMU {
+class MemoryBus {
     public:
-        MMU() :
+        MemoryBus(InterruptController& i) :
+            interrupt(i),
             wram{},
             io_registers{},
 
@@ -31,7 +32,6 @@ class MMU {
             wram_bank(0x01),
 
             hram{},
-            ie_register(0x00),
 
             button_keys(0x0F),
             direction_keys(0x0F),
@@ -44,11 +44,9 @@ class MMU {
             hdma_source(0x0000),
             hdma_destination(0x0000),
             hdma_remaining(0x0000)
-        {
-            write(IF_REGISTER, 0xE1);
-        }
+        {}
         
-        ~MMU() {
+        ~MemoryBus() {
             save();
         }
 
@@ -73,6 +71,7 @@ class MMU {
     private:
         Timer *timer;
         PPU *ppu;
+        InterruptController& interrupt;
         std::unique_ptr<MBC> mbc;
 
         std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
@@ -90,7 +89,6 @@ class MMU {
         Byte wram_bank;                                    // SVBK_WBK_REGISTER
 
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
-        Byte ie_register;                                  // 0xFFFF
 
         // the 2x4 grid of values for JOYP
         Byte button_keys;
@@ -118,4 +116,4 @@ class MMU {
         
 };
 
-#endif // MEMORY_H
+#endif // MEMORY_BUS_H

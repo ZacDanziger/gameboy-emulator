@@ -1,4 +1,4 @@
-#include "mmu.h"
+#include "memory_bus.h"
 #include "../mbc/mbc0.h"
 #include "../mbc/mbc1.h"
 #include "../mbc/mbc3.h"
@@ -23,7 +23,7 @@ enum class MBC_Type : Byte{
  * @param address the address to be read from
  * @returns the value in memory at address
 */
-Byte MMU::read(Address address) const {
+Byte MemoryBus::read(Address address) const {
     // ROM read
     if (address < VRAM_START) {
         return mbc->read(address);
@@ -113,6 +113,9 @@ Byte MMU::read(Address address) const {
             return timer->read(address);
         }
 
+        if (address == IF_REGISTER) {
+            return interrupt.read(address);
+        }
         // TODO: APU IO registers here
 
         if (address == KEY1_SPD_REGISTER) {
@@ -141,11 +144,11 @@ Byte MMU::read(Address address) const {
 
     // IE register read
     if (address == IE_REGISTER)      {
-        return ie_register;
+        return interrupt.read(address);
     }
 
     // not sure how you would get here
-    throw std::runtime_error("MMU read called on invalid address");
+    throw std::runtime_error("MemoryBus read called on invalid address");
 }
 
 
@@ -156,7 +159,7 @@ Byte MMU::read(Address address) const {
  * @param address the address to be written to
  * @param data the data to be written in the address
 */
-void MMU::write(Address address, Byte data) {
+void MemoryBus::write(Address address, Byte data) {
     // ROM write
     if (address < VRAM_START) {
         mbc->write(address, data);
@@ -257,6 +260,10 @@ void MMU::write(Address address, Byte data) {
             timer->write(address, data);
             return;
         }
+        if (address == IF_REGISTER) {
+            interrupt.write(address, data);
+            return;
+        }
 
         // TODO: APU IO registers here
 
@@ -291,12 +298,12 @@ void MMU::write(Address address, Byte data) {
 
     // IE register write
     if (address == IE_REGISTER) {
-        ie_register = data;
+        interrupt.write(address, data);
         return;
     }
 
     // not sure how you would get here
-    throw std::runtime_error("MMU write called on invalid address");
+    throw std::runtime_error("MemoryBus write called on invalid address");
 }
 
 
@@ -306,7 +313,7 @@ void MMU::write(Address address, Byte data) {
  * 
  * @param filename the filename containing the data to be read from
 */
-void MMU::load_rom(const std::string& filename) {
+void MemoryBus::load_rom(const std::string& filename) {
     rom_filename = filename;
 
     std::vector<Byte> data = read_file(filename);
@@ -385,7 +392,7 @@ void MMU::load_rom(const std::string& filename) {
  * 
  * @param interrupt the type of interrupt
  */
-void MMU::request_interrupt(Interrupt interrupt) {
+void MemoryBus::request_interrupt(Interrupt interrupt) {
     io_registers[IF_REGISTER - IO_START] |= static_cast<Byte>(interrupt);
 }
 
@@ -396,7 +403,7 @@ void MMU::request_interrupt(Interrupt interrupt) {
  * @param key the key that has been changed
  * @param pressed true if pressed, false if released
  */
-void MMU::set_key(Key key, bool pressed) {
+void MemoryBus::set_key(Key key, bool pressed) {
     Byte* target = nullptr;
     Bit bit = Bit::Bit0;
 
@@ -452,7 +459,7 @@ void MMU::set_key(Key key, bool pressed) {
  * 
  * @param value the upper byte of the address to start transferring data from
  */
-void MMU::oam_dma_transfer(const Byte value) {
+void MemoryBus::oam_dma_transfer(const Byte value) {
     Address address = static_cast<Address>(value) << 8;
     std::vector<Byte> dma_data(OAM_SIZE);
 
@@ -470,7 +477,7 @@ void MMU::oam_dma_transfer(const Byte value) {
  * 
  * @param value whether to use HBlank DMA or general DMA, as well as the length of data to be transferred
  */
-void MMU::vram_dma_transfer(const Byte value) {
+void MemoryBus::vram_dma_transfer(const Byte value) {
     if (!cgb_mode) {
         return;
     }
@@ -487,6 +494,7 @@ void MMU::vram_dma_transfer(const Byte value) {
     if (is_hdma) {
         // HBlank DMA
         reset_bit(vram_dma_control, Bit::Bit7);
+        // not sure about this if block
         if (!hdma_active) {
             hdma_source = source_address;
             hdma_destination = destination_address;
@@ -510,7 +518,7 @@ void MMU::vram_dma_transfer(const Byte value) {
  * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
  * CGB only
  */
-void MMU::hdma_tick() {
+void MemoryBus::hdma_tick() {
     if (!hdma_active) {
         return;
     }

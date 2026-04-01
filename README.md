@@ -4,11 +4,12 @@ My GameBoy Color project to keep from getting rusty on my leave of absence
 ## Syncing
 * Emulator steps the CPU
 * CPU step drives the Timer
-* Timer drives the PPU and APU
+* Timer drives the PPU and (later)APU
 
 ## TODO:
 * Update comments above functions reflecting any changes
 * Clean up #includes on .h files
+* Extract Joypad handling from MMU
 * CPU
     * Implement HALT bug
     * Debug double speed mode
@@ -16,6 +17,8 @@ My GameBoy Color project to keep from getting rusty on my leave of absence
     * Debug double speed mode
 * MMU
     * Debug double speed mode
+* MBC
+    * Implement more MBC types
 * PPU
     * Implement DMG compatibility palettes
 * APU 

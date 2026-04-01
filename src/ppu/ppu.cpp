@@ -247,7 +247,7 @@ void PPU::update() {
 
             set_bit(lcd_status, Bit::Bit2);
             if (is_set(lcd_status, Bit::Bit6)) {
-                request_interrupt(Interrupt::LCDStat);
+                interrupt.request_interrupt(Interrupt::LCDStat);
             }
         } else {
             reset_bit(lcd_status, Bit::Bit2);
@@ -261,9 +261,9 @@ void PPU::update() {
             reset_bit(lcd_status, Bit::Bit1);
             set_bit(lcd_status, Bit::Bit0);
 
-            request_interrupt(Interrupt::VBlank);
+            interrupt.request_interrupt(Interrupt::VBlank);
             if (is_set(lcd_status, Bit::Bit4)) {
-                request_interrupt(Interrupt::LCDStat);
+                interrupt.request_interrupt(Interrupt::LCDStat);
             }
 
             frame_ready();
@@ -281,7 +281,7 @@ void PPU::update() {
         
             // if interrupt on OAM is set, request interrupt
             if (is_set(lcd_status, Bit::Bit5)) {
-                request_interrupt(Interrupt::LCDStat);
+                interrupt.request_interrupt(Interrupt::LCDStat);
             }
         }
     }
@@ -308,7 +308,7 @@ void PPU::update() {
         
             // if interrupt on HBlank is set, request interrupt
             if (is_set(lcd_status, Bit::Bit3)) {
-                request_interrupt(Interrupt::LCDStat);
+                interrupt.request_interrupt(Interrupt::LCDStat);
             }
         }
     }

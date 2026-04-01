@@ -12,7 +12,7 @@ void Timer::tick() {
         timer = timer_modulo;
         timer_reload_cycle = true;
 
-        request_interrupt(Interrupt::Timer);
+        interrupt.request_interrupt(Interrupt::Timer);
     }
 
     divider_internal += 1;
