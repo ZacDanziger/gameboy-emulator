@@ -48,6 +48,11 @@ void CPU::init(Timer* timer_ptr, MMU* mmu_ptr) {
  * Perform one loop of the fetch -> decode -> execute cycle
 */
 void CPU::step() {
+    if (ei_pending) {
+        interrupts_enabled = true;
+        ei_pending = false;
+    }
+
     while(stopped) {
         if (mmu->any_button_pressed()) {
             stopped = false;
@@ -80,27 +85,6 @@ void CPU::step() {
 
     Byte opcode = fetch();
     decode_execute(opcode);
-
-    if (ei_pending) {
-        interrupts_enabled = true;
-        ei_pending = false;
-    }
-
-    // For Blargg ROM test
-    if (mmu->read(SC_REGISTER) == 0x81) {
-        serial_buffer += mmu->read(SB_REGISTER);
-
-        if (serial_buffer.length() > 6) {
-            std::string tail = serial_buffer.substr(serial_buffer.length() - 6);
-
-            if ((tail == "Passed") || (tail == "Failed")) {
-                stopped = true;
-            }
-        }
-
-        // clear 
-        mmu->write(SC_REGISTER, 0x00);
-    }
 }
 
 

@@ -109,7 +109,9 @@ constexpr Address NR50_REGISTER      = 0xFF24;  // Master volume & VIN panning
 constexpr Address NR51_REGISTER      = 0xFF25;  // Sound panning
 constexpr Address NR52_REGISTER      = 0xFF26;  // Sound on/off
 
-// WAVE RAM: 0xFF30 - 0xFF3F
+// WAVE RAM
+constexpr Address WAVE_RAM_START     = 0xFF30;
+constexpr Address WAVE_RAM_END       = 0xFF3F;
 
 constexpr Address LCDC_REGISTER      = 0xFF40;  // LCD Control
 constexpr Address STAT_REGISTER      = 0xFF41;  // LCD Status

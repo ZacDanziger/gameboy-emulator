@@ -3,13 +3,16 @@
 
 #include <stdexcept>
 #include "../memory/memory_map.h"
+#include "../types.h"
 #include "../utils/utils.h"
 
 using TickCallback = std::function<void()>;
 
+/**
+ * TODO: adjust div-apu bit to bit 5 in double speed mode
+ * TODO: tick APU
+ */
 class Timer {
-    friend class TimerLogger;
-
     public:
         Timer(InterruptCallback i, TickCallback t):
             request_interrupt(i),
@@ -19,7 +22,9 @@ class Timer {
             timer(0x00),
             timer_modulo(0x00),
 
+            div_apu_bit(Bit::Bit4),
             previous_high(false),
+            apu_previous_high(false),
             overflow_delay(false),
             timer_reload_cycle(false),
             double_speed_mode(false)
@@ -45,8 +50,10 @@ class Timer {
         Byte timer_control;         // TAC_REGISTER
 
         Bit div_bit;
+        Bit div_apu_bit;
         bool enabled;
         bool previous_high;
+        bool apu_previous_high;
         bool overflow_delay;
         bool timer_reload_cycle;
 

@@ -6,8 +6,6 @@
 #include "../utils/utils.h"
 #include "../memory/memory_map.h"
 
-#include <iostream>
-
 using FrameCallback = std::function<void()>;
 using HBlankCallback = std::function<void()>;
 
@@ -80,10 +78,10 @@ class PPU {
 
         void load(const Address address, const std::vector<Byte>& data);
 
-        inline std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> get_frame() const { return frame_buffer; }
+        const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& get_frame() const { return frame_buffer; }
 
         void update();
-        inline void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
+        void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
 
         // Debug Function
         void print_tiles_ppm(const std::string& filename);

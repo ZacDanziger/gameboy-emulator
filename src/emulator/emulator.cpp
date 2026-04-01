@@ -2,13 +2,13 @@
 
 
 void Emulator::run() {
-    while (display.poll_events()) {
+    while (frontend.poll_events()) {
         cpu.step();
     }
 }
 
 void Emulator::on_frame_ready() {
-    display.present(ppu.get_frame());
+    frontend.present(ppu.get_frame());
 
     auto now = std::chrono::steady_clock::now();
 

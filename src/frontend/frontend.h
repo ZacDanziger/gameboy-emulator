@@ -1,5 +1,5 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#ifndef FRONTEND_H
+#define FRONTEND_H
 
 #include <SDL3/SDL.h>
 #include <string>
@@ -9,10 +9,13 @@ using KeyCallback = std::function<void(Key, bool)>;
 
 constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
 
-class Display {
+/**
+ * Handles all SDL3 code, including window & screen, keyboard input, and audio
+ */
+class Frontend {
     public:
-        Display(const std::string& title, KeyCallback k);
-        ~Display();
+        Frontend(const std::string& title, KeyCallback k);
+        ~Frontend();
 
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame);
         bool poll_events(); 
@@ -26,4 +29,4 @@ class Display {
         void teardown();
 };
 
-#endif  // DISPLAY_H
+#endif  // FRONTEND_H

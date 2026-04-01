@@ -3,7 +3,6 @@
 
 #include <array>
 #include <vector>
-#include <stdexcept>
 #include <algorithm>
 
 #include "memory_map.h"
@@ -11,8 +10,6 @@
 #include "../timer/timer.h"
 #include "../ppu/ppu.h"
 #include "../mbc/mbc.h"
-
-
 
 
 /**
@@ -55,7 +52,7 @@ class MMU {
             save();
         }
 
-        inline void init(Timer* timer_ptr, PPU* ppu_ptr) { timer = timer_ptr; ppu = ppu_ptr; }
+        void init(Timer* timer_ptr, PPU* ppu_ptr) { timer = timer_ptr; ppu = ppu_ptr; }
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
@@ -67,9 +64,9 @@ class MMU {
 
         void hdma_tick();
 
-        inline bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
+        bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
 
-        inline void save () {if (mbc) { mbc->save(rom_filename); }}
+        void save () {if (mbc) { mbc->save(rom_filename); }}
 
         // debug function
         void print_tiles(const std::string& filename) { ppu->print_tiles_ppm(filename); }

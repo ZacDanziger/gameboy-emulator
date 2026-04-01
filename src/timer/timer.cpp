@@ -26,6 +26,13 @@ void Timer::tick() {
     bool set = is_set(divider_internal, div_bit);
     bool high = (enabled && set);
 
+    // drive the APU
+    bool apu_high = is_set(divider_internal, div_apu_bit);
+    if (!apu_high && apu_previous_high) {
+        // tick APU here
+    }
+    apu_previous_high = apu_high;
+
     // check falling edge
     if (!high && previous_high) {
         timer += 1;

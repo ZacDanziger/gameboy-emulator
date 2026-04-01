@@ -5,12 +5,10 @@
 #include "../timer/timer.h"
 #include "../cpu/cpu.h"
 #include "../ppu/ppu.h"
-#include "../display/display.h"
+#include "../frontend/frontend.h"
 
 #include <thread>
 #include <chrono>
-
-#include "../utils/logger.h"
 
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
@@ -19,14 +17,14 @@ class Emulator {
     public:
         Emulator(const std::string& rom_file):
             mmu(),
-            display("GameBoy Color Emulator", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
+            frontend("GameBoy Color Emulator", [this](Key key, bool pressed){ mmu.set_key(key, pressed); }),
             timer([this](Interrupt i){ mmu.request_interrupt(i); },
                    [this]{ ppu.update(); }),
             cpu(),
             ppu([this](Interrupt i){ mmu.request_interrupt(i); },
                 [this]{ this->on_frame_ready(); },
                 [this]{ mmu.hdma_tick(); }),
-
+            
             last_frame_time(std::chrono::steady_clock::now()),
             last_save_time(std::chrono::steady_clock::now())
             {
@@ -39,11 +37,12 @@ class Emulator {
         void run();
     private:
         MMU mmu;
-        Display display;
+        Frontend frontend;
         Timer timer;
         CPU cpu;
         PPU ppu;
         // APU
+
         
         std::chrono::steady_clock::time_point last_frame_time;
         std::chrono::steady_clock::time_point last_save_time;

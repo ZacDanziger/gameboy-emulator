@@ -4,8 +4,6 @@
 #include "../timer/timer.h"
 #include "../memory/mmu.h"
 
-#include <sstream>
-
 using Flag = Bit;
 
 static constexpr Flag FLAG_ZERO       = Bit::Bit7;    // 0b10000000
@@ -17,8 +15,6 @@ static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
  * Central Processing Unit
  */
 class CPU {
-    friend class CPULogger;
-
     public:
         CPU();
 
@@ -28,8 +24,6 @@ class CPU {
         
         bool is_halted() const { return halted; }
         bool is_stopped() const { return stopped; }
-
-        std::string serial_buffer;  // probably don't leave in
     private:
         MMU *mmu;
         Timer *timer;
@@ -96,7 +90,7 @@ class CPU {
         Word get_pair(const Pair& pair) const;
         void set_pair(const Pair& pair, const Word value);
         Byte read_hl() const;
-        inline bool interrupt_pending() const { return (mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0; }
+        bool interrupt_pending() const { return (mmu->read(IE_REGISTER) & mmu->read(IF_REGISTER)) > 0; }
 
         // Control and Miscellaneous Instructions
 

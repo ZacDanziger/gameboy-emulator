@@ -433,7 +433,7 @@ void MMU::set_key(Key key, bool pressed) {
         target = &direction_keys;
         bit = Bit::Bit3;
         break;
-    case Key::S:
+    case Key::SAVE:
         save();
         return;
     }   

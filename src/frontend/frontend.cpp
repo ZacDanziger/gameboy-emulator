@@ -1,6 +1,6 @@
-#include "display.h"
+#include "frontend.h"
 
-Display::Display(const std::string& title, KeyCallback k) {
+Frontend::Frontend(const std::string& title, KeyCallback k) {
     on_key_event = k;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -30,11 +30,11 @@ Display::Display(const std::string& title, KeyCallback k) {
 }
 
 
-Display::~Display() {
+Frontend::~Frontend() {
     teardown();
 }
 
-void Display::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame) {
+void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame) {
     SDL_UpdateTexture(texture, nullptr, frame.data(), SCREEN_WIDTH * sizeof(RGBA32));
     SDL_RenderClear(renderer);
     SDL_RenderTexture(renderer, texture, nullptr, nullptr);
@@ -42,7 +42,7 @@ void Display::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& fr
 }
 
 
-bool Display::poll_events() {
+bool Frontend::poll_events() {
     SDL_Event e;
     while(SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT) {
@@ -66,19 +66,23 @@ bool Display::poll_events() {
                 on_key_event(Key::Start, pressed);
                 break;
             case SDL_SCANCODE_RIGHT:
+            case SDL_SCANCODE_D:
                 on_key_event(Key::Right, pressed);
                 break;
             case SDL_SCANCODE_LEFT:
+            case SDL_SCANCODE_A:
                 on_key_event(Key::Left, pressed);
                 break;
             case SDL_SCANCODE_UP:
+            case SDL_SCANCODE_W:
                 on_key_event(Key::Up, pressed);
                 break;
             case SDL_SCANCODE_DOWN:
+            case SDL_SCANCODE_S:
                 on_key_event(Key::Down, pressed);
                 break;
-            case SDL_SCANCODE_S:
-                on_key_event(Key::S, pressed);
+            case SDL_SCANCODE_P:
+                on_key_event(Key::SAVE, pressed);
                 break;
             default:
                 break;
@@ -89,7 +93,7 @@ bool Display::poll_events() {
     return true;
 }
 
-void Display::teardown() {
+void Frontend::teardown() {
     if (texture) {
         SDL_DestroyTexture(texture);
     }
