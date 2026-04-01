@@ -7,6 +7,22 @@ void Emulator::run() {
     }
 }
 
+/**
+ * Reset the Emulator and all of its members to their post Boot ROM states
+ */
+void Emulator::reset() {
+    last_frame_time = std::chrono::steady_clock::now();
+    last_save_time = std::chrono::steady_clock::now();
+
+    interrupt.reset();
+    joypad.reset();
+    ppu.reset();
+    timer.reset();
+    memory_bus.reset();
+    cpu.reset();
+}
+
+
 void Emulator::on_frame_ready() {
     frontend.present(ppu.get_frame());
 

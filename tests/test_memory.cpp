@@ -7,10 +7,12 @@
 
 #include "../src/emulator/emulator.h"
 
+Emulator emulator;
+
 TEST(TimingTest, MemTiming01) {
     std::string filename = "../../gb-test-roms/mem_timing/mem_timing.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run();
@@ -20,7 +22,7 @@ TEST(TimingTest, MemTiming01) {
 TEST(TimingTest, MemTiming02) {
     std::string filename = "../../gb-test-roms/mem_timing-2/mem_timing.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run();

@@ -1,5 +1,23 @@
 #include "timer.h"
 
+/**
+ * Reset the Timer to its post Boot ROM state
+ */
+void Timer::reset() {
+    divider_internal = 0x00AB;
+    timer = 0x00;
+    timer_modulo = 0x00;
+
+    div_apu_bit = Bit::Bit4;
+    previous_high = false;
+    apu_previous_high = false;
+    overflow_delay = false;
+    timer_reload_cycle = false;
+    double_speed_mode = false;
+
+    write(TAC_REGISTER, 0xF8);
+}
+
 
 /**
  * Move the timer forward one m-cycle
@@ -19,7 +37,7 @@ void Timer::tick() {
 
     // Update the PPU every tick in regular mode, or every other tick in double speed mode
     if (!double_speed_mode || (divider_internal & 0x0001)) {
-        on_tick();
+        ppu.update();
     }
 
     // check timer enable bit

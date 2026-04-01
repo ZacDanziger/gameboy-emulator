@@ -13,40 +13,40 @@
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
 
+const std::string EMULATOR_NAME = "GameBoy Color Emulator";
+
 class Emulator {
     public:
-        Emulator(const std::string& rom_file):
+        Emulator():
             interrupt(),
-            memory_bus(interrupt),
-            frontend("GameBoy Color Emulator", [this](Key key, bool pressed){ memory_bus.set_key(key, pressed); }),
-            timer(interrupt,
-                   [this]{ ppu.update(); }),
-            cpu(memory_bus, timer, interrupt),
-            ppu(interrupt,
-                [this]{ this->on_frame_ready(); },
-                [this]{ memory_bus.hdma_tick(); }),
+            joypad(interrupt),
+            ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
+            timer(interrupt, ppu),
+            memory_bus(interrupt, joypad, ppu, timer),
+            cpu(interrupt, joypad, timer, memory_bus),
+            frontend(EMULATOR_NAME, joypad),
             
             last_frame_time(std::chrono::steady_clock::now()),
             last_save_time(std::chrono::steady_clock::now())
-            {
-                memory_bus.init(&timer, &ppu);
-
-                memory_bus.load_rom(rom_file);
-            }
-
+        {}
+        
+        void load(const std::string& rom_file) { reset(); memory_bus.load_rom(rom_file); }
         void run();
     private:
         InterruptController interrupt;
-        MemoryBus memory_bus;
-        Frontend frontend;
-        Timer timer;
-        CPU cpu;
+        Joypad joypad;
         PPU ppu;
+        Timer timer;
+        MemoryBus memory_bus;
+        CPU cpu;
+        Frontend frontend;
         // APU
 
         
         std::chrono::steady_clock::time_point last_frame_time;
         std::chrono::steady_clock::time_point last_save_time;
+
+        void reset();
         void on_frame_ready();
 };
 

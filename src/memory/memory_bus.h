@@ -5,11 +5,12 @@
 #include <vector>
 #include <algorithm>
 
-#include "memory_map.h"
+#include "../memory_map.h"
 #include "../utils/utils.h"
 #include "../timer/timer.h"
 #include "../ppu/ppu.h"
 #include "../mbc/mbc.h"
+#include "../joypad/joypad.h"
 
 
 /**
@@ -18,10 +19,15 @@
 */
 class MemoryBus {
     public:
-        MemoryBus(InterruptController& i) :
+        MemoryBus(InterruptController& i, Joypad& j, PPU& p, Timer& t) :
             interrupt(i),
+            joypad(j),
+            ppu(p),
+            timer(t),
+
             wram{},
             io_registers{},
+            hram{},
 
             prep_speed_switch(0x7E),
             vram_source_high(0xFF),
@@ -31,15 +37,10 @@ class MemoryBus {
             vram_dma_control(0xFF),
             wram_bank(0x01),
 
-            hram{},
-
-            button_keys(0x0F),
-            direction_keys(0x0F),
-
             rom_filename(),
 
             cgb_mode(false),
-            hdma_state{},
+
             hdma_active(false),
             hdma_source(0x0000),
             hdma_destination(0x0000),
@@ -50,28 +51,24 @@ class MemoryBus {
             save();
         }
 
-        void init(Timer* timer_ptr, PPU* ppu_ptr) { timer = timer_ptr; ppu = ppu_ptr; }
+        void reset();
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
         
         void load_rom(const std::string& filename);
 
-        void request_interrupt(Interrupt interrupt);
         void set_key(Key key, bool pressed);
 
         void hdma_tick();
 
-        bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
-
         void save () {if (mbc) { mbc->save(rom_filename); }}
-
-        // debug function
-        void print_tiles(const std::string& filename) { ppu->print_tiles_ppm(filename); }
     private:
-        Timer *timer;
-        PPU *ppu;
         InterruptController& interrupt;
+        Joypad& joypad;
+        PPU& ppu;
+        Timer& timer;
+
         std::unique_ptr<MBC> mbc;
 
         std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
@@ -79,6 +76,12 @@ class MemoryBus {
         // PROBABLY DIVIDE UP
         std::array<Byte, IO_REG_SIZE> io_registers;        // 0xFF00 - 0xFF7F
 
+        std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
+
+        std::string rom_filename;
+        
+        bool cgb_mode;
+        
         // CGB Registers
         Byte prep_speed_switch;                            // KEY1_SPD_REGISTER
         Byte vram_source_high;                             // HDMA1_REGISTER
@@ -88,32 +91,13 @@ class MemoryBus {
         Byte vram_dma_control;                             // HDMA5_REGISTER
         Byte wram_bank;                                    // SVBK_WBK_REGISTER
 
-        std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
-
-        // the 2x4 grid of values for JOYP
-        Byte button_keys;
-        Byte direction_keys;
-
-        std::string rom_filename;
-        bool cgb_mode;
-
         bool hdma_active;
         Address hdma_source;
         Address hdma_destination;
         Word hdma_remaining;
 
-        struct HDMAState {
-            bool active = false;
-            Address source = 0x0000;
-            Address destination = 0x0000;
-            Word remaining = 0x0000;
-        };
-
-        HDMAState hdma_state;
-
         void oam_dma_transfer(const Byte value);
         void vram_dma_transfer(const Byte value);
-        
 };
 
 #endif // MEMORY_BUS_H

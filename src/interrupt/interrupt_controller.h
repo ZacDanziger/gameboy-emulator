@@ -2,8 +2,8 @@
 #define INTERRUPT_CONTROLLER_H
 
 #include "../types.h"
+#include "../memory_map.h"
 #include "../utils/utils.h"
-#include "../memory/memory_map.h"
 
 class InterruptController {
     public:
@@ -17,6 +17,8 @@ class InterruptController {
 
         bool interrupt_pending() { return (if_register & ie_register) != 0; }
         void request_interrupt(Interrupt interrupt) { set_bit(if_register, static_cast<Bit>(interrupt)); }
+
+        void reset() { if_register = 0xE1; ie_register = 0x00; }
 
         Interrupt acknowledge_interrupt();
 

@@ -1,6 +1,28 @@
 #include "cpu.h"
 #include <iostream>
 
+/**
+ * Reset the CPU to its post Boot ROM state
+ */
+void CPU::reset() {
+    reg_A = 0x11;
+    reg_F = 0x80;
+    reg_B = 0x00;
+    reg_C = 0x00;
+    reg_D = 0xFF;
+    reg_E = 0x56;
+    reg_H = 0x00;
+    reg_L = 0x0D;
+    reg_SP = 0xFFFE;
+    reg_PC = 0x0100;
+    
+    interrupts_enabled = false;
+    ei_pending = false;
+    halted = false;
+    stopped = false;
+    speed_switch_halt = false;
+}
+
 
 /**
  * Perform one loop of the fetch -> decode -> execute cycle
@@ -12,7 +34,7 @@ void CPU::step() {
     }
 
     while(stopped) {
-        if (memory_bus.any_button_pressed()) {
+        if (joypad.any_button_pressed()) {
             stopped = false;
         }
     }
@@ -307,7 +329,7 @@ void CPU::HALT() {
 void CPU::STOP() {
 
     // check if a button is being pressed
-    if (memory_bus.any_button_pressed()) {
+    if (joypad.any_button_pressed()) {
         if (interrupt.interrupt_pending()) {
             // stop is a 1 byte opcode, mode doesn't change, DIV is not reset
             return;

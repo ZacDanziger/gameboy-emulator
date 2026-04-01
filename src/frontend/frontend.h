@@ -4,8 +4,7 @@
 #include <SDL3/SDL.h>
 #include <string>
 #include "../types.h"
-
-using KeyCallback = std::function<void(Key, bool)>;
+#include "../joypad/joypad.h"
 
 constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
 
@@ -14,7 +13,16 @@ constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
  */
 class Frontend {
     public:
-        Frontend(const std::string& title, KeyCallback k);
+        Frontend(const std::string& title, Joypad& j) :
+            window(nullptr),
+            renderer(nullptr),
+            texture(nullptr),
+
+            joypad(j)
+        {
+            init(title);
+        }
+
         ~Frontend();
 
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame);
@@ -24,8 +32,8 @@ class Frontend {
         SDL_Renderer* renderer;
         SDL_Texture* texture;
 
-        KeyCallback on_key_event;
-
+        Joypad& joypad;
+        void init(const std::string& title);
         void teardown();
 };
 

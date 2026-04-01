@@ -15,9 +15,6 @@ class MBC0 : public MBC {
 
         Byte read(const Address address) const override;
         void write(const Address address, const Byte data) override;
-
-        void save(const std::string& filename) const override { return; }
-        void load(const std::string& filename) override { return; }
     private:
         std::vector<Byte> rom;
         std::vector<Byte> eram;

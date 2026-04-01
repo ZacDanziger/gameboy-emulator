@@ -2,10 +2,11 @@
 #define TIMER_H
 
 #include <stdexcept>
-#include "../memory/memory_map.h"
+#include "../memory_map.h"
 #include "../types.h"
 #include "../utils/utils.h"
 #include "../interrupt/interrupt_controller.h"
+#include "../ppu/ppu.h"
 
 using TickCallback = std::function<void()>;
 
@@ -15,9 +16,9 @@ using TickCallback = std::function<void()>;
  */
 class Timer {
     public:
-        Timer(InterruptController& i, TickCallback t):
+        Timer(InterruptController& i, PPU& p):
             interrupt(i),
-            on_tick(t),
+            ppu(p),
             
             divider_internal(0x00AB),
             timer(0x00),
@@ -34,16 +35,18 @@ class Timer {
             write(TAC_REGISTER, 0xF8);
         }
 
+        void reset();
+
         void tick();
 
-        void write(const Address address, const Byte value);
         Byte read(const Address address) const;
+        void write(const Address address, const Byte value);
 
         bool get_double_speed() const { return double_speed_mode; }
         void set_double_speed(const bool ds) { double_speed_mode = ds; }
     private:
         InterruptController& interrupt;
-        TickCallback on_tick;
+        PPU& ppu;
 
         Word divider_internal;      // SYSCLK (DIV_REGISTER)
         Byte timer;                 // TIMA_REGISTER

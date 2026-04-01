@@ -1,11 +1,12 @@
 #include "../emulator/emulator.h"
 #include "gtest/gtest.h"
 
+Emulator emulator;
 
 TEST(ScreenTest, DMGAcid2) {
     std::string filename = "../../gb-test-roms/dmg-acid2.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run();
@@ -15,7 +16,7 @@ TEST(ScreenTest, DMGAcid2) {
 TEST(ScreenTest, CGBAcid2) {
     std::string filename = "../../gb-test-roms/cgb-acid2.gbc";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run();

@@ -3,17 +3,28 @@
 #include "../mbc/mbc1.h"
 #include "../mbc/mbc3.h"
 
-enum class MBC_Type : Byte{
-    MBC0 = 0x00,
-    MBC1 = 0x01,
-    MBC1_RAM = 0x02,
-    MBC1_RAM_BATTERY = 0x03,
-    MBC3_TIMER_BATTERY = 0x0F,
-    MBC3_TIMER_RAM_BATTERY = 0x10,
-    MBC3 = 0x11,
-    MBC3_RAM = 0x12,
-    MBC3_RAM_BATTERY = 0x13
-};
+/**
+ * Reset Memory Bus to its post Boot ROM state
+ */
+void MemoryBus::reset() {
+    wram = {0};
+    io_registers = {0};
+
+    cgb_mode = false;
+
+    prep_speed_switch = 0x7E;
+    vram_source_high = 0xFF;
+    vram_source_low = 0xFF;
+    vram_dest_high = 0xFF;
+    vram_dest_low = 0xFF;
+    vram_dma_control = 0xFF;
+    wram_bank = 0x01;
+
+    hdma_active = false;
+    hdma_source = 0x0000;
+    hdma_destination = 0x0000;
+    hdma_remaining = 0x0000;
+}
 
 
 /**
@@ -31,7 +42,7 @@ Byte MemoryBus::read(Address address) const {
 
     // VRAM read
     if (address < ERAM_START) {
-        return ppu->read(address);
+        return ppu.read(address);
     }
 
     // ERAM read
@@ -63,7 +74,7 @@ Byte MemoryBus::read(Address address) const {
 
     // OAM read
     if (address < NOT_USABLE_START) {
-        return ppu->read(address);
+        return ppu.read(address);
     }
 
     // NOT USABLE read
@@ -74,18 +85,7 @@ Byte MemoryBus::read(Address address) const {
     // IO registers read
     if (address < HRAM_START) {
         if (address == JOYP_REGISTER) {
-            Byte joypad = io_registers[JOYP_REGISTER - IO_START];
-
-            switch(joypad & 0x30) {
-            case 0x00:
-                return 0x0F;
-            case 0x10:
-                return (0x10 | button_keys);
-            case 0x20:
-                return (0x20 | direction_keys);
-            case 0x30:
-                return 0x3F;
-            }
+            return joypad.read();
         }
 
         // CGB registers - return open bus value if in DMG mode
@@ -110,7 +110,7 @@ Byte MemoryBus::read(Address address) const {
 
         // Timer IO registers
         if (address >= DIV_REGISTER && address <= TAC_REGISTER) {
-            return timer->read(address);
+            return timer.read(address);
         }
 
         if (address == IF_REGISTER) {
@@ -119,7 +119,7 @@ Byte MemoryBus::read(Address address) const {
         // TODO: APU IO registers here
 
         if (address == KEY1_SPD_REGISTER) {
-            if (timer->get_double_speed()) {
+            if (timer.get_double_speed()) {
                 return 0x80 | prep_speed_switch;
             } else {
                 return prep_speed_switch;
@@ -131,7 +131,7 @@ Byte MemoryBus::read(Address address) const {
             (address == VBK_REGISTER) ||
             (address >= BCPS_BGPI_REGISTER && address <= OPRI_REGISTER))
         {
-            return ppu->read(address);
+            return ppu.read(address);
         }
 
         return io_registers[address - IO_START];
@@ -168,7 +168,7 @@ void MemoryBus::write(Address address, Byte data) {
 
     // VRAM write
     if (address >= VRAM_START && address < ERAM_START) {
-        ppu->write(address, data);
+        ppu.write(address, data);
         return;
     }
 
@@ -202,7 +202,7 @@ void MemoryBus::write(Address address, Byte data) {
 
     // OAM write
     if (address < NOT_USABLE_START) {
-        ppu->write(address, data);
+        ppu.write(address, data);
         return;
     }
 
@@ -214,8 +214,7 @@ void MemoryBus::write(Address address, Byte data) {
     // IO registers write
     if (address < HRAM_START) {
         if (address == JOYP_REGISTER) {
-            // lower nibble of JOYP is read-only
-            data &= 0xF0;
+            joypad.write(data);
         }
 
         // CGB registers - writes in DMG mode are fine, but reads in DMG mode will be 0xFF
@@ -257,7 +256,7 @@ void MemoryBus::write(Address address, Byte data) {
 
         // Timer IO registers
         if (address >= DIV_REGISTER && address <= TAC_REGISTER) {
-            timer->write(address, data);
+            timer.write(address, data);
             return;
         }
         if (address == IF_REGISTER) {
@@ -278,7 +277,7 @@ void MemoryBus::write(Address address, Byte data) {
             (address >= BCPS_BGPI_REGISTER && address <= OPRI_REGISTER)) 
         {
 
-            ppu->write(address, data);
+            ppu.write(address, data);
 
             if (address == DMA_REGISTER) {
                 oam_dma_transfer(data);
@@ -331,7 +330,7 @@ void MemoryBus::load_rom(const std::string& filename) {
     MBC_Type mbc_type = static_cast<MBC_Type>(data[MBC_TYPE]);
     Byte ram_size = data[CART_RAM_SIZE];
     cgb_mode = (data[CGB_FLAG] == 0x80) || (data[CGB_FLAG] == 0xC0);
-    ppu->set_cgb_mode(cgb_mode);
+    ppu.set_cgb_mode(cgb_mode);
 
     size_t ram_size_bytes = 0;
     switch(ram_size) {
@@ -387,72 +386,6 @@ void MemoryBus::load_rom(const std::string& filename) {
     mbc->load(rom_filename);
 }
 
-/**
- * Given an interrupt type, sets the corresponding bit in the interrupt request register
- * 
- * @param interrupt the type of interrupt
- */
-void MemoryBus::request_interrupt(Interrupt interrupt) {
-    io_registers[IF_REGISTER - IO_START] |= static_cast<Byte>(interrupt);
-}
-
-
-/**
- * Given a key press or release, set or reset the corresponding bit in the 2x4 joypad register
- * 
- * @param key the key that has been changed
- * @param pressed true if pressed, false if released
- */
-void MemoryBus::set_key(Key key, bool pressed) {
-    Byte* target = nullptr;
-    Bit bit = Bit::Bit0;
-
-    switch(key) {
-    case Key::A:
-        target = &button_keys;
-        bit = Bit::Bit0;
-        break;
-    case Key::B:
-        target = &button_keys;
-        bit = Bit::Bit1;
-        break;
-    case Key::Select:
-        target = &button_keys;
-        bit = Bit::Bit2;
-        break;
-    case Key::Start:
-        target = &button_keys;
-        bit = Bit::Bit3;
-        break;
-    case Key::Right:
-        target = &direction_keys;
-        bit = Bit::Bit0;
-        break;
-    case Key::Left:
-        target = &direction_keys;
-        bit = Bit::Bit1;
-        break;
-    case Key::Up:
-        target = &direction_keys;
-        bit = Bit::Bit2;
-        break;
-    case Key::Down:
-        target = &direction_keys;
-        bit = Bit::Bit3;
-        break;
-    case Key::SAVE:
-        save();
-        return;
-    }   
-
-    if (pressed) {
-        reset_bit(*target, bit);
-        request_interrupt(Interrupt::Joypad);
-    } else {
-        set_bit(*target, bit);
-    }
-}
-
 
 /**
  * Transfer a section of data exactly the size of OAM to OAM
@@ -467,7 +400,7 @@ void MemoryBus::oam_dma_transfer(const Byte value) {
         dma_data[i] = read(address + i);
     }
     
-    ppu->load(OAM_START, dma_data);
+    ppu.load(OAM_START, dma_data);
 }
 
 
@@ -507,12 +440,13 @@ void MemoryBus::vram_dma_transfer(const Byte value) {
         for (int i = 0; i < length; i++) {
             dma_data[i] = read(source_address + i);
         }
-        ppu->load(destination_address, dma_data);
+        ppu.load(destination_address, dma_data);
 
         // signal transfer is complete
         vram_dma_control = 0xFF;
     }
 }
+
 
 /**
  * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
@@ -537,7 +471,7 @@ void MemoryBus::hdma_tick() {
         return;
     }
 
-    ppu->load(hdma_destination, chunk);
+    ppu.load(hdma_destination, chunk);
 
     hdma_source += chunk_size;
     hdma_destination += chunk_size;

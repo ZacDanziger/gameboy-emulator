@@ -4,7 +4,7 @@
 #include <bitset>
 #include <array>
 #include "../utils/utils.h"
-#include "../memory/memory_map.h"
+#include "../memory_map.h"
 #include "../interrupt/interrupt_controller.h"
 
 using FrameCallback = std::function<void()>;
@@ -74,6 +74,8 @@ class PPU {
             cgb_mode(false)
         {}
 
+        void reset();
+        
         Byte read(const Address address) const;
         void write(const Address address, const Byte value);
 

@@ -47,6 +47,19 @@ enum class Mode {
     TRANSFER
 };
 
+
+enum class MBC_Type : Byte{
+    MBC0                   = 0x00,
+    MBC1                   = 0x01,
+    MBC1_RAM               = 0x02,
+    MBC1_RAM_BATTERY       = 0x03,
+    MBC3_TIMER_BATTERY     = 0x0F,
+    MBC3_TIMER_RAM_BATTERY = 0x10,
+    MBC3                   = 0x11,
+    MBC3_RAM               = 0x12,
+    MBC3_RAM_BATTERY       = 0x13
+};
+
 // Pixel counts of display screen and larger background map 
 constexpr std::size_t SCREEN_WIDTH = 160;
 constexpr std::size_t SCREEN_HEIGHT = 144;

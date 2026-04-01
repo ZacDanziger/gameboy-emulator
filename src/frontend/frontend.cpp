@@ -1,8 +1,71 @@
 #include "frontend.h"
 
-Frontend::Frontend(const std::string& title, KeyCallback k) {
-    on_key_event = k;
 
+Frontend::~Frontend() {
+    teardown();
+}
+
+void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame) {
+    SDL_UpdateTexture(texture, nullptr, frame.data(), SCREEN_WIDTH * sizeof(RGBA32));
+    SDL_RenderClear(renderer);
+    SDL_RenderTexture(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+}
+
+
+bool Frontend::poll_events() {
+    SDL_Event e;
+    while(SDL_PollEvent(&e)) {
+        if (e.type == SDL_EVENT_QUIT) {
+            return false;
+        }
+
+        if ((e.type == SDL_EVENT_KEY_DOWN) || (e.type == SDL_EVENT_KEY_UP)) {
+            bool pressed = (e.type == SDL_EVENT_KEY_DOWN);
+
+            switch(e.key.scancode) {
+            case SDL_SCANCODE_Z:
+                joypad.set_key(Key::A, pressed);
+                break;
+            case SDL_SCANCODE_X:
+                joypad.set_key(Key::B, pressed);
+                break;
+            case SDL_SCANCODE_RSHIFT:
+                joypad.set_key(Key::Select, pressed);
+                break;
+            case SDL_SCANCODE_RETURN:
+                joypad.set_key(Key::Start, pressed);
+                break;
+            case SDL_SCANCODE_RIGHT:
+            case SDL_SCANCODE_D:
+                joypad.set_key(Key::Right, pressed);
+                break;
+            case SDL_SCANCODE_LEFT:
+            case SDL_SCANCODE_A:
+                joypad.set_key(Key::Left, pressed);
+                break;
+            case SDL_SCANCODE_UP:
+            case SDL_SCANCODE_W:
+                joypad.set_key(Key::Up, pressed);
+                break;
+            case SDL_SCANCODE_DOWN:
+            case SDL_SCANCODE_S:
+                joypad.set_key(Key::Down, pressed);
+                break;
+            case SDL_SCANCODE_P:
+                joypad.set_key(Key::SAVE, pressed);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+void Frontend::init(const std::string& title) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL ") + SDL_GetError());
     }
@@ -29,69 +92,6 @@ Frontend::Frontend(const std::string& title, KeyCallback k) {
     }
 }
 
-
-Frontend::~Frontend() {
-    teardown();
-}
-
-void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame) {
-    SDL_UpdateTexture(texture, nullptr, frame.data(), SCREEN_WIDTH * sizeof(RGBA32));
-    SDL_RenderClear(renderer);
-    SDL_RenderTexture(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
-}
-
-
-bool Frontend::poll_events() {
-    SDL_Event e;
-    while(SDL_PollEvent(&e)) {
-        if (e.type == SDL_EVENT_QUIT) {
-            return false;
-        }
-
-        if ((e.type == SDL_EVENT_KEY_DOWN) || (e.type == SDL_EVENT_KEY_UP)) {
-            bool pressed = (e.type == SDL_EVENT_KEY_DOWN);
-
-            switch(e.key.scancode) {
-            case SDL_SCANCODE_Z:
-                on_key_event(Key::A, pressed);
-                break;
-            case SDL_SCANCODE_X:
-                on_key_event(Key::B, pressed);
-                break;
-            case SDL_SCANCODE_RSHIFT:
-                on_key_event(Key::Select, pressed);
-                break;
-            case SDL_SCANCODE_RETURN:
-                on_key_event(Key::Start, pressed);
-                break;
-            case SDL_SCANCODE_RIGHT:
-            case SDL_SCANCODE_D:
-                on_key_event(Key::Right, pressed);
-                break;
-            case SDL_SCANCODE_LEFT:
-            case SDL_SCANCODE_A:
-                on_key_event(Key::Left, pressed);
-                break;
-            case SDL_SCANCODE_UP:
-            case SDL_SCANCODE_W:
-                on_key_event(Key::Up, pressed);
-                break;
-            case SDL_SCANCODE_DOWN:
-            case SDL_SCANCODE_S:
-                on_key_event(Key::Down, pressed);
-                break;
-            case SDL_SCANCODE_P:
-                on_key_event(Key::SAVE, pressed);
-                break;
-            default:
-                break;
-            }
-        }
-    }
-
-    return true;
-}
 
 void Frontend::teardown() {
     if (texture) {

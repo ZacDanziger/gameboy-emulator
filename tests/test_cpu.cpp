@@ -3,6 +3,7 @@
 
 
 bool SKIP_INDIVIDUAL_TESTS = true;
+Emulator emulator;
 
 TEST(IndividualTest, CPUTest01) {
     if (SKIP_INDIVIDUAL_TESTS) {
@@ -11,7 +12,7 @@ TEST(IndividualTest, CPUTest01) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/01-special.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -25,7 +26,7 @@ TEST(IndividualTest, CPUTest02) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/02-interrupts.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -39,7 +40,7 @@ TEST(IndividualTest, CPUTest03) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -53,7 +54,7 @@ TEST(IndividualTest, CPUTest04) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/04-op r,imm.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -67,7 +68,7 @@ TEST(IndividualTest, CPUTest05) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/05-op rp.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -81,7 +82,7 @@ TEST(IndividualTest, CPUTest06) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/06-ld r,r.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -95,7 +96,7 @@ TEST(IndividualTest, CPUTest07) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -109,7 +110,7 @@ TEST(IndividualTest, CPUTest08) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/08-misc instrs.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -123,7 +124,7 @@ TEST(IndividualTest, CPUTest09) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/09-op r,r.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -137,7 +138,7 @@ TEST(IndividualTest, CPUTest10) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/10-bit ops.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -151,7 +152,7 @@ TEST(IndividualTest, CPUTest11) {
 
     std::string filename = "../../gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -165,7 +166,7 @@ TEST(InstructionTest, CompositeTest) {
     }
     std::string filename = "../../gb-test-roms/cpu_instrs/cpu_instrs.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run();
@@ -176,7 +177,7 @@ TEST(TimingTest, InstrTiming) {
     // GTEST_SKIP();
     std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
 
-    Emulator emulator(filename);
+    emulator.load(filename);
 
     EXPECT_NO_THROW(
         emulator.run()

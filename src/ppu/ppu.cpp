@@ -1,6 +1,43 @@
 #include "ppu.h"
 
-static int count = 0;
+/**
+ * Reset the PPU to its post Boot ROM state
+ */
+void PPU::reset() {
+    vram = {0};
+    oam = {0};
+
+    background_color_ram = {0};
+    object_color_ram = {0};
+
+    tile_cache = {0};
+    frame_buffer = {0};
+
+    lcd_control = 0x91;
+    lcd_status = 0x00;
+    viewport_y = 0x00;
+    viewport_x = 0x00;
+    lcd_y = 0xFF;
+    ly_compare = 0x00;
+    oam_dma = 0x00;
+    background_palette = 0xFC;
+    object_palette_0 = 0x00;
+    object_palette_1 = 0x00;
+    window_y = 0x00;
+    window_x = 0x00;
+
+    vram_bank = 0x00;
+    background_palette_index = 0x00;
+    object_palette_index = 0x00;
+    object_priority = 0x00;
+
+    mode = Mode::VBLANK;
+    cycles = -1;
+    window_line_counter = 0;
+
+    cgb_mode = false;
+}
+
 
 /**
  * Read from VRAM, OAM, or any PPU owned IO registers
@@ -303,7 +340,7 @@ void PPU::update() {
             reset_bit(lcd_status, Bit::Bit1);
             reset_bit(lcd_status, Bit::Bit0);
 
-            // call MMU::hdma_tick()
+            // call MemoryBus::hdma_tick()
             hblank();
         
             // if interrupt on HBlank is set, request interrupt

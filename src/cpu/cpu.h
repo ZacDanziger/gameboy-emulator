@@ -16,10 +16,11 @@ static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
  */
 class CPU {
     public:
-        CPU(MemoryBus& memory_bus, Timer& timer, InterruptController& i) :
+        CPU(InterruptController& i, Joypad& j, Timer& timer, MemoryBus& memory_bus) :
+            interrupt(i),
+            joypad(j),
             timer(timer),
             memory_bus(memory_bus),
-            interrupt(i),
 
             reg_A(0x11),
             reg_F(0x80),
@@ -44,14 +45,19 @@ class CPU {
             speed_switch_halt(false)
         {}
 
+        void reset();
+        
         void step();
         
         bool is_halted() const { return halted; }
         bool is_stopped() const { return stopped; }
+
+        
     private:
-        MemoryBus& memory_bus;
-        Timer& timer;
         InterruptController& interrupt;
+        Joypad& joypad;
+        Timer& timer;
+        MemoryBus& memory_bus;
 
         // Pair of 8-bit registers
         struct Pair {
