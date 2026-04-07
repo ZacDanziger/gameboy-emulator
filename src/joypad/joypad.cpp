@@ -2,17 +2,17 @@
 
 Byte Joypad::read() const {
     switch(joypad_register & 0x30) {
-    case 0x00:
-        return 0x0F;
-    case 0x10:
-        return (0x10 | button_keys);
-    case 0x20:
-        return (0x20 | direction_keys);
-    case 0x30:
-        return 0x3F;
+        case 0x00:
+            return 0x0F;
+        case 0x10:
+            return (0x10 | button_keys);
+        case 0x20:
+            return (0x20 | direction_keys);
+        case 0x30:
+            return 0x3F;
+        default:
+            throw std::runtime_error("How did you get here?");
     }
-
-    throw std::runtime_error("How did you get here?");
 }
 
 

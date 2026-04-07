@@ -1,11 +1,9 @@
 #ifndef MBC_H
 #define MBC_H
 
-#include <array>
-#include <vector>
+#include <string>
+
 #include "../types.h"
-#include "../memory_map.h"
-#include "../utils/utils.h"
 
 /**
  * Memory Bank Controller
@@ -19,6 +17,8 @@ class MBC {
 
         virtual void save(const std::string& filename) const { return; };
         virtual void load(const std::string& filename) { return; };
+    private:
+        std::string rom_filename;
 };
 
 #endif // MBC_H

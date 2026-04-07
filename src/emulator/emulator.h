@@ -1,14 +1,14 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
+#include <thread>
+#include <chrono>
+
 #include "../memory/memory_bus.h"
 #include "../timer/timer.h"
 #include "../cpu/cpu.h"
 #include "../ppu/ppu.h"
 #include "../frontend/frontend.h"
-
-#include <thread>
-#include <chrono>
 
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
@@ -21,7 +21,7 @@ class Emulator {
             interrupt(),
             joypad(interrupt),
             ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
-            timer(interrupt, ppu),
+            timer(interrupt, [this]{ ppu.update(); }),
             memory_bus(interrupt, joypad, ppu, timer),
             cpu(interrupt, joypad, timer, memory_bus),
             frontend(EMULATOR_NAME, joypad),

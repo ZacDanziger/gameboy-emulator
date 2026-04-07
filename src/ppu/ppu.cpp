@@ -264,7 +264,7 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
 
 
 /**
- * Step the PPU through 1 m-cycle
+ * Step the PPU forward 1 m-cycle
  * Modes: (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
  */
 void PPU::update() {
@@ -390,53 +390,12 @@ void PPU::draw_scanline() {
  */
 void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
     uint8_t y = viewport_y + lcd_y;
-    // divide by 8 to get the correct tile row
-    uint8_t tile_row = y >> 3;  // number between 0-31
-
     Address tile_map = is_set(lcd_control, Bit::Bit3) ? TILE_MAP_1_START : TILE_MAP_0_START;
 
     for (uint8_t pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
         uint8_t x = viewport_x + pixel_column;
-        // divide by 8 again for correct tile column
-        uint8_t tile_column = x >> 3;   // number between 0-31
-
-        Word offset = (tile_row << 5) | tile_column;
-        Address tile_lookup = tile_map + offset;
-
-        // can't use read during Mode 3, which we will always be in during this function call
-        Byte tile_id = vram[tile_lookup - VRAM_START];
-        Address tile_address = get_tile_address(tile_id);
-
-        /**
-         * CGB tile attribute data
-         * All fields will be 0 if not in cgb mode
-         */
-        Byte tile_attributes = cgb_mode ? vram[tile_lookup - VRAM_START + VRAM_SIZE] : 0x00;
-        int tile_bank = is_set(tile_attributes, Bit::Bit3) ? 1 : 0;
-        int palette = tile_attributes & 0x07;
-        bool flip_x = is_set(tile_attributes, Bit::Bit5);
-        bool flip_y = is_set(tile_attributes, Bit::Bit6);
-
-        if (is_set(tile_attributes, Bit::Bit7)) {
-            bg_high_priority[pixel_column] = true;
-        }
-
-        int index = address_to_index(tile_address, tile_bank);
-
-        if (tile_cache[index].dirty) {
-            refresh_tile(tile_address, tile_bank);
-        }
         
-        int row = flip_y ? (7 - (y % 8)) : (y % 8);
-        int col = flip_x ? (7 - (x % 8)) : (x % 8);
-
-        int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
-        bg_color_ids[pixel_column] = pixel_color_id;
-
-        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
-
-        frame_buffer[buffer_index] = cgb_mode ? 
-            color_id_to_rgba(pixel_color_id, palette) : color_id_to_rgba(pixel_color_id, background_palette);
+        draw_bg_pixel(pixel_column, x, y, tile_map, bg_color_ids, bg_high_priority);
     }
 }
 
@@ -452,11 +411,7 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
         return;
     }
 
-    // get the correct window line
     uint8_t y = window_line_counter;
-    // get the correct window tile row
-    uint8_t tile_row = y >> 3;
-
     Address tile_map = is_set(lcd_control, Bit::Bit6) ? TILE_MAP_1_START : TILE_MAP_0_START;
 
     // screen x-coordinate starts at window_x - 7 and goes to the right edge of the screen
@@ -468,45 +423,7 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
 
         // adjust screen x-coordinate relative to window
         uint8_t x = pixel_column - window_x + 7;
-        // divide by 8 to get window tile column
-        uint8_t tile_column = x >> 3;
-
-        Word offset = (tile_row << 5) | tile_column;
-        Address tile_lookup = tile_map + offset;
-
-        // can't use read during Mode 3, which we will always be in during this function call
-        Byte tile_id = vram[tile_lookup - VRAM_START];
-        Address tile_address = get_tile_address(tile_id);
-
-        /**
-         * CGB tile attribute data
-         * All fields will be 0 if not in cgb mode
-         */
-        Byte tile_attributes = cgb_mode ? vram[tile_lookup - VRAM_START + VRAM_SIZE] : 0x00;
-        int tile_bank = is_set(tile_attributes, Bit::Bit3) ? 1 : 0;
-        int palette = tile_attributes & 0x07;
-        bool flip_x = is_set(tile_attributes, Bit::Bit5);
-        bool flip_y = is_set(tile_attributes, Bit::Bit6);
-
-        if (is_set(tile_attributes, Bit::Bit7)) {
-            bg_high_priority[pixel_column] = true;
-        }
-
-        int index = address_to_index(tile_address, tile_bank);
-
-        if (tile_cache[index].dirty) {
-            refresh_tile(tile_address, tile_bank);
-        }
-
-        int row = flip_y ? (7 - (y % 8)) : (y % 8);
-        int col = flip_x ? (7 - (x % 8)) : (x % 8);
-
-        int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
-        bg_color_ids[pixel_column] = pixel_color_id;
-
-        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
-        frame_buffer[buffer_index] = cgb_mode ? 
-            color_id_to_rgba(pixel_color_id, palette) : color_id_to_rgba(pixel_color_id, background_palette);
+        draw_bg_pixel(pixel_column, x, y, tile_map, bg_color_ids, bg_high_priority);
     }
 
     window_line_counter += 1;
@@ -840,72 +757,60 @@ std::array<Address, 10> PPU::select_sprites(const int sprite_height) {
 
 
 /**
- * DEBUG FUNCTION
- * Get all of the tiles currently in VRAM
+ * Draws a background or window pixel to the frame buffer
  * 
- * @returns a vector of all tiles in both banks of VRAM
+ * @param pixel_column the pixel column of the screen, in range [0, 159]
+ * @param x the pixel column of the tilemap, in range [0, 255]
+ * @param y the pixel row of the tilemap, in range [0, 255]
+ * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
+ * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
-std::vector<Byte> PPU::dump_tiles() {
-    std::vector<Byte> tile_data(0x3000);
+void PPU::draw_bg_pixel(
+    int pixel_column,
+    uint8_t x,
+    uint8_t y,
+    Address tile_map,
+    std::array<int, SCREEN_WIDTH>& bg_color_ids,
+    std::array<bool, SCREEN_WIDTH>& bg_high_priority)
+{   
+    // divide x and y by 8 to find correct tile in 32x32 grid
+    uint8_t tile_column = x >> 3;   // in range [0, 31]
+    uint8_t tile_row = y >> 3;      // in range [0, 31]
+    Word offset = (tile_row << 5) | tile_column;
+    Address tile_lookup = tile_map + offset;
 
-    std::copy_n(vram.begin(), 0x1800, tile_data.begin());
-    std::copy_n(vram.begin() + VRAM_SIZE, 0x1800, tile_data.begin() + 0x1800);
+    // can't use read during Mode 3, which we will always be in during this function call
+    Byte tile_id = vram[tile_lookup - VRAM_START];
+    Address tile_address = get_tile_address(tile_id);
 
-    // dump(tile_data, "../build/tile_data.txt");
-    return tile_data;
-}
+    /**
+     * CGB tile attribute data
+     * All fields will be 0 if not in cgb mode
+     */
+    Byte tile_attributes = cgb_mode ? vram[tile_lookup - VRAM_START + VRAM_SIZE] : 0x00;
+    int tile_bank = is_set(tile_attributes, Bit::Bit3) ? 1 : 0;
+    int palette = tile_attributes & 0x07;
+    bool flip_x = is_set(tile_attributes, Bit::Bit5);
+    bool flip_y = is_set(tile_attributes, Bit::Bit6);
 
-
-/**
- * DEBUG FUNCTION
- * Print the tile data currently in VRAM to the file given, in ppm format
- * 
- * @param filename the file to write the ppm data to
- */
-void PPU::print_tiles_ppm(const std::string& filename) {
-    std::vector<Byte> tiles = dump_tiles();
-    int num_tiles = tiles.size() / 16;
-
-    // lay tiles out in a grid, 16 tiles wide
-    int tiles_wide = 16;
-    int tiles_tall = (num_tiles + tiles_wide - 1) / tiles_wide;
-    int img_width  = tiles_wide * 8;
-    int img_height = tiles_tall * 8;
-
-    std::ofstream file(filename, std::ios::binary);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
+    if (is_set(tile_attributes, Bit::Bit7)) {
+        bg_high_priority[pixel_column] = true;
     }
 
-    // PPM header
-    file << "P6\n" << img_width << " " << img_height << "\n255\n";
-
-    for (int ty = 0; ty < tiles_tall; ty++) {
-        for (int row = 0; row < 8; row++) {
-            for (int tx = 0; tx < tiles_wide; tx++) {
-                int t = ty * tiles_wide + tx;
-
-                for (int col = 7; col >= 0; col--) {
-                    if (t >= num_tiles) {
-                        // pad with black if we're past the last tile
-                        file.put(0); file.put(0); file.put(0);
-                        continue;
-                    }
-
-                    Byte low  = tiles[t * 16 + row * 2];
-                    Byte high = tiles[t * 16 + row * 2 + 1];
-                    int color_id = (((high >> col) & 1) << 1) | ((low >> col) & 1);
-
-                    // use palette 0 for background tiles, is_sprite=false
-                    RGBA32 color = color_id_to_rgba(color_id, 0, false);
-
-                    // RGBA32 is (R << 24 | G << 16 | B << 8 | A)
-                    file.put((color >> 24) & 0xFF); // R
-                    file.put((color >> 16) & 0xFF); // G
-                    file.put((color >>  8) & 0xFF); // B
-                    // PPM has no alpha channel
-                }
-            }
-        }
+    int index = address_to_index(tile_address, tile_bank);
+    if (tile_cache[index].dirty) {
+        refresh_tile(tile_address, tile_bank);
     }
+    
+    int row = flip_y ? (7 - (y % 8)) : (y % 8);
+    int col = flip_x ? (7 - (x % 8)) : (x % 8);
+
+    int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
+    bg_color_ids[pixel_column] = pixel_color_id;
+
+    int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+
+    frame_buffer[buffer_index] = cgb_mode
+        ? color_id_to_rgba(pixel_color_id, palette)
+        : color_id_to_rgba(pixel_color_id, background_palette);
 }

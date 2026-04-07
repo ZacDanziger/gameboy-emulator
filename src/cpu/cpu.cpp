@@ -327,7 +327,6 @@ void CPU::HALT() {
  * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
  */
 void CPU::STOP() {
-
     // check if a button is being pressed
     if (joypad.any_button_pressed()) {
         if (interrupt.interrupt_pending()) {

@@ -1,7 +1,15 @@
 #ifndef MBC3_H
 #define MBC3_H
 
+#include <vector>
+#include <utility>
+#include <stdexcept>
+#include <chrono>
+
 #include "mbc.h"
+#include "../types.h"
+#include "../memory_map.h"
+#include "../utils/utils.h"
 
 class MBC3 : public MBC {
     public:

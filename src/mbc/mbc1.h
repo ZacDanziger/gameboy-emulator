@@ -1,7 +1,14 @@
 #ifndef MBC1_H
 #define MBC1_H
 
+#include <vector>
+#include <utility>
+#include <stdexcept>
+
 #include "mbc.h"
+#include "../types.h"
+#include "../memory_map.h"
+#include "../utils/utils.h"
 
 class MBC1 : public MBC {
     public:

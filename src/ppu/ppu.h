@@ -3,8 +3,11 @@
 
 #include <bitset>
 #include <array>
-#include "../utils/utils.h"
+#include <functional>
+
+#include "../types.h"
 #include "../memory_map.h"
+#include "../utils/utils.h"
 #include "../interrupt/interrupt_controller.h"
 
 using FrameCallback = std::function<void()>;
@@ -85,9 +88,6 @@ class PPU {
 
         void update();
         void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
-
-        // Debug Function
-        void print_tiles_ppm(const std::string& filename);
     private:
         struct Tile {
             bool dirty = true;
@@ -128,8 +128,7 @@ class PPU {
         Byte object_palette_index;        // OCPS/OCPI REGISTER
         Byte object_priority;             // OPRI REGISTER - not currently used, may change in future
 
-
-        Mode mode;                        // 
+        Mode mode;
         int cycles;
         int window_line_counter;
         bool cgb_mode;
@@ -150,8 +149,14 @@ class PPU {
 
         std::array<Address, 10> select_sprites(const int sprite_height);
 
-        // Debug function
-        std::vector<Byte> dump_tiles();
+        void draw_bg_pixel(
+            int pixel_column,
+            uint8_t x,
+            uint8_t y,
+            Address tile_map,
+            std::array<int, SCREEN_WIDTH>& bg_color_ids,
+            std::array<bool, SCREEN_WIDTH>& bg_high_priority
+        );
 };
 
 #endif // PPU_H

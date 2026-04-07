@@ -3,14 +3,16 @@
 
 #include <array>
 #include <vector>
-#include <algorithm>
+#include <memory>
 
 #include "../memory_map.h"
+#include "../types.h"
 #include "../utils/utils.h"
-#include "../timer/timer.h"
-#include "../ppu/ppu.h"
-#include "../mbc/mbc.h"
+#include "../interrupt/interrupt_controller.h"
 #include "../joypad/joypad.h"
+#include "../ppu/ppu.h"
+#include "../timer/timer.h"
+#include "../mbc/mbc.h"
 
 
 /**
@@ -26,7 +28,7 @@ class MemoryBus {
             timer(t),
 
             wram{},
-            io_registers{},
+            // io_registers{},
             hram{},
 
             prep_speed_switch(0x7E),
@@ -52,13 +54,10 @@ class MemoryBus {
         }
 
         void reset();
+        void load_rom(const std::string& filename);
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
-        
-        void load_rom(const std::string& filename);
-
-        void set_key(Key key, bool pressed);
 
         void hdma_tick();
 
@@ -72,10 +71,6 @@ class MemoryBus {
         std::unique_ptr<MBC> mbc;
 
         std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
-
-        // PROBABLY DIVIDE UP
-        std::array<Byte, IO_REG_SIZE> io_registers;        // 0xFF00 - 0xFF7F
-
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
 
         std::string rom_filename;

@@ -37,7 +37,7 @@ void Timer::tick() {
 
     // Update the PPU every tick in regular mode, or every other tick in double speed mode
     if (!double_speed_mode || (divider_internal & 0x0001)) {
-        ppu.update();
+        on_tick();
     }
 
     // check timer enable bit

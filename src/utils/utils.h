@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+
 #include "../types.h"
 
 std::vector<uint8_t> read_file(const std::string& filename);

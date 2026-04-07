@@ -1,7 +1,13 @@
 #ifndef MBC0_H
 #define MBC0_H
 
+#include <vector>
+#include <utility>
+#include <stdexcept>
+
 #include "mbc.h"
+#include "../types.h"
+#include "../memory_map.h"
 
 /**
  * AKA no MBC

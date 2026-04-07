@@ -1,6 +1,8 @@
 #ifndef INTERRUPT_CONTROLLER_H
 #define INTERRUPT_CONTROLLER_H
 
+#include <stdexcept>
+
 #include "../types.h"
 #include "../memory_map.h"
 #include "../utils/utils.h"

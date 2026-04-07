@@ -1,6 +1,9 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include "../types.h"
+#include "../interrupt/interrupt_controller.h"
+#include "../joypad/joypad.h"
 #include "../timer/timer.h"
 #include "../memory/memory_bus.h"
 

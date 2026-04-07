@@ -3,6 +3,8 @@
 
 #include <SDL3/SDL.h>
 #include <string>
+#include <array>
+
 #include "../types.h"
 #include "../joypad/joypad.h"
 

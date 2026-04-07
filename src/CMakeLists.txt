@@ -12,6 +12,7 @@ set (SourceFiles
     mbc/mbc1.cpp
     mbc/mbc3.cpp
     emulator/emulator.cpp
+    apu/apu.cpp
 )
 
 

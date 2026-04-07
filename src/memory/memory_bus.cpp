@@ -8,7 +8,7 @@
  */
 void MemoryBus::reset() {
     wram = {0};
-    io_registers = {0};
+    hram = {0};
 
     cgb_mode = false;
 
@@ -24,6 +24,86 @@ void MemoryBus::reset() {
     hdma_source = 0x0000;
     hdma_destination = 0x0000;
     hdma_remaining = 0x0000;
+}
+
+/**
+ * Read data from a file and write it to ROM
+ * NOTE: data in header section must pass gameboy rom checksum
+ * 
+ * @param filename the filename containing the data to be read from
+*/
+void MemoryBus::load_rom(const std::string& filename) {
+    rom_filename = filename;
+
+    std::vector<Byte> data = read_file(filename);
+
+    // check header checksum
+    Byte checksum = 0x00;
+    for (Address address = TITLE_START; address < HEADER_CHECKSUM; address++) {
+        checksum -= data[address] + 1;
+    }
+
+    if (checksum != data[HEADER_CHECKSUM]) {
+        throw std::runtime_error("ROM header checksum failed");
+    }
+
+    MBC_Type mbc_type = static_cast<MBC_Type>(data[MBC_TYPE]);
+    Byte ram_size = data[CART_RAM_SIZE];
+    cgb_mode = (data[CGB_FLAG] == 0x80) || (data[CGB_FLAG] == 0xC0);
+    ppu.set_cgb_mode(cgb_mode);
+
+    size_t ram_size_bytes = 0;
+    switch(ram_size) {
+    case 0x00:
+        ram_size_bytes = 0;
+        break;
+    case 0x02:
+        ram_size_bytes = ERAM_BANK_SIZE;
+        break;
+    case 0x03:
+        ram_size_bytes = 4 * ERAM_BANK_SIZE;
+        break;
+    case 0x04:
+        ram_size_bytes = 16 * ERAM_BANK_SIZE;
+        break;
+    case 0x05:
+        ram_size_bytes = 8 * ERAM_BANK_SIZE;
+        break;
+    default:
+        throw std::runtime_error("Unsupported RAM size type");
+    }
+
+    switch (mbc_type) {
+    case MBC_Type::MBC0:
+        mbc = std::make_unique<MBC0>(std::move(data), ram_size_bytes);
+        break;
+    case MBC_Type::MBC1:
+        mbc = std::make_unique<MBC1>(std::move(data), 0, false);
+        break;
+    case MBC_Type::MBC1_RAM:
+        mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, false);
+        break;
+    case MBC_Type::MBC1_RAM_BATTERY:
+        mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, true);
+        break;
+    case MBC_Type::MBC3_TIMER_BATTERY:
+        mbc = std::make_unique<MBC3>(std::move(data), 0, true);
+        break;
+    case MBC_Type::MBC3:
+        mbc = std::make_unique<MBC3>(std::move(data), 0, false);
+        break;
+    case MBC_Type::MBC3_RAM:
+        mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, false);
+        break;
+    case MBC_Type::MBC3_TIMER_RAM_BATTERY:
+    case MBC_Type::MBC3_RAM_BATTERY:
+        mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, true);
+        break;
+    default:
+        throw std::runtime_error("Unsupported MBC type");
+    }
+
+    mbc->load(rom_filename);
 }
 
 
@@ -134,7 +214,8 @@ Byte MemoryBus::read(Address address) const {
             return ppu.read(address);
         }
 
-        return io_registers[address - IO_START];
+        // any IO registers not implemented just return open bus
+        return OPEN_BUS_VALUE;
     }
 
     // HRAM read
@@ -285,7 +366,6 @@ void MemoryBus::write(Address address, Byte data) {
             return;
         }
 
-        io_registers[address - IO_START] = data;
         return;
     }
 
@@ -303,87 +383,6 @@ void MemoryBus::write(Address address, Byte data) {
 
     // not sure how you would get here
     throw std::runtime_error("MemoryBus write called on invalid address");
-}
-
-
-/**
- * Read data from a file and write it to ROM
- * NOTE: data in header section must pass gameboy rom checksum
- * 
- * @param filename the filename containing the data to be read from
-*/
-void MemoryBus::load_rom(const std::string& filename) {
-    rom_filename = filename;
-
-    std::vector<Byte> data = read_file(filename);
-
-    // check header checksum
-    Byte checksum = 0x00;
-    for (Address address = TITLE_START; address < HEADER_CHECKSUM; address++) {
-        checksum -= data[address] + 1;
-    }
-
-    if (checksum != data[HEADER_CHECKSUM]) {
-        throw std::runtime_error("ROM header checksum failed");
-    }
-
-    MBC_Type mbc_type = static_cast<MBC_Type>(data[MBC_TYPE]);
-    Byte ram_size = data[CART_RAM_SIZE];
-    cgb_mode = (data[CGB_FLAG] == 0x80) || (data[CGB_FLAG] == 0xC0);
-    ppu.set_cgb_mode(cgb_mode);
-
-    size_t ram_size_bytes = 0;
-    switch(ram_size) {
-    case 0x00:
-        ram_size_bytes = 0;
-        break;
-    case 0x02:
-        ram_size_bytes = ERAM_BANK_SIZE;
-        break;
-    case 0x03:
-        ram_size_bytes = 4 * ERAM_BANK_SIZE;
-        break;
-    case 0x04:
-        ram_size_bytes = 16 * ERAM_BANK_SIZE;
-        break;
-    case 0x05:
-        ram_size_bytes = 8 * ERAM_BANK_SIZE;
-        break;
-    default:
-        throw std::runtime_error("Unsupported RAM size type");
-    }
-
-    switch (mbc_type) {
-    case MBC_Type::MBC0:
-        mbc = std::make_unique<MBC0>(std::move(data), ram_size_bytes);
-        break;
-    case MBC_Type::MBC1:
-        mbc = std::make_unique<MBC1>(std::move(data), 0, false);
-        break;
-    case MBC_Type::MBC1_RAM:
-        mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, false);
-        break;
-    case MBC_Type::MBC1_RAM_BATTERY:
-        mbc = std::make_unique<MBC1>(std::move(data), ram_size_bytes, true);
-        break;
-    case MBC_Type::MBC3_TIMER_BATTERY:
-        mbc = std::make_unique<MBC3>(std::move(data), 0, true);
-        break;
-    case MBC_Type::MBC3:
-        mbc = std::make_unique<MBC3>(std::move(data), 0, false);
-        break;
-    case MBC_Type::MBC3_RAM:
-        mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, false);
-        break;
-    case MBC_Type::MBC3_TIMER_RAM_BATTERY:
-    case MBC_Type::MBC3_RAM_BATTERY:
-        mbc = std::make_unique<MBC3>(std::move(data), ram_size_bytes, true);
-        break;
-    default:
-        throw std::runtime_error("Unsupported MBC type");
-    }
-
-    mbc->load(rom_filename);
 }
 
 
