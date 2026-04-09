@@ -196,7 +196,17 @@ Byte MemoryBus::read(Address address) const {
         if (address == IF_REGISTER) {
             return interrupt.read(address);
         }
-        // TODO: APU IO registers here
+
+        // APU IO registers
+        if ((address >= NR10_REGISTER && address <= NR14_REGISTER)
+            || (address >= NR21_REGISTER && address <= NR24_REGISTER)
+            || (address >= NR31_REGISTER && address <= NR34_REGISTER)
+            || (address >= NR41_REGISTER && address <= NR44_REGISTER)
+            || (address >= NR50_REGISTER && address <= NR52_REGISTER)
+            || ((address >= WAVE_RAM_START && address <= WAVE_RAM_END)))
+        {
+            return apu.read(address);
+        }
 
         if (address == KEY1_SPD_REGISTER) {
             if (timer.get_double_speed()) {
@@ -345,7 +355,17 @@ void MemoryBus::write(Address address, Byte data) {
             return;
         }
 
-        // TODO: APU IO registers here
+        // APU IO registers
+        if ((address >= NR10_REGISTER && address <= NR14_REGISTER)
+            || (address >= NR21_REGISTER && address <= NR24_REGISTER)
+            || (address >= NR31_REGISTER && address <= NR34_REGISTER)
+            || (address >= NR41_REGISTER && address <= NR44_REGISTER)
+            || (address >= NR50_REGISTER && address <= NR52_REGISTER)
+            || ((address >= WAVE_RAM_START && address <= WAVE_RAM_END)))
+        {
+            apu.write(address, data);
+            return;
+        }
 
         if (address == KEY1_SPD_REGISTER) {
             prep_speed_switch = data & 0x01;

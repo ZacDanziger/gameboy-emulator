@@ -19,11 +19,11 @@ static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
  */
 class CPU {
     public:
-        CPU(InterruptController& i, Joypad& j, Timer& timer, MemoryBus& memory_bus) :
+        CPU(InterruptController& i, Joypad& j, Timer& t, MemoryBus& m) :
             interrupt(i),
             joypad(j),
-            timer(timer),
-            memory_bus(memory_bus),
+            timer(t),
+            memory_bus(m),
 
             reg_A(0x11),
             reg_F(0x80),

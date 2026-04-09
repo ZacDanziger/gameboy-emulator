@@ -39,3 +39,13 @@ target_link_libraries(ppu_test
 )
 
 add_test(ppu_gtests ppu_test)
+
+add_executable(apu_test test_apu.cpp)
+
+target_link_libraries(apu_test
+  PRIVATE
+  GTest::GTest
+  gameboy
+)
+
+add_test(apu_gtests apu_test)

@@ -21,13 +21,12 @@ struct PulseChannel {
 
     bool active                  = false;
     int length_timer             = 0;
+    int duty_cycle               = 0;
     int duty_pos                 = 0;
-    int period_counter           = 0;
+    Word period_divider          = 0;   // ticks every 4 dots (1 m-cycle) NOT affected by double speed mode
     int current_volume           = 0;
-    int env_counter              = 0;
-    int sweep_counter            = 0;
-
-
+    int envelope_timer           = 0;
+    float output                 = 0.0f;
 
     // channel 1 only
     bool sweep_enabled           = false;
@@ -36,29 +35,28 @@ struct PulseChannel {
 };
 
 
-// channel 3
 struct WaveChannel {
-    Byte DAC_enable              = 0x00;    // NR_30_REGISTER
-    Byte length_timer            = 0x00;    // NR_31_REGISTER
-    Byte output_level            = 0x00;    // NR_32_REGISTER
-    Byte period_low              = 0x00;    // NR_33_REGISTER
-    Byte period_high_and_control = 0x00;    // NR_34_REGISTER
+    Byte DAC_enable              = 0x00;    // NR_31_REGISTER
+    Byte initial_length_timer    = 0x00;    // NR_32_REGISTER
+    Byte output_level            = 0x00;    // NR_33_REGISTER
+    Byte period_low              = 0x00;    // NR_34_REGISTER
+    Byte period_high_and_control = 0x00;    // NR_35_REGISTER
 
     bool active                  = false;
-    // int length_timer             = 0;
-    int period_counter           = 0;
+
+    // TODO: add more fields
 };
 
-
-// channel 4
 struct NoiseChannel {
-    Byte length_timer            = 0x00;    // NR_41_REGISTER
+    Byte initial_length_timer    = 0x00;    // NR_41_REGISTER
     Byte volume_and_envelope     = 0x00;    // NR_42_REGISTER
     Byte freq_and_randomness     = 0x00;    // NR_43_REGISTER
     Byte control                 = 0x00;    // NR_44_REGISTER
 
     bool active                  = false;
-    // int length_timer             = 0;
+
+    // TODO: add more fields
 };
+
 
 #endif // CHANNELS_H

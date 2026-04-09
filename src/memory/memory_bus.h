@@ -11,6 +11,7 @@
 #include "../interrupt/interrupt_controller.h"
 #include "../joypad/joypad.h"
 #include "../ppu/ppu.h"
+#include "../apu/apu.h"
 #include "../timer/timer.h"
 #include "../mbc/mbc.h"
 
@@ -21,10 +22,11 @@
 */
 class MemoryBus {
     public:
-        MemoryBus(InterruptController& i, Joypad& j, PPU& p, Timer& t) :
+        MemoryBus(InterruptController& i, Joypad& j, Timer& t, PPU& p, APU& a) :
             interrupt(i),
             joypad(j),
             ppu(p),
+            apu(a),
             timer(t),
 
             wram{},
@@ -66,6 +68,7 @@ class MemoryBus {
         InterruptController& interrupt;
         Joypad& joypad;
         PPU& ppu;
+        APU& apu;
         Timer& timer;
 
         std::unique_ptr<MBC> mbc;

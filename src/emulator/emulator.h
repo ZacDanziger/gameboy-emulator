@@ -8,6 +8,7 @@
 #include "../timer/timer.h"
 #include "../cpu/cpu.h"
 #include "../ppu/ppu.h"
+#include "../apu/apu.h"
 #include "../frontend/frontend.h"
 
 constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
@@ -21,10 +22,11 @@ class Emulator {
             interrupt(),
             joypad(interrupt),
             ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
-            timer(interrupt, [this]{ ppu.update(); }),
-            memory_bus(interrupt, joypad, ppu, timer),
+            timer(interrupt, [this]{ ppu.update(); apu.update(); }, [this]{ apu.div_apu_tick(); }),
+            memory_bus(interrupt, joypad, timer, ppu, apu),
             cpu(interrupt, joypad, timer, memory_bus),
             frontend(EMULATOR_NAME, joypad),
+            apu(),
             
             last_frame_time(std::chrono::steady_clock::now()),
             last_save_time(std::chrono::steady_clock::now())
@@ -40,7 +42,7 @@ class Emulator {
         MemoryBus memory_bus;
         CPU cpu;
         Frontend frontend;
-        // APU
+        APU apu;
 
         
         std::chrono::steady_clock::time_point last_frame_time;

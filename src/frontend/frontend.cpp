@@ -5,11 +5,13 @@ Frontend::~Frontend() {
     teardown();
 }
 
-void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame) {
+void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer) {
     SDL_UpdateTexture(texture, nullptr, frame.data(), SCREEN_WIDTH * sizeof(RGBA32));
     SDL_RenderClear(renderer);
     SDL_RenderTexture(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
+
+    SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 }
 
 
@@ -66,7 +68,7 @@ bool Frontend::poll_events() {
 
 
 void Frontend::init(const std::string& title) {
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL ") + SDL_GetError());
     }
 
@@ -85,11 +87,25 @@ void Frontend::init(const std::string& title) {
         throw std::runtime_error(std::string("Failed to set renderer logical presentation ") + SDL_GetError());
     }
 
+    if (!SDL_SetRenderVSync(renderer, 1)) {
+        teardown();
+        throw std::runtime_error(std::string("Failed to set renderer VSync ") + SDL_GetError()); 
+    }
+
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (!texture) {
         teardown();
         throw std::runtime_error(std::string("Failed to create texture ") + SDL_GetError());
     }
+
+    SDL_AudioSpec spec = {SDL_AUDIO_F32, 2, 44100};
+    audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
+    if (!audio_stream) {
+        teardown();
+        throw std::runtime_error(std::string("Failed to create audio stream ") + SDL_GetError());
+    }
+
+    SDL_ResumeAudioStreamDevice(audio_stream);
 }
 
 
@@ -104,6 +120,10 @@ void Frontend::teardown() {
 
     if (window) {
         SDL_DestroyWindow(window);
+    }
+
+    if (audio_stream) {
+        SDL_DestroyAudioStream(audio_stream);
     }
 
     SDL_Quit();

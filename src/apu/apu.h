@@ -8,7 +8,10 @@
 
 #include <cmath>
 
-constexpr int SAMPLE_FREQUENCY = 44100;
+// output sample rate
+constexpr float CYCLES_PER_SECOND = 1048576.0f;
+constexpr float SAMPLES_PER_SECOND = 44100.0f;
+constexpr float CYCLES_PER_SAMPLE = CYCLES_PER_SECOND / SAMPLES_PER_SECOND;
 
 /**
  * Audio Processing Unit
@@ -34,7 +37,8 @@ class APU {
             channel_3(),
             channel_4(),
 
-            div_apu_counter(0)
+            div_apu_counter(0),
+            sample_accumulator(0)
         {}
 
         void reset();
@@ -45,9 +49,10 @@ class APU {
         void update();
         void div_apu_tick();
 
-        const std::vector<int16_t>& flush_audio_buffer() const { return audio_buffer; }
+        std::vector<float> flush_audio_buffer();
+        bool audio_enabled() const { return is_set(audio_master_control, Bit::Bit7); }
     private:
-        std::vector<int16_t> audio_buffer;
+        std::vector<float> audio_buffer;
         std::array<Byte, 16> wave_ram;           // 0xFF30 - 0xFF3F
         
         Byte audio_master_control;               // NR_52_REGISTER
@@ -61,21 +66,17 @@ class APU {
         
         int div_apu_counter;
 
-        inline bool audio_enabled() const { return is_set(audio_master_control, Bit::Bit7); }
+        float sample_accumulator;
 
         void clear_registers_and_channels();
 
-        void trigger_channel_1();
         void trigger_channel_2();
-        void trigger_channel_3();
-        void trigger_channel_4();
 
-        Byte channel_1_output();
-        Byte channel_2_output();
-        Byte channel_3_output();
-        Byte channel_4_output();
+        void channel_2_output();
 
         int mix();
+
+        void push_sample();
 
         void tick_length_timers();
         void channel_1_freq_sweep();

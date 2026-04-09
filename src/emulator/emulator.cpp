@@ -24,7 +24,7 @@ void Emulator::reset() {
 
 
 void Emulator::on_frame_ready() {
-    frontend.present(ppu.get_frame());
+    frontend.present(ppu.get_frame(), apu.flush_audio_buffer());
 
     auto now = std::chrono::steady_clock::now();
 

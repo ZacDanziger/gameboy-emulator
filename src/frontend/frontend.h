@@ -20,6 +20,8 @@ class Frontend {
             renderer(nullptr),
             texture(nullptr),
 
+            audio_stream(nullptr),
+
             joypad(j)
         {
             init(title);
@@ -27,12 +29,14 @@ class Frontend {
 
         ~Frontend();
 
-        void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame);
+        void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer);
         bool poll_events(); 
     private:
         SDL_Window* window;
         SDL_Renderer* renderer;
         SDL_Texture* texture;
+
+        SDL_AudioStream* audio_stream;
 
         Joypad& joypad;
         void init(const std::string& title);

@@ -36,6 +36,7 @@ void Timer::tick() {
     divider_internal += 1;
 
     // Update the PPU every tick in regular mode, or every other tick in double speed mode
+    // Update the APU as well
     if (!double_speed_mode || (divider_internal & 0x0001)) {
         on_tick();
     }
@@ -44,10 +45,10 @@ void Timer::tick() {
     bool set = is_set(divider_internal, div_bit);
     bool high = (enabled && set);
 
-    // drive the APU
+    // drive the DIV-APU tick
     bool apu_high = is_set(divider_internal, div_apu_bit);
     if (!apu_high && apu_previous_high) {
-        // tick APU here
+        div_apu_tick();
     }
     apu_previous_high = apu_high;
 
