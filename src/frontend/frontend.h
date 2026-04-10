@@ -5,10 +5,15 @@
 #include <string>
 #include <array>
 
+#include <chrono>
+#include <iostream>
+
 #include "../types.h"
 #include "../joypad/joypad.h"
 
 constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
+
+constexpr int TARGET_QUEUE_BYTES = 44100 * 2 * sizeof(float) * 0.1f;
 
 /**
  * Handles all SDL3 code, including window & screen, keyboard input, and audio

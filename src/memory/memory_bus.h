@@ -30,7 +30,6 @@ class MemoryBus {
             timer(t),
 
             wram{},
-            // io_registers{},
             hram{},
 
             prep_speed_switch(0x7E),

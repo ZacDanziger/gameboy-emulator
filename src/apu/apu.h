@@ -12,7 +12,7 @@ constexpr float CYCLES_PER_SECOND = 1048576.0f;
 constexpr float SAMPLES_PER_SECOND = 44100.0f;
 constexpr float CYCLES_PER_SAMPLE = CYCLES_PER_SECOND / SAMPLES_PER_SECOND;
 
-
+constexpr float HPF_CHARGE_FACTOR = 0.999958f;
 
 /**
  * Audio Processing Unit
@@ -24,17 +24,21 @@ class APU {
         APU() :
             audio_buffer{},
 
-            audio_master_control(0x77),
+            audio_master_control(0x80),
             sound_panning(0xF3),
-            master_volume_and_vin_panning(0xF1),
+            master_volume_and_vin_panning(0x77),
             
             channel_1(),
             channel_2(),
             channel_3(),
             channel_4(),
 
-            div_apu_counter(0),
-            sample_accumulator(0)
+            frame_sequencer_step(0),
+
+            sample_accumulator(0.0f),
+
+            hpf_capacitor_left(0.0f),
+            hpf_capacitor_right(0.0f)
         {}
 
         void reset();
@@ -43,7 +47,7 @@ class APU {
         void write(const Address address, const Byte data);
 
         void update();
-        void div_apu_tick();
+        void frame_sequencer();
 
         std::vector<float> flush_audio_buffer();
         bool audio_enabled() const { return is_set(audio_master_control, Bit::Bit7); }
@@ -61,9 +65,12 @@ class APU {
         Channel3 channel_3;
         Channel4 channel_4;
         
-        int div_apu_counter;
+        int frame_sequencer_step;
 
         float sample_accumulator;
+
+        float hpf_capacitor_left;
+        float hpf_capacitor_right;
 
         void clear_registers_and_channels();
 
@@ -71,6 +78,8 @@ class APU {
 
         void tick_length_timers();
         void envelope_sweep();
+
+        void trigger_logic(Channel* channel, const Address address, const Byte data);
 };
 
 #endif // APU_H

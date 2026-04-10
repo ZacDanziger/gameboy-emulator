@@ -42,17 +42,20 @@ class Channel {
         virtual Byte read(const Address address) const = 0;
         virtual void write(const Address address, const Byte data) = 0;
 
-        virtual void trigger() = 0;
+        virtual void trigger(const bool next_step_clocks_length) = 0;
         virtual void clock() = 0;
         
         virtual void reset() = 0;
-        virtual void clear() = 0;
+        virtual void clear();
         
-        virtual void tick_length_timer();
+        void tick_length_timer();
         
         void deactivate() { active = false; };
         Byte output() const { return active ? sample : 0x00; };
         float DAC() const { return DAC_enabled ? (1.0f - ((output() / 15.0f) * 2.0f)): 0.0f; }
+        bool DAC_is_enabled() const { return DAC_enabled; }
+        bool get_length_enabled() const { return length_enabled; }
+        int get_length_timer() const { return length_timer; }
 
         bool is_active() const { return active; }
     protected:
@@ -87,7 +90,7 @@ class Channel1 : public Channel {
         Byte read(const Address address) const override;
         void write(const Address address, const Byte data) override;
 
-        void trigger() override;
+        void trigger(const bool next_step_clocks_length) override;
         void clock() override;
 
         void reset() override;
@@ -109,6 +112,8 @@ class Channel1 : public Channel {
         bool sweep_enabled;
         int sweep_timer;
         Word shadow_period;
+
+        Word overflow_check();
 };
 
 class Channel2 : public Channel {
@@ -127,7 +132,7 @@ class Channel2 : public Channel {
         Byte read(const Address address) const override;
         void write(const Address address, const Byte data) override;
 
-        void trigger() override;
+        void trigger(const bool next_step_clocks_length) override;
         void clock() override;
 
         void reset() override;
@@ -163,13 +168,11 @@ class Channel3 : public Channel {
         Byte read(const Address address) const override;
         void write(const Address address, const Byte data) override;
 
-        void trigger() override;
+        void trigger(const bool next_step_clocks_length) override;
         void clock() override;
 
         void reset() override;
         void clear() override;
-
-        void tick_length_timer() override;
 
         void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
     private:
@@ -201,7 +204,7 @@ class Channel4 : public Channel {
         Byte read(const Address address) const override;
         void write(const Address address, const Byte data) override;
 
-        void trigger() override;
+        void trigger(const bool next_step_clocks_length) override;
         void clock() override;
 
         void reset() override;

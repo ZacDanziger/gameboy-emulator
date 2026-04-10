@@ -17,9 +17,11 @@ void Emulator::reset() {
     interrupt.reset();
     joypad.reset();
     ppu.reset();
+    apu.reset();
     timer.reset();
     memory_bus.reset();
     cpu.reset();
+
 }
 
 
@@ -32,11 +34,4 @@ void Emulator::on_frame_ready() {
         memory_bus.save();
         last_save_time = now;
     }
-
-    auto elapsed = now - last_frame_time;
-    if (elapsed < FRAME_DURATION) {
-        std::this_thread::sleep_for(FRAME_DURATION - elapsed);
-    }
-
-    last_frame_time += FRAME_DURATION;
 }

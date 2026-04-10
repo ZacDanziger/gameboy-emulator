@@ -3,6 +3,9 @@
 
 #include <stdexcept>
 
+#include <chrono>
+#include <iostream>
+
 #include "../memory_map.h"
 #include "../types.h"
 #include "../utils/utils.h"
@@ -25,7 +28,7 @@ class Timer {
             timer(0x00),
             timer_modulo(0x00),
 
-            div_apu_bit(Bit::Bit4),
+            div_apu_bit(Bit::Bit10),
             previous_high(false),
             apu_previous_high(false),
             overflow_delay(false),

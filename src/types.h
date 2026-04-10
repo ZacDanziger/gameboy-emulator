@@ -11,15 +11,23 @@ using Address = uint16_t;
 using RGBA32 = uint32_t;
 
 
-enum class Bit : Byte {
-    Bit0 = 0b00000001,
-    Bit1 = 0b00000010,
-    Bit2 = 0b00000100,
-    Bit3 = 0b00001000,
-    Bit4 = 0b00010000,
-    Bit5 = 0b00100000,
-    Bit6 = 0b01000000,
-    Bit7 = 0b10000000
+enum class Bit : Word {
+    Bit0 = 0x0001,
+    Bit1 = 0x0002,
+    Bit2 = 0x0004,
+    Bit3 = 0x0008,
+    Bit4 = 0x0010,
+    Bit5 = 0x0020,
+    Bit6 = 0x0040,
+    Bit7 = 0x0080,
+    Bit8 = 0x0100,
+    Bit9 = 0x0200,
+    Bit10 = 0x0400,
+    Bit11 = 0x0800,
+    Bit12 = 0x1000,
+    Bit13 = 0x2000,
+    Bit14 = 0x4000,
+    Bit15 = 0x8000
 };
 
 

@@ -1,10 +1,19 @@
 #include "channels.h"
 
+void Channel::clear() {
+    active = false;
+    DAC_enabled = false;
+    length_enabled = false;
+    length_timer = 0;
+    period_divider = 0x0000;
+    current_volume = 0;
+    sample = 0x00;
+}
+
 void Channel::tick_length_timer() {
-    if (active && length_enabled) {
-        length_timer += 1;
-        if (length_timer == 64) {
-            length_timer = 0;
+    if (length_enabled) {
+        length_timer -= 1;
+        if (length_timer == 0) {
             deactivate();
         }
     }
@@ -35,29 +44,31 @@ Byte Channel1::read(const Address address) const {
 
 void Channel1::write(const Address address, const Byte data) {
     switch(address) {
-    case NR10_REGISTER :
+    case NR10_REGISTER : {
+        int old_pace = (sweep & 0x70) >> 4;
         sweep = data;
+        int new_pace = (sweep & 0x70) >> 4;
+
+        if (old_pace != new_pace) {
+            sweep_timer = 0;
+        }
         return;
+    }
     case NR11_REGISTER :
         timer_and_duty_cycle = data;
+        length_timer = 64 - (data & 0x3F);
         return;
     case NR12_REGISTER :
         volume_and_envelope = data;
-        if ((data & 0xF8) != 0x00) {
-            DAC_enabled = true;
-        }
+        DAC_enabled = ((data & 0xF8) != 0x00);
+        if (!DAC_enabled) { deactivate(); }
         return;
     case NR13_REGISTER :
         period_low = data;
         return;
     case NR14_REGISTER :
         period_high_and_control = data;
-        if (is_set(data, Bit::Bit7)) {
-            trigger();
-        }
-        if (is_set(data, Bit::Bit6)) {
-            length_enabled = true;
-        }
+        length_enabled = is_set(data, Bit::Bit6);
         return;
     default:
         throw std::runtime_error("Channel 1 write called on wrong address.");
@@ -65,11 +76,14 @@ void Channel1::write(const Address address, const Byte data) {
 }
 
 
-void Channel1::trigger() {
+void Channel1::trigger(const bool next_step_clocks_length) {
     active = true;
 
-    if (is_set(period_high_and_control, Bit::Bit6) && (length_timer == 0)) {
-        length_timer = timer_and_duty_cycle & 0x3F;
+    if (length_timer == 0) {
+        length_timer = 64;
+        if (length_enabled && !next_step_clocks_length) {
+            length_timer -= 1;
+        }
     }
     duty_cycle = (timer_and_duty_cycle & 0xC0) >> 6;
 
@@ -80,13 +94,13 @@ void Channel1::trigger() {
 
     shadow_period = ((period_high_and_control & 0x07) << 8) | period_low;
     sweep_timer = 0;
-    if ((sweep & 0x77) != 0x00) {
-        sweep_enabled = true;
-    }
+    sweep_enabled = ((sweep & 0x77) != 0x00);
 
     if ((sweep & 0x07) != 0x00) {
-        frequency_sweep();
+        overflow_check();
     }
+
+
     
     if (!DAC_enabled) {
         deactivate();
@@ -112,6 +126,7 @@ void Channel1::clock() {
 
 
 void Channel1::reset() {
+    Channel::clear();
     sweep = 0x80;
     timer_and_duty_cycle = 0xBF;
     volume_and_envelope = 0xF3;
@@ -129,6 +144,7 @@ void Channel1::reset() {
 
 
 void Channel1::clear() {
+    Channel::clear();
     sweep = 0x80;
     timer_and_duty_cycle = 0x00;
     volume_and_envelope = 0x00;
@@ -145,21 +161,28 @@ void Channel1::clear() {
 
 
 void Channel1::envelope_sweep() {
-    if (active && ((volume_and_envelope & 0x07) != 0x00)) {
-        envelope_timer += 1;
-        envelope_timer %= 8;
+    if (!active) {
+        return;
+    }
 
-        if (envelope_timer == (volume_and_envelope & 0x07)) {
-            envelope_timer = 0;
-            current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
+    envelope_timer += 1;
+    envelope_timer %= 8;
 
-            if (current_volume < 0) {
-                current_volume = 0;
-            }
+    int pace = volume_and_envelope & 0x07;
+    if (pace == 0) {
+        pace = 8;
+    }
 
-            if (current_volume > 15) {
-                current_volume = 15;
-            }
+    if (envelope_timer == pace) {
+        envelope_timer = 0;
+        current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
+
+        if (current_volume < 0) {
+            current_volume = 0;
+        }
+
+        if (current_volume > 15) {
+            current_volume = 15;
         }
     }
 }
@@ -170,20 +193,41 @@ void Channel1::frequency_sweep() {
         return;
     }
 
+    int pace = ((sweep & 0x70) >> 4);
+    int effective_pace = (pace == 0) ? 8 : pace;
+
     sweep_timer += 1;
-    if (sweep_timer == (sweep & 0x70)) {
+    if (sweep_timer >= effective_pace) {
         sweep_timer = 0;
 
-        Word offset = shadow_period >> (sweep & 0x07);
-        shadow_period += is_set(sweep, Bit::Bit3) ? -offset : offset;
-    
-        if (shadow_period > 0x07FF) {
-            deactivate();
+        if (pace == 0) {
+            return;
         }
-    
-        period_low = shadow_period & 0xFF;
-        period_high_and_control = (period_high_and_control & 0xF8) | (shadow_period >> 8) & 0x07;
+
+        int shift = sweep & 0x07;
+        Word new_period = overflow_check();
+
+        if (active && (shift != 0)) {
+            shadow_period = new_period;
+            period_low = shadow_period & 0xFF;
+            period_high_and_control = (period_high_and_control & 0xF8) | (shadow_period >> 8) & 0x07;
+
+            overflow_check();
+        }
     }
+}
+
+
+Word Channel1::overflow_check() {
+    Word offset = shadow_period >> (sweep & 0x07);
+    Word new_period = shadow_period + (is_set(sweep, Bit::Bit3) ? -offset : offset);
+
+    if (new_period > 0x07FF) {
+        deactivate();
+        return shadow_period;
+    }
+
+    return new_period;
 }
 
 
@@ -213,24 +257,19 @@ void Channel2::write(const Address address, const Byte data) {
     switch(address) {
     case NR21_REGISTER :
         timer_and_duty_cycle = data;
+        length_timer = 64 - (data & 0x3F);
         return;
     case NR22_REGISTER :
         volume_and_envelope = data;
-        if ((data & 0xF8) != 0x00) {
-            DAC_enabled = true;
-        }
+        DAC_enabled = ((data & 0xF8) != 0x00);
+        if (!DAC_enabled) { deactivate(); }
         return;
     case NR23_REGISTER :
         period_low = data;
         return;
     case NR24_REGISTER :
         period_high_and_control = data;
-        if (is_set(data, Bit::Bit7)) {
-            trigger();
-        }
-        if (is_set(data, Bit::Bit6)) {
-            length_enabled = true;
-        }
+        length_enabled = is_set(data, Bit::Bit6);
         return;
     default:
         throw std::runtime_error("Channel 2 write called on wrong address.");
@@ -238,11 +277,14 @@ void Channel2::write(const Address address, const Byte data) {
 }
 
 
-void Channel2::trigger() {
+void Channel2::trigger(const bool next_step_clocks_length) {
     active = true;
 
-    if (is_set(period_high_and_control, Bit::Bit6) && (length_timer == 0)) {
-        length_timer = timer_and_duty_cycle & 0x3F;
+    if (length_timer == 0) {
+        length_timer = 64;
+        if (length_enabled && !next_step_clocks_length) {
+            length_timer -= 1;
+        }
     }
     duty_cycle = (timer_and_duty_cycle & 0xC0) >> 6;
 
@@ -276,6 +318,7 @@ void Channel2::clock() {
 }
 
 void Channel2::reset() {
+    Channel::clear();
     timer_and_duty_cycle = 0x3F;
     volume_and_envelope = 0x00;
     period_low = 0xFF;
@@ -288,6 +331,7 @@ void Channel2::reset() {
 
 
 void Channel2::clear() {
+    Channel::clear();
     timer_and_duty_cycle = 0x00;
     volume_and_envelope = 0x00;
     period_low = 0x00;
@@ -299,21 +343,28 @@ void Channel2::clear() {
 
 
 void Channel2::envelope_sweep() {
-    if (active && ((volume_and_envelope & 0x07) != 0x00)) {
-        envelope_timer += 1;
-        envelope_timer %= 8;
+    if (!active) {
+        return;
+    }
 
-        if (envelope_timer == (volume_and_envelope & 0x07)) {
-            envelope_timer = 0;
-            current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
+    envelope_timer += 1;
+    envelope_timer %= 8;
 
-            if (current_volume < 0) {
-                current_volume = 0;
-            }
+    int pace = volume_and_envelope & 0x07;
+    if (pace == 0) {
+        pace = 8;
+    }
 
-            if (current_volume > 15) {
-                current_volume = 15;
-            }
+    if (envelope_timer == pace) {
+        envelope_timer = 0;
+        current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
+
+        if (current_volume < 0) {
+            current_volume = 0;
+        }
+
+        if (current_volume > 15) {
+            current_volume = 15;
         }
     }
 }
@@ -355,15 +406,12 @@ void Channel3::write(const Address address, const Byte data) {
     switch(address) {
     case NR30_REGISTER :
         DAC_enable = data;
-        if ((data & 0x80) != 0x00) {
-            DAC_enabled = true;
-        } else {
-            DAC_enabled = false;
-            deactivate();
-        }
+        DAC_enabled = ((data & 0xF8) != 0x00);
+        if (!DAC_enabled) { deactivate(); }
         return;
     case NR31_REGISTER :
         initial_length_timer = data;
+        length_timer = 256 - data;
         return;
     case NR32_REGISTER :
         output_level = data;
@@ -373,22 +421,21 @@ void Channel3::write(const Address address, const Byte data) {
         return;
     case NR34_REGISTER :
         period_high_and_control = data;
-        if (is_set(data, Bit::Bit7)) {
-            trigger();
-        } if (is_set(data, Bit::Bit6)) {
-            length_enabled = true;
-        }
+        length_enabled = is_set(data, Bit::Bit6);
         return;
     default:
         throw std::runtime_error("Channel 3 write called on wrong address.");
     }
 }
 
-void Channel3::trigger() {
+void Channel3::trigger(const bool next_step_clocks_length) {
     active = true;
 
-    if (is_set(period_high_and_control, Bit::Bit6) && (length_timer == 0)) {
-        length_timer = initial_length_timer;
+    if (length_timer == 0) {
+        length_timer = 256;
+        if (length_enabled && !next_step_clocks_length) {
+            length_timer -= 1;
+        }
     }
 
     current_volume = (output_level >> 5) & 0x03;
@@ -431,6 +478,7 @@ void Channel3::clock() {
 
 
 void Channel3::reset() {
+    Channel::clear();
     DAC_enable = 0x7F;
     initial_length_timer = 0xFF;
     output_level = 0x9F;
@@ -443,6 +491,7 @@ void Channel3::reset() {
 }
 
 void Channel3::clear() {
+    Channel::clear();
     DAC_enable = 0x00;
     initial_length_timer = 0x00;
     output_level = 0x00;
@@ -452,16 +501,6 @@ void Channel3::clear() {
     position_counter = 0;
 }
 
-
-void Channel3::tick_length_timer() {
-    if (active && length_enabled) {
-        length_timer += 1;
-        if (length_timer == 256) {
-            length_timer = 0;
-            deactivate();
-        }
-    }
-}
 
 /**
  * CHANNEL 4
@@ -488,18 +527,19 @@ void Channel4::write(const Address address, const Byte data) {
     switch(address) {
     case NR41_REGISTER :
         initial_length_timer = data;
+        length_timer = 64 - (data & 0x3F);
         return;
     case NR42_REGISTER :
         volume_and_envelope = data;
-        if ((data & 0xF8) != 0x00) {
-            DAC_enabled = true;
-        }
+        DAC_enabled = ((data & 0xF8) != 0x00);
+        if (!DAC_enabled) { deactivate(); }
         return;
     case NR43_REGISTER :
         freq_and_randomness = data;
         return;
     case NR44_REGISTER :
         control = data;
+        length_enabled = is_set(data, Bit::Bit6);
         return;
     default:
         throw std::runtime_error("Channel 4 write called on wrong address");
@@ -507,16 +547,19 @@ void Channel4::write(const Address address, const Byte data) {
 }
 
 
-void Channel4::trigger() {
+void Channel4::trigger(const bool next_step_clocks_length) {
     active = true;
 
-    if (is_set(control, Bit::Bit6) && (length_timer == 0)) {
-        length_timer = initial_length_timer;
+    if (length_timer == 0) {
+        length_timer = 64;
+        if (length_enabled && !next_step_clocks_length) {
+            length_timer -= 1;
+        }
     }
 
     current_volume = (volume_and_envelope & 0xF0) >> 4;
 
-    LFSR = 0x0000;
+    LFSR = 0xFFFF;
 
     period_divider = calculate_period();
 
@@ -569,6 +612,7 @@ void Channel4::clock() {
 
 
 void Channel4::reset() {
+    Channel::clear();
     initial_length_timer = 0xFF;
     volume_and_envelope = 0x00;
     freq_and_randomness = 0x00;
@@ -579,6 +623,7 @@ void Channel4::reset() {
 }
 
 void Channel4::clear() {
+    Channel::clear();
     initial_length_timer = 0x00;
     volume_and_envelope = 0x00;
     freq_and_randomness = 0x00;
@@ -590,21 +635,28 @@ void Channel4::clear() {
 
 
 void Channel4::envelope_sweep() {
-    if (active && ((volume_and_envelope & 0x07) != 0x00)) {
-        envelope_timer += 1;
-        envelope_timer %= 8;
+    if (!active) {
+        return;
+    }
 
-        if (envelope_timer == (volume_and_envelope & 0x07)) {
-            envelope_timer = 0;
-            current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
+    envelope_timer += 1;
+    envelope_timer %= 8;
 
-            if (current_volume < 0) {
-                current_volume = 0;
-            }
+    int pace = volume_and_envelope & 0x07;
+    if (pace == 0) {
+        pace = 8;
+    }
 
-            if (current_volume > 15) {
-                current_volume = 15;
-            }
+    if (envelope_timer == pace) {
+        envelope_timer = 0;
+        current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
+
+        if (current_volume < 0) {
+            current_volume = 0;
+        }
+
+        if (current_volume > 15) {
+            current_volume = 15;
         }
     }
 }

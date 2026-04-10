@@ -6,17 +6,20 @@
 void APU::reset() {
     audio_buffer = {0};
 
-    div_apu_counter = 0;
-    sample_accumulator = 0;
+    frame_sequencer_step = 0;
+    sample_accumulator = 0.0f;
+
+    hpf_capacitor_left = 0.0f;
+    hpf_capacitor_right = 0.0f;
     
     channel_1.reset();
     channel_2.reset();
     channel_3.reset();
     channel_4.reset();
 
-    master_volume_and_vin_panning = 0x77;
+    audio_master_control = 0x80;
     sound_panning = 0xF3;
-    audio_master_control = 0xF1;
+    master_volume_and_vin_panning = 0x77;
 }
 
 
@@ -25,9 +28,6 @@ Byte APU::read(const Address address) const {
     if (address >= WAVE_RAM_START && address <= WAVE_RAM_END) {
         return channel_3.read(address);
     }
-
-    // just for NR 52, can't initialize in a switch statement
-    Byte res = 0x00;
 
     switch(address) {
     case NR10_REGISTER :
@@ -60,13 +60,14 @@ Byte APU::read(const Address address) const {
         return master_volume_and_vin_panning;
     case NR51_REGISTER :
         return sound_panning;
-    case NR52_REGISTER :
-        res = audio_master_control | 0x70;
-        if (channel_1.is_active()) { set_bit(res, Bit::Bit0); }
-        if (channel_2.is_active()) { set_bit(res, Bit::Bit1); }
-        if (channel_3.is_active()) { set_bit(res, Bit::Bit2); }
-        if (channel_4.is_active()) { set_bit(res, Bit::Bit3); }
-        return res;
+    case NR52_REGISTER : {
+        Byte status = audio_master_control | 0x70;
+        if (channel_1.is_active()) { set_bit(status, Bit::Bit0); }
+        if (channel_2.is_active()) { set_bit(status, Bit::Bit1); }
+        if (channel_3.is_active()) { set_bit(status, Bit::Bit2); }
+        if (channel_4.is_active()) { set_bit(status, Bit::Bit3); }
+        return status;
+    }
     case PCM12_REGISTER:
         return channel_1.output() << 4 | channel_2.output();
     case PCM34_REGISTER:
@@ -93,31 +94,43 @@ void APU::write(const Address address, const Byte data) {
     case NR11_REGISTER :
     case NR12_REGISTER :
     case NR13_REGISTER :
-    case NR14_REGISTER :
         channel_1.write(address, data);
         return;
+    case NR14_REGISTER : {
+        trigger_logic(&channel_1, address, data);
+        return;
+    }
 
     case NR21_REGISTER :
     case NR22_REGISTER :
     case NR23_REGISTER :
-    case NR24_REGISTER :
         channel_2.write(address, data);
         return;
+    case NR24_REGISTER : {
+        trigger_logic(&channel_2, address, data);
+        return;
+    }
 
     case NR30_REGISTER :
     case NR31_REGISTER :
     case NR32_REGISTER :
     case NR33_REGISTER :
-    case NR34_REGISTER :
         channel_3.write(address, data);
         return;
+    case NR34_REGISTER : {
+        trigger_logic(&channel_3, address, data);
+        return;
+    }
 
     case NR41_REGISTER :
     case NR42_REGISTER :
     case NR43_REGISTER :
-    case NR44_REGISTER :
         channel_4.write(address, data);
         return;
+    case NR44_REGISTER : {
+        trigger_logic(&channel_4, address, data);
+        return;
+    }
 
     case NR50_REGISTER :
         master_volume_and_vin_panning = data;
@@ -130,6 +143,7 @@ void APU::write(const Address address, const Byte data) {
             clear_registers_and_channels();
         } else {
             set_bit(audio_master_control, Bit::Bit7);
+
         }
         return;
     case PCM12_REGISTER:
@@ -160,23 +174,24 @@ void APU::update() {
 }
 
 
-void APU::div_apu_tick() {
-    div_apu_counter += 1;
-
+void APU::frame_sequencer() {
     // sound length ticks up - 256 Hz
-    if (div_apu_counter % 2 == 0) {
+    if (frame_sequencer_step % 2 == 0) {
        tick_length_timers();
     }
 
     // channel 1 frequency sweep - 128 Hz
-    if (div_apu_counter % 4 == 0) {
+    if (frame_sequencer_step == 2 || frame_sequencer_step == 6) {
         channel_1.frequency_sweep();
     }
 
     // envelope sweep - 64 Hz
-    if (div_apu_counter % 8 == 0) {
+    if (frame_sequencer_step == 7) {
         envelope_sweep();
     }
+
+    frame_sequencer_step += 1;
+    frame_sequencer_step %= 8;
 }
 
 
@@ -190,8 +205,6 @@ std::vector<float> APU::flush_audio_buffer() {
 
 /**
  * Write 0x00 to all APU registers
- * 
- * NOTE: duty step timer cannot be reset - figure out how to implement
  */
 void APU::clear_registers_and_channels() {
     audio_master_control = 0x00;
@@ -207,6 +220,14 @@ void APU::clear_registers_and_channels() {
 
 
 void APU::push_sample() {
+    if (!channel_1.DAC_is_enabled() &&
+        !channel_2.DAC_is_enabled() &&
+        !channel_3.DAC_is_enabled() &&
+        !channel_3.DAC_is_enabled())
+    {
+        return;
+    }
+
     float left_sample = 0.0;
     float right_sample = 0.0;
 
@@ -233,11 +254,16 @@ void APU::push_sample() {
     left_sample /= 8.0f;
     right_sample /= 8.0f;
 
-    // TODO: hpf
+    // hpf
+    float filtered_left = left_sample - hpf_capacitor_left;
+    float filtered_right = right_sample - hpf_capacitor_right;
+
+    hpf_capacitor_left = left_sample - filtered_left * HPF_CHARGE_FACTOR;
+    hpf_capacitor_right = right_sample - filtered_right * HPF_CHARGE_FACTOR;
 
 
-    audio_buffer.push_back(left_sample);
-    audio_buffer.push_back(right_sample);
+    audio_buffer.push_back(filtered_left);
+    audio_buffer.push_back(filtered_right);
 }
 
 
@@ -253,4 +279,21 @@ void APU::envelope_sweep() {
     channel_1.envelope_sweep();
     channel_2.envelope_sweep();
     channel_4.envelope_sweep();
+}
+
+
+void APU::trigger_logic(Channel* channel, const Address address, const Byte data) {
+    bool next_step_clocks_length = (frame_sequencer_step % 2 == 0); 
+
+    bool was_enabled = channel->get_length_enabled();
+    channel->write(address, data);
+    bool is_enabled = channel->get_length_enabled();
+
+    if (!was_enabled && is_enabled && !next_step_clocks_length && (channel->get_length_timer() > 0)) {
+        channel->tick_length_timer();
+    }
+
+    if (is_set(data, Bit::Bit7)) {
+        channel->trigger(next_step_clocks_length);
+    }
 }

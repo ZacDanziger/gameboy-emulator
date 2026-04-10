@@ -6,12 +6,17 @@ Frontend::~Frontend() {
 }
 
 void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer) {
+
+    while (SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {
+        SDL_Delay(1);
+    }
+    
+    SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
+
     SDL_UpdateTexture(texture, nullptr, frame.data(), SCREEN_WIDTH * sizeof(RGBA32));
     SDL_RenderClear(renderer);
     SDL_RenderTexture(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
-
-    SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 }
 
 
@@ -85,11 +90,6 @@ void Frontend::init(const std::string& title) {
     if (!SDL_SetRenderLogicalPresentation(renderer, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX)) {
         teardown();
         throw std::runtime_error(std::string("Failed to set renderer logical presentation ") + SDL_GetError());
-    }
-
-    if (!SDL_SetRenderVSync(renderer, 1)) {
-        teardown();
-        throw std::runtime_error(std::string("Failed to set renderer VSync ") + SDL_GetError()); 
     }
 
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
