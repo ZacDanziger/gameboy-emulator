@@ -22,11 +22,11 @@ class Emulator {
             interrupt(),
             joypad(interrupt),
             ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
+            apu(),
             timer(interrupt, [this]{ ppu.update(); apu.update(); }, [this]{ apu.div_apu_tick(); }),
             memory_bus(interrupt, joypad, timer, ppu, apu),
             cpu(interrupt, joypad, timer, memory_bus),
             frontend(EMULATOR_NAME, joypad),
-            apu(),
             
             last_frame_time(std::chrono::steady_clock::now()),
             last_save_time(std::chrono::steady_clock::now())
@@ -38,13 +38,12 @@ class Emulator {
         InterruptController interrupt;
         Joypad joypad;
         PPU ppu;
+        APU apu;
         Timer timer;
         MemoryBus memory_bus;
         CPU cpu;
         Frontend frontend;
-        APU apu;
 
-        
         std::chrono::steady_clock::time_point last_frame_time;
         std::chrono::steady_clock::time_point last_save_time;
 

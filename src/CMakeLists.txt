@@ -13,6 +13,7 @@ set (SourceFiles
     mbc/mbc3.cpp
     emulator/emulator.cpp
     apu/apu.cpp
+    apu/channels.cpp
 )
 
 

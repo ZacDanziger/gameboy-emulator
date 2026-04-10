@@ -1,61 +1,223 @@
 #ifndef CHANNELS_H
 #define CHANNELS_H
 
+#include <array>
+
 #include "../types.h"
+#include "../memory_map.h"
+#include "../utils/utils.h"
 
 static constexpr bool duty_table[4][8] = {
     {0, 0, 0, 0, 0, 0, 0, 1},   // 12.5%
-    {0, 0, 0, 0, 0, 0, 1, 1},   // 25%
-    {0, 0, 0, 0, 1, 1, 1, 1},   // 50%
-    {1, 1, 1, 1, 1, 1, 0, 0}    // 75%
+    {1, 0, 0, 0, 0, 0, 0, 1},   // 25%
+    {1, 0, 0, 0, 0, 1, 1, 1},   // 50%
+    {0, 1, 1, 1, 1, 1, 1, 0}    // 75%
 };
 
-// channels 1 & 2
-// NOTE: period dividers are clocked once per m-cycle - waveform is 8 samples long
-struct PulseChannel {
-    Byte sweep                   = 0x00;    // NR_10_REGISTER
-    Byte timer_and_duty_cycle    = 0x00;    // NR_11_REGISTER and NR_21_REGISTER
-    Byte volume_and_envelope     = 0x00;    // NR_12_REGISTER and NR_22_REGISTER
-    Byte period_low              = 0x00;    // NR_13_REGISTER and NR_23_REGISTER
-    Byte period_high_and_control = 0x00;    // NR_14_REGISTER and NR_24_REGISTER
+constexpr std::array<Byte, 16> DMG_WAVE_RAM_BOOT_STATE = {
+    0x84, 0x40, 0x43, 0xAA, 0x2D, 0x78, 0x92, 0x3C,
+    0x60, 0x59, 0x59, 0xB0, 0x34, 0xB8, 0x2E, 0xDA
+};
 
-    bool active                  = false;
-    int length_timer             = 0;
-    int duty_cycle               = 0;
-    int duty_pos                 = 0;
-    Word period_divider          = 0;   // ticks every 4 dots (1 m-cycle) NOT affected by double speed mode
-    int current_volume           = 0;
-    int envelope_timer           = 0;
-    float output                 = 0.0f;
-
-    // channel 1 only
-    bool sweep_enabled           = false;
-    int sweep_timer              = 0;
-    Word shadow_period           = 0x0000;
+constexpr std::array<Byte, 16> CGB_WAVE_RAM_BOOT_STATE = {
+    0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
+    0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF
 };
 
 
-struct WaveChannel {
-    Byte DAC_enable              = 0x00;    // NR_31_REGISTER
-    Byte initial_length_timer    = 0x00;    // NR_32_REGISTER
-    Byte output_level            = 0x00;    // NR_33_REGISTER
-    Byte period_low              = 0x00;    // NR_34_REGISTER
-    Byte period_high_and_control = 0x00;    // NR_35_REGISTER
+class Channel {
+    public:
+        Channel() :
+            active(false),
+            DAC_enabled(false),
+            length_enabled(false),
+            length_timer(0),
+            period_divider(0x0000),
+            current_volume(0),
+            sample(0x00)
+        {}
 
-    bool active                  = false;
+        virtual ~Channel() = default;
 
-    // TODO: add more fields
+        virtual Byte read(const Address address) const = 0;
+        virtual void write(const Address address, const Byte data) = 0;
+
+        virtual void trigger() = 0;
+        virtual void clock() = 0;
+        
+        virtual void reset() = 0;
+        virtual void clear() = 0;
+        
+        virtual void tick_length_timer();
+        
+        void deactivate() { active = false; };
+        Byte output() const { return active ? sample : 0x00; };
+        float DAC() const { return DAC_enabled ? (1.0f - ((output() / 15.0f) * 2.0f)): 0.0f; }
+
+        bool is_active() const { return active; }
+    protected:
+        bool active;
+        bool DAC_enabled;
+        bool length_enabled;
+        int length_timer;
+        Word period_divider;
+        int current_volume;
+        Byte sample;
 };
 
-struct NoiseChannel {
-    Byte initial_length_timer    = 0x00;    // NR_41_REGISTER
-    Byte volume_and_envelope     = 0x00;    // NR_42_REGISTER
-    Byte freq_and_randomness     = 0x00;    // NR_43_REGISTER
-    Byte control                 = 0x00;    // NR_44_REGISTER
 
-    bool active                  = false;
+class Channel1 : public Channel {
+    public:
+        Channel1() :
+            sweep(0x80),
+            timer_and_duty_cycle(0xBF),
+            volume_and_envelope(0xF3),
+            period_low(0xFF),
+            period_high_and_control(0xBF),
 
-    // TODO: add more fields
+            duty_cycle(0),
+            duty_pos(0),
+            envelope_timer(0),
+
+            sweep_enabled(false),
+            sweep_timer(0),
+            shadow_period(0x0000)
+        {}
+
+        Byte read(const Address address) const override;
+        void write(const Address address, const Byte data) override;
+
+        void trigger() override;
+        void clock() override;
+
+        void reset() override;
+        void clear() override;
+
+        void envelope_sweep();
+        void frequency_sweep();
+    private:
+        Byte sweep;
+        Byte timer_and_duty_cycle;
+        Byte volume_and_envelope;
+        Byte period_low;
+        Byte period_high_and_control;
+
+        int duty_cycle;
+        int duty_pos;
+        int envelope_timer;
+
+        bool sweep_enabled;
+        int sweep_timer;
+        Word shadow_period;
+};
+
+class Channel2 : public Channel {
+    public:
+        Channel2() :
+            timer_and_duty_cycle(0x3F),
+            volume_and_envelope(0x00),
+            period_low(0xFF),
+            period_high_and_control(0xBF),
+
+            duty_cycle(0),
+            duty_pos(0),
+            envelope_timer(0)
+        {}
+
+        Byte read(const Address address) const override;
+        void write(const Address address, const Byte data) override;
+
+        void trigger() override;
+        void clock() override;
+
+        void reset() override;
+        void clear() override;
+
+        void envelope_sweep();
+    private:
+        Byte timer_and_duty_cycle;
+        Byte volume_and_envelope;
+        Byte period_low;
+        Byte period_high_and_control;
+
+        int duty_cycle;
+        int duty_pos;
+        int envelope_timer;
+};
+
+class Channel3 : public Channel {
+    public:
+        Channel3() :
+            cgb_mode(true),
+            wave_ram{CGB_WAVE_RAM_BOOT_STATE},
+
+            DAC_enable(0x7F),
+            initial_length_timer(0xFF),
+            output_level(0x9F),
+            period_low(0xFF),
+            period_high_and_control(0xBF),
+
+            position_counter(0)
+        {}
+
+        Byte read(const Address address) const override;
+        void write(const Address address, const Byte data) override;
+
+        void trigger() override;
+        void clock() override;
+
+        void reset() override;
+        void clear() override;
+
+        void tick_length_timer() override;
+
+        void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
+    private:
+        bool cgb_mode;
+        std::array<Byte, 16> wave_ram;           // 0xFF30 - 0xFF3F
+
+        Byte DAC_enable;
+        Byte initial_length_timer;
+        Byte output_level;
+        Byte period_low;
+        Byte period_high_and_control;
+
+        int position_counter;
+};
+
+
+class Channel4 : public Channel {
+    public:
+        Channel4() :
+            initial_length_timer(0xFF),
+            volume_and_envelope(0x00),
+            freq_and_randomness(0x00),
+            control(0xBF),
+
+            LFSR(0x0000),
+            envelope_timer(0)
+        {}
+
+        Byte read(const Address address) const override;
+        void write(const Address address, const Byte data) override;
+
+        void trigger() override;
+        void clock() override;
+
+        void reset() override;
+        void clear() override;
+
+        void envelope_sweep();
+    private:
+        Byte initial_length_timer;
+        Byte volume_and_envelope;
+        Byte freq_and_randomness;
+        Byte control;
+
+        Word LFSR;
+        int envelope_timer;
+
+        int calculate_period();
 };
 
 

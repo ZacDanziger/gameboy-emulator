@@ -6,31 +6,27 @@
 #include "../utils/utils.h"
 #include "channels.h"
 
-#include <cmath>
 
 // output sample rate
 constexpr float CYCLES_PER_SECOND = 1048576.0f;
 constexpr float SAMPLES_PER_SECOND = 44100.0f;
 constexpr float CYCLES_PER_SAMPLE = CYCLES_PER_SECOND / SAMPLES_PER_SECOND;
 
+
+
 /**
  * Audio Processing Unit
  * --- IN PROGRESS ---
  * 
- * Considerations - How does SDL3 expect audio input? start there, and work backwards 
- * should audio_buffer be a vector? if no, how long an array should it be?
- * 
- * TODO: get channel 2 working
  */
 class APU {
     public:
         APU() :
             audio_buffer{},
-            wave_ram{},
 
-            audio_master_control(0x00),
-            sound_panning(0x00),
-            master_volume_and_vin_panning(0x00),
+            audio_master_control(0x77),
+            sound_panning(0xF3),
+            master_volume_and_vin_panning(0xF1),
             
             channel_1(),
             channel_2(),
@@ -51,18 +47,19 @@ class APU {
 
         std::vector<float> flush_audio_buffer();
         bool audio_enabled() const { return is_set(audio_master_control, Bit::Bit7); }
+
+        void set_cgb_mode(const bool cgb) { channel_3.set_cgb_mode(cgb); }
     private:
         std::vector<float> audio_buffer;
-        std::array<Byte, 16> wave_ram;           // 0xFF30 - 0xFF3F
         
         Byte audio_master_control;               // NR_52_REGISTER
         Byte sound_panning;                      // NR_51_REGISTER
         Byte master_volume_and_vin_panning;      // NR_50_REGISTER
         
-        PulseChannel channel_1;
-        PulseChannel channel_2;
-        WaveChannel channel_3;
-        NoiseChannel channel_4;
+        Channel1 channel_1;
+        Channel2 channel_2;
+        Channel3 channel_3;
+        Channel4 channel_4;
         
         int div_apu_counter;
 
@@ -70,16 +67,9 @@ class APU {
 
         void clear_registers_and_channels();
 
-        void trigger_channel_2();
-
-        void channel_2_output();
-
-        int mix();
-
         void push_sample();
 
         void tick_length_timers();
-        void channel_1_freq_sweep();
         void envelope_sweep();
 };
 
