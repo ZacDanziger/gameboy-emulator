@@ -3,7 +3,6 @@
 
 #include <array>
 #include <vector>
-#include <memory>
 
 #include "../memory_map.h"
 #include "../types.h"

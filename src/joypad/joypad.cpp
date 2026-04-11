@@ -66,7 +66,7 @@ void Joypad::set_key(Key key, bool pressed) {
         bit = Bit::Bit3;
         break;
     case Key::SAVE:
-        // save();
+        on_save();
         return;
     }   
 

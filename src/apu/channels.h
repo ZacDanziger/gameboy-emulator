@@ -32,7 +32,7 @@ class Channel {
             DAC_enabled(false),
             length_enabled(false),
             length_timer(0),
-            period_divider(0x0000),
+            period_timer(0),
             current_volume(0),
             sample(0x00)
         {}
@@ -52,7 +52,7 @@ class Channel {
         
         void deactivate() { active = false; };
         Byte output() const { return active ? sample : 0x00; };
-        float DAC() const { return DAC_enabled ? (1.0f - ((output() / 15.0f) * 2.0f)): 0.0f; }
+        float DAC() const { return DAC_enabled ? ((output() / 7.5f) - 1.0f): 0.0f; }
         bool DAC_is_enabled() const { return DAC_enabled; }
         bool get_length_enabled() const { return length_enabled; }
         int get_length_timer() const { return length_timer; }
@@ -63,7 +63,7 @@ class Channel {
         bool DAC_enabled;
         bool length_enabled;
         int length_timer;
-        Word period_divider;
+        int period_timer;
         int current_volume;
         Byte sample;
 };
@@ -84,7 +84,9 @@ class Channel1 : public Channel {
 
             sweep_enabled(false),
             sweep_timer(0),
-            shadow_period(0x0000)
+            shadow_period(0x0000),
+
+            negate_was_used(false)
         {}
 
         Byte read(const Address address) const override;
@@ -113,7 +115,9 @@ class Channel1 : public Channel {
         int sweep_timer;
         Word shadow_period;
 
-        Word overflow_check();
+        bool negate_was_used;
+
+        Word calculate_frequency();
 };
 
 class Channel2 : public Channel {

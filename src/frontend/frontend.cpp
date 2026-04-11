@@ -6,11 +6,10 @@ Frontend::~Frontend() {
 }
 
 void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer) {
+    SDL_SetWindowTitle(window, update_title().c_str());
 
-    while (SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {
-        SDL_Delay(1);
-    }
-    
+    while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {}
+
     SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 
     SDL_UpdateTexture(texture, nullptr, frame.data(), SCREEN_WIDTH * sizeof(RGBA32));
@@ -72,13 +71,23 @@ bool Frontend::poll_events() {
 }
 
 
+std::string Frontend::update_title() {
+    std::ostringstream oss;
+    oss << base_title << " (" << std::fixed << std::setprecision(1) << fps << " fps)";
+
+    return oss.str();
+}
+
+
 void Frontend::init(const std::string& title) {
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL ") + SDL_GetError());
     }
 
     if (!SDL_CreateWindowAndRenderer(
-        title.c_str(),
+        update_title().c_str(),
         DISPLAY_SCALE * SCREEN_WIDTH,
         DISPLAY_SCALE * SCREEN_HEIGHT, 
         SDL_WINDOW_RESIZABLE, &window, &renderer))

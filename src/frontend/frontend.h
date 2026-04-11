@@ -1,18 +1,17 @@
 #ifndef FRONTEND_H
 #define FRONTEND_H
 
-#include <SDL3/SDL.h>
 #include <string>
 #include <array>
-
-#include <chrono>
-#include <iostream>
+#include <sstream>
+#include <iomanip>
 
 #include "../types.h"
 #include "../joypad/joypad.h"
 
-constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
+#include <SDL3/SDL.h>
 
+constexpr int DISPLAY_SCALE = 4;    // initial scaling factor of screen
 constexpr int TARGET_QUEUE_BYTES = 44100 * 2 * sizeof(float) * 0.1f;
 
 /**
@@ -27,7 +26,10 @@ class Frontend {
 
             audio_stream(nullptr),
 
-            joypad(j)
+            joypad(j),
+
+            base_title(title),
+            fps(60.0)
         {
             init(title);
         }
@@ -36,16 +38,24 @@ class Frontend {
 
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer);
         bool poll_events(); 
+
+        void set_fps(const double new_fps) { fps = new_fps; }
     private:
         SDL_Window* window;
         SDL_Renderer* renderer;
         SDL_Texture* texture;
-
+        
         SDL_AudioStream* audio_stream;
-
+        
         Joypad& joypad;
+        
+        std::string base_title;
+        double fps;
+        
         void init(const std::string& title);
         void teardown();
+
+        std::string update_title();
 };
 
 #endif  // FRONTEND_H

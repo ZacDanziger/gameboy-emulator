@@ -2,18 +2,19 @@
 #define JOYPAD_H
 
 #include <stdexcept>
+#include <functional>
 
 #include "../types.h"
 #include "../utils/utils.h"
 #include "../interrupt/interrupt_controller.h"
 
-/**
- * TODO: implement save() feature - probably callback
- */
+using SaveCallback = std::function<void()>;
+
 class Joypad {
     public:
-        Joypad(InterruptController& i) :
+        Joypad(InterruptController& i, SaveCallback s) :
             interrupt(i),
+            on_save(s),
 
             joypad_register(0x00),
 
@@ -30,6 +31,7 @@ class Joypad {
         void reset() { joypad_register = 0x00; button_keys = 0x0F; direction_keys = 0x0F; }
     private:
         InterruptController& interrupt;
+        SaveCallback on_save;
 
         Byte joypad_register;   // JOYP_REGISTER
 

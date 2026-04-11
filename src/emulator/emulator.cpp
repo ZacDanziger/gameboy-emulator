@@ -26,10 +26,38 @@ void Emulator::reset() {
 
 
 void Emulator::on_frame_ready() {
+    update_fps();
+
     frontend.present(ppu.get_frame(), apu.flush_audio_buffer());
 
-    auto now = std::chrono::steady_clock::now();
+    // throttle();
+    autosave();
+}
 
+
+void Emulator::update_fps() {
+    static int frame_count = 0;
+    static auto fps_timer = std::chrono::steady_clock::now();
+    frame_count++;
+    if (frame_count % 60 == 0) {
+        auto now = std::chrono::steady_clock::now();
+        double fps = 60.0 / std::chrono::duration<double>(now - fps_timer).count();
+        frontend.set_fps(fps);
+        fps_timer = now;
+    }
+}
+
+
+void Emulator::throttle() {
+    auto target = last_frame_time + FRAME_DURATION;
+    while (std::chrono::steady_clock::now() < target)
+    {}
+    last_frame_time = target;
+}
+
+
+void Emulator::autosave() {
+    auto now = std::chrono::steady_clock::now();
     if (now - last_save_time >= AUTOSAVE_INTERVAL) {
         memory_bus.save();
         last_save_time = now;

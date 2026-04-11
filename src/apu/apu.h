@@ -6,13 +6,14 @@
 #include "../utils/utils.h"
 #include "channels.h"
 
+#include <iostream>
 
 // output sample rate
 constexpr float CYCLES_PER_SECOND = 1048576.0f;
 constexpr float SAMPLES_PER_SECOND = 44100.0f;
 constexpr float CYCLES_PER_SAMPLE = CYCLES_PER_SECOND / SAMPLES_PER_SECOND;
 
-constexpr float HPF_CHARGE_FACTOR = 0.999958f;
+constexpr float HPF_CHARGE_FACTOR = 0.996f;
 
 /**
  * Audio Processing Unit
@@ -35,7 +36,11 @@ class APU {
 
             frame_sequencer_step(0),
 
+            sample_count(0),
             sample_accumulator(0.0f),
+
+            left_accumulator(0.0f),
+            right_accumulator(0.0f),
 
             hpf_capacitor_left(0.0f),
             hpf_capacitor_right(0.0f)
@@ -67,7 +72,11 @@ class APU {
         
         int frame_sequencer_step;
 
+        int sample_count;
         float sample_accumulator;
+
+        float left_accumulator;
+        float right_accumulator;
 
         float hpf_capacitor_left;
         float hpf_capacitor_right;

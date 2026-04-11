@@ -13,17 +13,15 @@
 #include "../apu/apu.h"
 #include "../frontend/frontend.h"
 
-constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16666667); // 60 fps
-// constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
+constexpr auto FRAME_DURATION = std::chrono::nanoseconds(16742706); // ~59.7 fps
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
-
 const std::string EMULATOR_NAME = "GameBoy Color Emulator";
 
 class Emulator {
     public:
         Emulator():
             interrupt(),
-            joypad(interrupt),
+            joypad(interrupt, [this]{ memory_bus.save(); }),
             ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
             apu(),
             timer(interrupt, [this]{ ppu.update(); apu.update(); }, [this]{ apu.frame_sequencer(); }),
@@ -52,6 +50,10 @@ class Emulator {
 
         void reset();
         void on_frame_ready();
+
+        void update_fps();
+        void throttle();
+        void autosave();
 };
 
 

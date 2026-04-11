@@ -7,7 +7,12 @@ void APU::reset() {
     audio_buffer = {0};
 
     frame_sequencer_step = 0;
+
+    sample_count = 0;
     sample_accumulator = 0.0f;
+
+    left_accumulator = 0.0f;
+    right_accumulator = 0.0f;
 
     hpf_capacitor_left = 0.0f;
     hpf_capacitor_right = 0.0f;
@@ -23,7 +28,6 @@ void APU::reset() {
 }
 
 
-// TODO: account for write-only bits in some registers
 Byte APU::read(const Address address) const {
     if (address >= WAVE_RAM_START && address <= WAVE_RAM_END) {
         return channel_3.read(address);
@@ -142,8 +146,11 @@ void APU::write(const Address address, const Byte data) {
         if (!is_set(data, Bit::Bit7)) {
             clear_registers_and_channels();
         } else {
+            bool was_powered_on = is_set(audio_master_control, Bit::Bit7);
             set_bit(audio_master_control, Bit::Bit7);
-
+            if (!was_powered_on) {
+                frame_sequencer_step = 0;
+            }
         }
         return;
     case PCM12_REGISTER:
@@ -163,12 +170,23 @@ void APU::update() {
     channel_1.clock();
     channel_2.clock();
     channel_3.clock();
+    // channel_3.clock();
     channel_4.clock();
+
+    left_accumulator += is_set(sound_panning, Bit::Bit4) ? channel_1.DAC() : 0.0f;
+    left_accumulator += is_set(sound_panning, Bit::Bit5) ? channel_2.DAC() : 0.0f;
+    left_accumulator += is_set(sound_panning, Bit::Bit6) ? channel_3.DAC() : 0.0f;
+    left_accumulator += is_set(sound_panning, Bit::Bit7) ? channel_4.DAC() : 0.0f;
+    right_accumulator += is_set(sound_panning, Bit::Bit0) ? channel_1.DAC() : 0.0f;
+    right_accumulator += is_set(sound_panning, Bit::Bit1) ? channel_2.DAC() : 0.0f;
+    right_accumulator += is_set(sound_panning, Bit::Bit2) ? channel_3.DAC() : 0.0f;
+    right_accumulator += is_set(sound_panning, Bit::Bit3) ? channel_4.DAC() : 0.0f;
+    sample_count += 1;
 
     sample_accumulator += 1.0f;
     if (sample_accumulator >= CYCLES_PER_SAMPLE) {
         sample_accumulator -= CYCLES_PER_SAMPLE;
-
+        
         push_sample();
     }
 }
@@ -196,6 +214,9 @@ void APU::frame_sequencer() {
 
 
 std::vector<float> APU::flush_audio_buffer() {
+    if (sample_count > 0) {
+        push_sample();
+    }
     std::vector<float> buffer_copy = std::move(audio_buffer);
     audio_buffer.clear();
 
@@ -207,6 +228,9 @@ std::vector<float> APU::flush_audio_buffer() {
  * Write 0x00 to all APU registers
  */
 void APU::clear_registers_and_channels() {
+    std::cout << "PCM12: " << read(PCM12_REGISTER) << '\n';
+    std::cout << "PCM34: " << read(PCM34_REGISTER) << '\n';
+
     audio_master_control = 0x00;
     sound_panning = 0x00;
     master_volume_and_vin_panning = 0x00;
@@ -220,29 +244,23 @@ void APU::clear_registers_and_channels() {
 
 
 void APU::push_sample() {
-    if (!channel_1.DAC_is_enabled() &&
-        !channel_2.DAC_is_enabled() &&
-        !channel_3.DAC_is_enabled() &&
-        !channel_3.DAC_is_enabled())
-    {
-        return;
-    }
-
-    float left_sample = 0.0;
-    float right_sample = 0.0;
-
-    // mix
-    left_sample += is_set(sound_panning, Bit::Bit4) ? channel_1.DAC() : 0.0f;
-    left_sample += is_set(sound_panning, Bit::Bit5) ? channel_2.DAC() : 0.0f;
-    left_sample += is_set(sound_panning, Bit::Bit6) ? channel_3.DAC() : 0.0f;
-    left_sample += is_set(sound_panning, Bit::Bit7) ? channel_4.DAC() : 0.0f;
-    right_sample += is_set(sound_panning, Bit::Bit0) ? channel_1.DAC() : 0.0f;
-    right_sample += is_set(sound_panning, Bit::Bit1) ? channel_2.DAC() : 0.0f;
-    right_sample += is_set(sound_panning, Bit::Bit2) ? channel_3.DAC() : 0.0f;
-    right_sample += is_set(sound_panning, Bit::Bit3) ? channel_4.DAC() : 0.0f;
+    float left_sample = left_accumulator / sample_count;
+    float right_sample = right_accumulator / sample_count;
 
     left_sample /= 4.0f;
     right_sample /= 4.0f;
+
+    left_accumulator = 0.0f;
+    right_accumulator = 0.0f;
+    sample_count = 0;
+
+    if (!channel_1.DAC_is_enabled() &&
+        !channel_2.DAC_is_enabled() &&
+        !channel_3.DAC_is_enabled() &&
+        !channel_4.DAC_is_enabled())
+    {
+        return;
+    }
 
     // master volume
     int left_volume = ((master_volume_and_vin_panning & 0x70) >> 4) + 1;
@@ -264,6 +282,9 @@ void APU::push_sample() {
 
     audio_buffer.push_back(filtered_left);
     audio_buffer.push_back(filtered_right);
+
+    // audio_buffer.push_back(left_sample);
+    // audio_buffer.push_back(right_sample);
 }
 
 
@@ -280,7 +301,6 @@ void APU::envelope_sweep() {
     channel_2.envelope_sweep();
     channel_4.envelope_sweep();
 }
-
 
 void APU::trigger_logic(Channel* channel, const Address address, const Byte data) {
     bool next_step_clocks_length = (frame_sequencer_step % 2 == 0); 

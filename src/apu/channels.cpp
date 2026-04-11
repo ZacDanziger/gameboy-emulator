@@ -5,7 +5,7 @@ void Channel::clear() {
     DAC_enabled = false;
     length_enabled = false;
     length_timer = 0;
-    period_divider = 0x0000;
+    period_timer = 0;
     current_volume = 0;
     sample = 0x00;
 }
@@ -45,12 +45,9 @@ Byte Channel1::read(const Address address) const {
 void Channel1::write(const Address address, const Byte data) {
     switch(address) {
     case NR10_REGISTER : {
-        int old_pace = (sweep & 0x70) >> 4;
         sweep = data;
-        int new_pace = (sweep & 0x70) >> 4;
-
-        if (old_pace != new_pace) {
-            sweep_timer = 0;
+        if (!is_set(data, Bit::Bit3) && negate_was_used) {
+            deactivate();
         }
         return;
     }
@@ -78,7 +75,8 @@ void Channel1::write(const Address address, const Byte data) {
 
 void Channel1::trigger(const bool next_step_clocks_length) {
     active = true;
-
+    negate_was_used = false;
+    
     if (length_timer == 0) {
         length_timer = 64;
         if (length_enabled && !next_step_clocks_length) {
@@ -88,20 +86,22 @@ void Channel1::trigger(const bool next_step_clocks_length) {
     duty_cycle = (timer_and_duty_cycle & 0xC0) >> 6;
 
     current_volume = (volume_and_envelope & 0xF0) >> 4;
-    period_divider = ((period_high_and_control & 0x07) << 8) | period_low;
+    period_timer = 2048 - (((period_high_and_control & 0x07) << 8) | period_low);
 
     envelope_timer = 0;
 
     shadow_period = ((period_high_and_control & 0x07) << 8) | period_low;
-    sweep_timer = 0;
+    sweep_timer = (sweep & 0x70) >> 4;
+    if (sweep_timer == 0) {
+        sweep_timer = 8;
+    }
+
     sweep_enabled = ((sweep & 0x77) != 0x00);
 
     if ((sweep & 0x07) != 0x00) {
-        overflow_check();
+        calculate_frequency();
     }
 
-
-    
     if (!DAC_enabled) {
         deactivate();
     }
@@ -113,9 +113,9 @@ void Channel1::clock() {
         return;
     }
 
-    period_divider += 1;
-    if (period_divider == 0x0800) {
-        period_divider = ((period_high_and_control & 0x07) << 8) | period_low;
+    period_timer -= 1;
+    if (period_timer == 0) {
+        period_timer = 2048 - (((period_high_and_control & 0x07) << 8) | period_low);
 
         bool high = duty_table[duty_cycle][duty_pos % 8];
         duty_pos += 1;
@@ -140,6 +140,8 @@ void Channel1::reset() {
     sweep_enabled = false;
     sweep_timer = 0;
     shadow_period = 0x0000;
+
+    negate_was_used = false;
 }
 
 
@@ -157,6 +159,8 @@ void Channel1::clear() {
     sweep_enabled = false;
     sweep_timer = 0;
     shadow_period = 0x0000;
+
+    negate_was_used = false;
 }
 
 
@@ -166,15 +170,19 @@ void Channel1::envelope_sweep() {
     }
 
     envelope_timer += 1;
-    envelope_timer %= 8;
 
-    int pace = volume_and_envelope & 0x07;
-    if (pace == 0) {
-        pace = 8;
+    int envelope_pace = volume_and_envelope & 0x07;
+    if (envelope_pace == 0) {
+        envelope_pace = 8;
     }
 
-    if (envelope_timer == pace) {
+    if (envelope_timer == envelope_pace) {
         envelope_timer = 0;
+
+        if (envelope_pace == 8) {
+            return;
+        }
+
         current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
 
         if (current_volume < 0) {
@@ -193,34 +201,40 @@ void Channel1::frequency_sweep() {
         return;
     }
 
-    int pace = ((sweep & 0x70) >> 4);
-    int effective_pace = (pace == 0) ? 8 : pace;
+    int pace = (sweep & 0x70) >> 4;
 
-    sweep_timer += 1;
-    if (sweep_timer >= effective_pace) {
-        sweep_timer = 0;
+    sweep_timer -= 1;
+    if (sweep_timer == 0) {
+        sweep_timer = pace;
+        if (sweep_timer == 0) {
+            sweep_timer = 8;
+        }
 
         if (pace == 0) {
             return;
         }
 
         int shift = sweep & 0x07;
-        Word new_period = overflow_check();
+        Word new_period = calculate_frequency();
 
-        if (active && (shift != 0)) {
+        if (shift != 0) {
             shadow_period = new_period;
             period_low = shadow_period & 0xFF;
             period_high_and_control = (period_high_and_control & 0xF8) | (shadow_period >> 8) & 0x07;
 
-            overflow_check();
+            calculate_frequency();
         }
     }
 }
 
 
-Word Channel1::overflow_check() {
+Word Channel1::calculate_frequency() {
     Word offset = shadow_period >> (sweep & 0x07);
     Word new_period = shadow_period + (is_set(sweep, Bit::Bit3) ? -offset : offset);
+
+    if (is_set(sweep, Bit::Bit3)) {
+        negate_was_used = true;
+    }
 
     if (new_period > 0x07FF) {
         deactivate();
@@ -289,7 +303,7 @@ void Channel2::trigger(const bool next_step_clocks_length) {
     duty_cycle = (timer_and_duty_cycle & 0xC0) >> 6;
 
     current_volume = (volume_and_envelope & 0xF0) >> 4;
-    period_divider = ((period_high_and_control & 0x07) << 8) | period_low;
+    period_timer = 2048 - (((period_high_and_control & 0x07) << 8) | period_low);
 
     envelope_timer = 0;
 
@@ -304,10 +318,10 @@ void Channel2::clock() {
         return;
     }
 
-    period_divider += 1;
+    period_timer -= 1;
 
-    if (period_divider == 0x0800) {
-        period_divider = ((period_high_and_control & 0x07) << 8) | period_low;
+    if (period_timer == 0) {
+        period_timer = 2048 - (((period_high_and_control & 0x07) << 8) | period_low);
 
         bool high = duty_table[duty_cycle][duty_pos % 8];
         duty_pos += 1;
@@ -348,15 +362,19 @@ void Channel2::envelope_sweep() {
     }
 
     envelope_timer += 1;
-    envelope_timer %= 8;
 
-    int pace = volume_and_envelope & 0x07;
-    if (pace == 0) {
-        pace = 8;
+    int envelope_pace = volume_and_envelope & 0x07;
+    if (envelope_pace == 0) {
+        envelope_pace = 8;
     }
 
-    if (envelope_timer == pace) {
+    if (envelope_timer == envelope_pace) {
         envelope_timer = 0;
+
+        if (envelope_pace == 8) {
+            return;
+        }
+
         current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
 
         if (current_volume < 0) {
@@ -375,6 +393,9 @@ void Channel2::envelope_sweep() {
 
 Byte Channel3::read(const Address address) const {
     if (address >= WAVE_RAM_START && address <= WAVE_RAM_END) {
+        if (active) {
+            return cgb_mode ? wave_ram[position_counter >> 1] : OPEN_BUS_VALUE;
+        }
         return wave_ram[address - WAVE_RAM_START];
     }
 
@@ -439,7 +460,7 @@ void Channel3::trigger(const bool next_step_clocks_length) {
     }
 
     current_volume = (output_level >> 5) & 0x03;
-    period_divider = ((period_high_and_control & 0x07) << 8) | period_low;
+    period_timer = (2048 - (((period_high_and_control & 0x07) << 8) | period_low)) / 2;
 
     if (!DAC_enabled) {
         deactivate();
@@ -452,10 +473,10 @@ void Channel3::clock() {
         return;
     }
 
-    period_divider += 1;
+    period_timer -= 1;
 
-    if (period_divider == 0x0800) {
-        period_divider = ((period_high_and_control & 0x07) << 8) | period_low;
+    if (period_timer == 0) {
+        period_timer = (2048 - (((period_high_and_control & 0x07) << 8) | period_low)) / 2;
     
         position_counter += 1;
         position_counter %= 32;
@@ -467,7 +488,8 @@ void Channel3::clock() {
         } else {
             sample = (sample >> 4) & 0x0F;
         }
-    
+        
+        current_volume = (output_level >> 5) & 0x03;
         if (current_volume == 0) {
             sample = 0x00;
         } else {
@@ -559,9 +581,11 @@ void Channel4::trigger(const bool next_step_clocks_length) {
 
     current_volume = (volume_and_envelope & 0xF0) >> 4;
 
-    LFSR = 0xFFFF;
+    LFSR = 0x0000;
 
-    period_divider = calculate_period();
+    period_timer = calculate_period();
+
+    envelope_timer = 0;
 
     if (!DAC_enabled) {
         deactivate();
@@ -580,23 +604,23 @@ void Channel4::clock() {
         return;
     }
     
-    period_divider -= 1;
+    period_timer -= 1;
 
-    if (period_divider == 0) {
-        period_divider = calculate_period();
+    if (period_timer == 0) {
+        period_timer = calculate_period();
 
         bool bit0 = is_set(LFSR, Bit::Bit0);
         bool bit1 = is_set(LFSR, Bit::Bit1);
 
-        bool set = ((bit0 ^ bit1) == 0);
-
-        LFSR = LFSR >> 1;
+        bool set = (bit0 == bit1);
 
         if (set) {
             LFSR |= 0x8000;
         } else {
             LFSR &= ~0x8000;
         }
+
+        LFSR = LFSR >> 1;
 
         if (is_set(freq_and_randomness, Bit::Bit3)) {
             LFSR &= ~0x0080;
@@ -606,7 +630,7 @@ void Channel4::clock() {
             }
         }
 
-        sample = bit0 ? current_volume : 0x00;
+        sample = bit1 ? current_volume : 0x00;
     }
 }
 
@@ -640,15 +664,19 @@ void Channel4::envelope_sweep() {
     }
 
     envelope_timer += 1;
-    envelope_timer %= 8;
 
-    int pace = volume_and_envelope & 0x07;
-    if (pace == 0) {
-        pace = 8;
+    int envelope_pace = volume_and_envelope & 0x07;
+    if (envelope_pace == 0) {
+        envelope_pace = 8;
     }
 
-    if (envelope_timer == pace) {
+    if (envelope_timer == envelope_pace) {
         envelope_timer = 0;
+
+        if (envelope_pace == 8) {
+            return;
+        }
+
         current_volume += is_set(volume_and_envelope, Bit::Bit3) ? 1 : -1;
 
         if (current_volume < 0) {
