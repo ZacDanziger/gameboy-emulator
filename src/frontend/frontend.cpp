@@ -6,9 +6,14 @@ Frontend::~Frontend() {
 }
 
 void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer) {
-    SDL_SetWindowTitle(window, update_title().c_str());
+    frame_count += 1;
+    if (frame_count == 60) {
+        SDL_SetWindowTitle(window, update_title().c_str());
+        frame_count = 0;
+    }
 
-    while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {}
+    // sync-by-audio
+    // while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {}
 
     SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 

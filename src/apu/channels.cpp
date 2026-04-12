@@ -427,7 +427,7 @@ void Channel3::write(const Address address, const Byte data) {
     switch(address) {
     case NR30_REGISTER :
         DAC_enable = data;
-        DAC_enabled = ((data & 0xF8) != 0x00);
+        DAC_enabled = is_set(data, Bit::Bit7);
         if (!DAC_enabled) { deactivate(); }
         return;
     case NR31_REGISTER :
@@ -461,6 +461,7 @@ void Channel3::trigger(const bool next_step_clocks_length) {
 
     current_volume = (output_level >> 5) & 0x03;
     period_timer = (2048 - (((period_high_and_control & 0x07) << 8) | period_low)) / 2;
+    position_counter = 0;
 
     if (!DAC_enabled) {
         deactivate();

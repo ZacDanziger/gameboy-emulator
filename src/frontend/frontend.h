@@ -29,7 +29,9 @@ class Frontend {
             joypad(j),
 
             base_title(title),
-            fps(60.0)
+            fps(60.0),
+
+            frame_count(0)
         {
             init(title);
         }
@@ -51,6 +53,8 @@ class Frontend {
         
         std::string base_title;
         double fps;
+
+        int frame_count;
         
         void init(const std::string& title);
         void teardown();

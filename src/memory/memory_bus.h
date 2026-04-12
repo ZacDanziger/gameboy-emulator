@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <functional>
 
 #include "../memory_map.h"
 #include "../types.h"
@@ -14,6 +15,7 @@
 #include "../timer/timer.h"
 #include "../mbc/mbc.h"
 
+using DMACallback = std::function<void(bool)>;
 
 /**
  * Memory Management Unit
@@ -21,12 +23,14 @@
 */
 class MemoryBus {
     public:
-        MemoryBus(InterruptController& i, Joypad& j, Timer& t, PPU& p, APU& a) :
+        MemoryBus(InterruptController& i, Joypad& j, Timer& t, PPU& p, APU& a, DMACallback d) :
             interrupt(i),
             joypad(j),
             ppu(p),
             apu(a),
             timer(t),
+
+            on_dma(d),
 
             wram{},
             hram{},
@@ -38,6 +42,8 @@ class MemoryBus {
             vram_dest_low(0xFF),
             vram_dma_control(0xFF),
             wram_bank(0x01),
+
+            hdma_chunk_buffer(16),
 
             rom_filename(),
 
@@ -69,10 +75,14 @@ class MemoryBus {
         APU& apu;
         Timer& timer;
 
+        DMACallback on_dma;
+
         std::unique_ptr<MBC> mbc;
 
         std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
+
+        std::vector<Byte> hdma_chunk_buffer;
 
         std::string rom_filename;
         

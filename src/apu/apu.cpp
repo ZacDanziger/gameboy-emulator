@@ -214,9 +214,9 @@ void APU::frame_sequencer() {
 
 
 std::vector<float> APU::flush_audio_buffer() {
-    if (sample_count > 0) {
-        push_sample();
-    }
+    // if (sample_count > 0) {
+    //     push_sample();
+    // }
     std::vector<float> buffer_copy = std::move(audio_buffer);
     audio_buffer.clear();
 
@@ -228,12 +228,12 @@ std::vector<float> APU::flush_audio_buffer() {
  * Write 0x00 to all APU registers
  */
 void APU::clear_registers_and_channels() {
-    std::cout << "PCM12: " << read(PCM12_REGISTER) << '\n';
-    std::cout << "PCM34: " << read(PCM34_REGISTER) << '\n';
-
     audio_master_control = 0x00;
     sound_panning = 0x00;
     master_volume_and_vin_panning = 0x00;
+
+    hpf_capacitor_left = 0.0f;
+    hpf_capacitor_right = 0.0f;
     
     channel_1.clear();
     channel_2.clear();
@@ -259,6 +259,8 @@ void APU::push_sample() {
         !channel_3.DAC_is_enabled() &&
         !channel_4.DAC_is_enabled())
     {
+        audio_buffer.push_back(0.0f);
+        audio_buffer.push_back(0.0f);
         return;
     }
 

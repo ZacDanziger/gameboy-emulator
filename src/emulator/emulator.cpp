@@ -2,8 +2,15 @@
 
 
 void Emulator::run() {
-    while (frontend.poll_events()) {
+    while (true) {
         cpu.step();
+
+        if (frame_complete) {
+            frame_complete = false;
+            if (!frontend.poll_events()) {
+                break;
+            }
+        }
     }
 }
 
@@ -26,11 +33,17 @@ void Emulator::reset() {
 
 
 void Emulator::on_frame_ready() {
+    frame_complete = true;
+
     update_fps();
+
+    if (dma_active) {
+        return;
+    }
 
     frontend.present(ppu.get_frame(), apu.flush_audio_buffer());
 
-    // throttle();
+    throttle();
     autosave();
 }
 
@@ -50,6 +63,12 @@ void Emulator::update_fps() {
 
 void Emulator::throttle() {
     auto target = last_frame_time + FRAME_DURATION;
+
+    if (std::chrono::steady_clock::now() > target) {
+        last_frame_time = std::chrono::steady_clock::now();
+        return;
+    }
+
     while (std::chrono::steady_clock::now() < target)
     {}
     last_frame_time = target;

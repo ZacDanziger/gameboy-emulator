@@ -421,6 +421,13 @@ void MemoryBus::oam_dma_transfer(const Byte value) {
     }
     
     ppu.load(OAM_START, dma_data);
+
+    // OAM DMA takes 160 m-cycles
+    on_dma(true);
+    for (int i = 0; i < 160; i++) {
+        timer.tick();
+    }
+    on_dma(false);
 }
 
 
@@ -464,6 +471,13 @@ void MemoryBus::vram_dma_transfer(const Byte value) {
 
         // signal transfer is complete
         vram_dma_control = 0xFF;
+
+        // 8 m-cycles to transfer 16 bytes -> GPDMA takes length / 2 m-cycles
+        on_dma(true);
+        for (int i = 0; i < length / 2; i++) {
+            timer.tick();
+        }
+        on_dma(false);
     }
 }
 
@@ -479,10 +493,9 @@ void MemoryBus::hdma_tick() {
 
     int chunk_size = 16;
 
-    std::vector<Byte> chunk(chunk_size);
 
     for (int i = 0; i < chunk_size; i++) {
-        chunk[i] = read(hdma_source + i);
+        hdma_chunk_buffer[i] = read(hdma_source + i);
     }
 
     if (hdma_destination + chunk_size > ERAM_START) {
@@ -491,7 +504,7 @@ void MemoryBus::hdma_tick() {
         return;
     }
 
-    ppu.load(hdma_destination, chunk);
+    ppu.load(hdma_destination, hdma_chunk_buffer);
 
     hdma_source += chunk_size;
     hdma_destination += chunk_size;
@@ -504,5 +517,11 @@ void MemoryBus::hdma_tick() {
         Byte new_val = (hdma_remaining >> 4) - 1;
         vram_dma_control &= 0x80;
         vram_dma_control |= (new_val & 0x7F);
+    }
+
+    // takes 4 m-cycles in double speed mode, 8 in single speed
+    int cycles = timer.get_double_speed() ? 4 : 8;
+    for (int i = 0; i < cycles; i++) {
+        timer.tick();
     }
 }
