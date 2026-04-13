@@ -13,7 +13,7 @@ void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& f
     }
 
     // sync-by-audio
-    // while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {}
+    while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {}
 
     SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 

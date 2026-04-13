@@ -1,5 +1,4 @@
 #include "cpu.h"
-#include <iostream>
 
 /**
  * Reset the CPU to its post Boot ROM state

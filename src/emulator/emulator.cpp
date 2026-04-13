@@ -43,7 +43,6 @@ void Emulator::on_frame_ready() {
 
     frontend.present(ppu.get_frame(), apu.flush_audio_buffer());
 
-    throttle();
     autosave();
 }
 
@@ -58,20 +57,6 @@ void Emulator::update_fps() {
         frontend.set_fps(fps);
         fps_timer = now;
     }
-}
-
-
-void Emulator::throttle() {
-    auto target = last_frame_time + FRAME_DURATION;
-
-    if (std::chrono::steady_clock::now() > target) {
-        last_frame_time = std::chrono::steady_clock::now();
-        return;
-    }
-
-    while (std::chrono::steady_clock::now() < target)
-    {}
-    last_frame_time = target;
 }
 
 
