@@ -1,6 +1,7 @@
 #ifndef MEMORY_BUS_H
 #define MEMORY_BUS_H
 
+#include <string>
 #include <array>
 #include <vector>
 #include <functional>

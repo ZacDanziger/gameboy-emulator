@@ -11,7 +11,7 @@
 
 #include <SDL3/SDL.h>
 
-constexpr int DISPLAY_SCALE = 6;    // initial scaling factor of screen
+constexpr int DISPLAY_SCALE = 5;    // initial scaling factor of screen
 constexpr int TARGET_QUEUE_BYTES = 44100 * 2 * sizeof(float) * 0.1f;
 
 /**
@@ -41,6 +41,7 @@ class Frontend {
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer);
         bool poll_events(); 
 
+        void set_title(const std::string& title) { base_title = title; }
         void set_fps(const double new_fps) { fps = new_fps; }
     private:
         SDL_Window* window;

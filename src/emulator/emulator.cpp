@@ -1,5 +1,15 @@
 #include "emulator.h"
 
+void Emulator::load(const std::string& rom_file) {
+    reset();
+    memory_bus.load_rom(rom_file);
+
+    size_t start = rom_file.find_last_of('/');
+    start = (start == std::string::npos) ? 0 : start + 1;
+    size_t end = rom_file.find_last_of('.');
+    frontend.set_title(rom_file.substr(start, end - start));
+}
+
 
 void Emulator::run() {
     while (true) {

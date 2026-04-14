@@ -36,7 +36,7 @@ class Emulator {
             last_save_time(std::chrono::steady_clock::now())
         {}
         
-        void load(const std::string& rom_file) { reset(); memory_bus.load_rom(rom_file); }
+        void load(const std::string& rom_file);
         void run();
     private:
         InterruptController interrupt;
