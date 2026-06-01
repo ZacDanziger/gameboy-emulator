@@ -30,6 +30,9 @@ void MBC0::write(const Address address, const Byte data) {
         return;
     } 
     if ((address >= ERAM_START) && (address < WRAM_BANK_00_START)) {
+        if (eram.size() == 0) {
+            return;
+        }
         eram[address - ERAM_START] = data;
         return;
     }

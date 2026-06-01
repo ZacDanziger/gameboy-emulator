@@ -71,7 +71,10 @@ enum class MBC_Type : Byte{
 constexpr std::size_t SCREEN_WIDTH = 160;
 constexpr std::size_t SCREEN_HEIGHT = 144;
 
-
+// m-cycle frequency
+constexpr float CYCLES_PER_SECOND = 1048576.0f;
+// audio sample frequency
+constexpr float SAMPLES_PER_SECOND = 44100.0f;
 
 constexpr Byte OPEN_BUS_VALUE = 0xFF;
 

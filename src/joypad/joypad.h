@@ -8,15 +8,14 @@
 #include "../utils/utils.h"
 #include "../interrupt/interrupt_controller.h"
 
-using SaveCallback = std::function<void()>;
-
 class Joypad {
     public:
-        Joypad(InterruptController& i, SaveCallback s) :
+        Joypad(InterruptController& i) :
             interrupt(i),
-            on_save(s),
 
             joypad_register(0x00),
+
+            save_requested(false),
 
             button_keys(0x0F),
             direction_keys(0x0F)
@@ -28,12 +27,16 @@ class Joypad {
         void set_key(Key key, bool pressed);
         bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
 
+        bool is_save_requested() const {return save_requested; }
+        void save_acknowledged() { save_requested = false; }
+
         void reset() { joypad_register = 0x00; button_keys = 0x0F; direction_keys = 0x0F; }
     private:
         InterruptController& interrupt;
-        SaveCallback on_save;
 
         Byte joypad_register;   // JOYP_REGISTER
+
+        bool save_requested;
 
         // 2x4 grid of values for JOYP
         Byte button_keys;

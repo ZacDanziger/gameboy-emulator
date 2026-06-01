@@ -11,7 +11,7 @@
 #include "../interrupt/interrupt_controller.h"
 
 using FrameCallback = std::function<void()>;
-using HBlankCallback = std::function<void()>;
+using HDMACallback = std::function<void()>;
 
 constexpr int MAX_SPRITES = 40;
 constexpr int MAX_SPRITES_PER_SCANLINE = 10;
@@ -38,7 +38,7 @@ constexpr RGBA32 dmg_palette[4] = {
  */
 class PPU {
     public:
-        PPU(InterruptController& i, FrameCallback f, HBlankCallback h) :
+        PPU(InterruptController& i, FrameCallback f, HDMACallback h) :
             interrupt(i),
             frame_ready(f),
             hblank(h),
@@ -96,7 +96,7 @@ class PPU {
 
         InterruptController& interrupt;
         FrameCallback frame_ready;
-        HBlankCallback hblank;
+        HDMACallback hblank;
         
         std::array<Byte, 2 * VRAM_SIZE> vram;      // 0x8000 - 0x9FFF, two banks on CGB
         std::array<Byte, OAM_SIZE> oam;            // 0xFE00 - 0xFE9F

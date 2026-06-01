@@ -3,9 +3,6 @@
 
 #include <stdexcept>
 
-#include <chrono>
-#include <iostream>
-
 #include "../memory_map.h"
 #include "../types.h"
 #include "../utils/utils.h"

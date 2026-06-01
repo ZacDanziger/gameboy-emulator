@@ -123,12 +123,12 @@ void MBC3::write(const Address address, const Byte data) {
  * 
  * @param filename the file to write the current ERAM and time to
  */
-void MBC3::save(const std::string& filename) const {
+void MBC3::save() const {
     if (!has_battery) {
         return;
     }
 
-    std::string save_file = filename.substr(0, filename.find_last_of('.')) + ".sav";
+    std::string save_file = get_save_filename();
 
     std::vector<Byte> data(eram.begin(), eram.end());
 
@@ -160,7 +160,8 @@ void MBC3::load(const std::string& filename) {
         return;
     }
 
-    std::string save_file = filename.substr(0, filename.find_last_of('.')) + ".sav";
+    rom_filename = filename;
+    std::string save_file = get_save_filename();
 
     // confirm save file exists
     std::ifstream file(save_file);

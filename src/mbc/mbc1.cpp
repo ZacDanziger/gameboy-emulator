@@ -116,12 +116,12 @@ void MBC1::write(const Address address, const Byte data) {
 }
 
 
-void MBC1::save(const std::string& filename) const {
+void MBC1::save() const {
     if (!has_battery) {
         return;
     }
 
-    std::string save_file = filename.substr(0, filename.find_last_of('.')) + ".sav";
+    std::string save_file = get_save_filename();
 
     write_file(save_file, eram);
     return;
@@ -132,7 +132,9 @@ void MBC1::load(const std::string& filename) {
     if (!has_battery) {
         return;
     }
-    std::string save_file = filename.substr(0, filename.find_last_of('.')) + ".sav";
+
+    rom_filename = filename;
+    std::string save_file = get_save_filename();
 
     // confirm save file exists
     std::ifstream file(save_file);

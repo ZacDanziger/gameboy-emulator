@@ -126,9 +126,7 @@ void PPU::write(const Address address, const Byte value) {
         if (cgb_mode) {
             adjusted_address += vram_bank * VRAM_SIZE;
         }
-        adjusted_address -= VRAM_START;
-
-        vram[adjusted_address] = value;
+        vram[adjusted_address - VRAM_START] = value;
 
         if (address < TILE_MAP_0_START) {
             int index = address_to_index(address, vram_bank);

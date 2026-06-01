@@ -18,7 +18,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x00: { return; }                                      // NOP
         case 0x01: { LD(BC, fetch16()); return; }                   // B <- n16[15:8], C <- n16[7:0]
         case 0x02: { LD(get_pair(BC), reg_A); return; }             // memory[BC] <- A
-        case 0x03: { INC(BC); timer.tick(); return; }              // INC BC++
+        case 0x03: { INC(BC); timer.tick(); return; }               // INC BC++
         case 0x04: { INC(reg_B); return; }                          // B++
         case 0x05: { DEC(reg_B); return; }                          // B--
         case 0x06: { LD(reg_B, fetch()); return; }                  // B <- n8
@@ -26,7 +26,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x08: { write_SP(fetch16()); return; }                 // memory[n16] <- SP[7:0], memory[n16+1] <- SP[15:8]
         case 0x09: { ADD_HL(get_pair(BC)); return; }                // HL += BC
         case 0x0A: { LD(reg_A, get_pair(BC)); return; }             // A <- memory[BC]
-        case 0x0B: { DEC(BC); timer.tick(); return; }              // BC--
+        case 0x0B: { DEC(BC); timer.tick(); return; }               // BC--
         case 0x0C: { INC(reg_C); return; }                          // C++
         case 0x0D: { DEC(reg_C); return; }                          // C--
         case 0x0E: { LD(reg_C, fetch()); return; }                  // C <- n8
@@ -35,7 +35,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x10: { STOP(); return; }                              // STOP
         case 0x11: { LD(DE, fetch16()); return; }                   // D <- n16[15:8], E <- n16[7:0]
         case 0x12: { LD(get_pair(DE), reg_A); return; }             // memory[DE] <- A
-        case 0x13: { INC(DE); timer.tick(); return; }              // DE++
+        case 0x13: { INC(DE); timer.tick(); return; }               // DE++
         case 0x14: { INC(reg_D); return; }                          // D++
         case 0x15: { DEC(reg_D); return; }                          // D--
         case 0x16: { LD(reg_D, fetch()); return; }                  // D <- n8
@@ -43,7 +43,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x18: { JR(); return; }                                // SP += e8
         case 0x19: { ADD_HL(get_pair(DE)); return; }                // HL += DE
         case 0x1A: { LD(reg_A, get_pair(DE)); return; }             // A <- memory[DE]
-        case 0x1B: { DEC(DE); timer.tick(); return; }              // DE--
+        case 0x1B: { DEC(DE); timer.tick(); return; }               // DE--
         case 0x1C: { INC(reg_E); return; }                          // E++
         case 0x1D: { DEC(reg_E); return; }                          // E--
         case 0x1E: { LD(reg_E, fetch()); return; }                  // E <- n8
@@ -52,7 +52,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x20: { (JR_IF(FLAG_ZERO, false)); return; }           // JR NZ, e8
         case 0x21: { LD(HL, fetch16()); return; }                   // LD HL, n16
         case 0x22: { LD(get_pair(HL), reg_A); INC(HL); return; }    // memory[HL++] <- A
-        case 0x23: { INC(HL); timer.tick(); return; }              // INC HL
+        case 0x23: { INC(HL); timer.tick(); return; }               // INC HL
         case 0x24: { INC(reg_H); return; }                          // H++
         case 0x25: { DEC(reg_H); return; }                          // H--
         case 0x26: { LD(reg_H, fetch()); return; }                  // H <- n8
@@ -60,7 +60,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0x28: { (JR_IF(FLAG_ZERO, true)); return; }            // JR Z, e8
         case 0x29: { ADD_HL(get_pair(HL)); return; }                // ADD HL, HL
         case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return; }    // A <- memory[HL++]
-        case 0x2B: { DEC(HL); timer.tick(); return; }              // HL--
+        case 0x2B: { DEC(HL); timer.tick(); return; }               // HL--
         case 0x2C: { INC(reg_L); return; }                          // L++
         case 0x2D: { DEC(reg_L); return; }                          // L--
         case 0x2E: { LD(reg_L, fetch()); return; }                  // L <- n8
@@ -222,7 +222,7 @@ void CPU::decode_execute(const Byte opcode) {
         case 0xC0: { (RET_IF(FLAG_ZERO, false)); return; }          // RET NZ
         case 0xC1: { POP(BC); return; }                             // C <- memory[SP++]; B <- memory[SP++]
         case 0xC2: { (JP_IF(FLAG_ZERO, false)); return; }           // JP NZ, a16
-        case 0xC3: { JP(fetch16()); timer.tick(); return; }        // JP a16
+        case 0xC3: { JP(fetch16()); timer.tick(); return; }         // JP a16
         case 0xC4: { (CALL_IF(FLAG_ZERO, false)); return; }         // CALL NZ, a16
         case 0xC5: { PUSH(BC); return; }                            // memory[--SP] <- B; memory[--SP] <- C
         case 0xC6: { ADD(fetch(), false); return; }                 // A += n8

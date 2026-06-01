@@ -33,8 +33,6 @@ void MemoryBus::reset() {
  * @param filename the filename containing the data to be read from
 */
 void MemoryBus::load_rom(const std::string& filename) {
-    rom_filename = filename;
-
     std::vector<Byte> data = read_file(filename);
 
     // check header checksum
@@ -104,7 +102,7 @@ void MemoryBus::load_rom(const std::string& filename) {
         throw std::runtime_error("Unsupported MBC type");
     }
 
-    mbc->load(rom_filename);
+    mbc->load(filename);
 }
 
 
@@ -118,7 +116,7 @@ void MemoryBus::load_rom(const std::string& filename) {
 Byte MemoryBus::read(Address address) const {
     // ROM read
     if (address < VRAM_START) {
-        return mbc->read(address);
+        return mbc ? mbc->read(address) : 0x00;
     }
 
     // VRAM read
@@ -128,7 +126,7 @@ Byte MemoryBus::read(Address address) const {
 
     // ERAM read
     if (address < WRAM_BANK_00_START) {
-        return mbc->read(address);
+        return mbc ? mbc->read(address) : 0x00;
     }
 
     // Echo RAM adjust (maps to WRAM)
@@ -230,12 +228,12 @@ Byte MemoryBus::read(Address address) const {
     }
 
     // HRAM read
-    if (address < IE_REGISTER)       {
+    if (address < IE_REGISTER) {
         return hram[address - HRAM_START];
     }
 
     // IE register read
-    if (address == IE_REGISTER)      {
+    if (address == IE_REGISTER) {
         return interrupt.read(address);
     }
 
@@ -254,7 +252,9 @@ Byte MemoryBus::read(Address address) const {
 void MemoryBus::write(Address address, Byte data) {
     // ROM write
     if (address < VRAM_START) {
-        mbc->write(address, data);
+        if (mbc) {
+            mbc->write(address, data);
+        }
         return;
     }
 
@@ -266,7 +266,9 @@ void MemoryBus::write(Address address, Byte data) {
 
     // ERAM write
     if (address < WRAM_BANK_00_START) {
-        mbc->write(address, data);
+        if (mbc) {
+            mbc->write(address, data);
+        }
         return;
     }
 
@@ -287,6 +289,8 @@ void MemoryBus::write(Address address, Byte data) {
         uint32_t adjusted_address = static_cast<uint32_t>(address);
         if (cgb_mode) {
             adjusted_address += wram_bank * WRAM_BANK_SIZE;
+        } else {
+            adjusted_address += WRAM_BANK_SIZE;
         }
         wram[adjusted_address - WRAM_BANK_NN_START] = data;
         return;
@@ -423,11 +427,11 @@ void MemoryBus::oam_dma_transfer(const Byte value) {
     ppu.load(OAM_START, dma_data);
 
     // OAM DMA takes 160 m-cycles
-    on_dma(true);
+    dma_active = true;
     for (int i = 0; i < 160; i++) {
         timer.tick();
     }
-    on_dma(false);
+    dma_active = false;
 }
 
 
@@ -473,11 +477,11 @@ void MemoryBus::vram_dma_transfer(const Byte value) {
         vram_dma_control = 0xFF;
 
         // 8 m-cycles to transfer 16 bytes -> GPDMA takes length / 2 m-cycles
-        on_dma(true);
+        dma_active = true;
         for (int i = 0; i < length / 2; i++) {
             timer.tick();
         }
-        on_dma(false);
+        dma_active = false;
     }
 }
 

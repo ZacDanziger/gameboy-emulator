@@ -9,16 +9,12 @@
 #include <iostream>
 
 // output sample rate
-constexpr float CYCLES_PER_SECOND = 1048576.0f;
-constexpr float SAMPLES_PER_SECOND = 44100.0f;
 constexpr float CYCLES_PER_SAMPLE = CYCLES_PER_SECOND / SAMPLES_PER_SECOND;
 
 constexpr float HPF_CHARGE_FACTOR = 0.996f;
 
 /**
  * Audio Processing Unit
- * --- IN PROGRESS ---
- * 
  */
 class APU {
     public:

@@ -4,9 +4,9 @@
  * Read the data stored in a binary file as uint8_ts
  * 
  * @param filename the file containing the data
- * @return a vector of uint8_t's containing the data that was read
+ * @return a vector of bytes containing the data that was read
 */
-std::vector<uint8_t> read_file(const std::string& filename) {
+std::vector<Byte> read_file(const std::string& filename) {
     std::ifstream infile(filename, std::ios::binary);
 
     if (!infile.is_open()) {
@@ -18,7 +18,7 @@ std::vector<uint8_t> read_file(const std::string& filename) {
     std::streamsize size = infile.tellg();
     infile.seekg(0, std::ios::beg);
 
-    std::vector<uint8_t> data(size);
+    std::vector<Byte> data(size);
 
     if (!infile.read(reinterpret_cast<char*>(data.data()), (data.size()))) {
         throw std::runtime_error("Failed to read file.");

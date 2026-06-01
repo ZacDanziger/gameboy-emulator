@@ -49,3 +49,23 @@ target_link_libraries(apu_test
 )
 
 add_test(apu_gtests apu_test)
+
+add_executable(mooneye_tests mooneye_tests.cpp)
+
+target_link_libraries(mooneye_tests
+  PRIVATE
+  GTest::GTest
+  gameboy
+)
+
+add_test(mooneye_gtests mooneye_tests)
+
+add_executable(timer_test test_timer.cpp)
+
+target_link_libraries(timer_test
+  PRIVATE
+  GTest::GTest
+  gameboy
+)
+
+add_test(timer_gtests timer_test)

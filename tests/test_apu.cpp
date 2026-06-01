@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 
 bool SKIP_INDIVIDUAL_TESTS = true;
-int SPECIFIC_TEST = 0;
+int SPECIFIC_TEST = 9;
 Emulator emulator;
 
 TEST(IndividualTest, CGBTest01) {

@@ -76,17 +76,7 @@ bool Frontend::poll_events() {
 }
 
 
-std::string Frontend::update_title() {
-    std::ostringstream oss;
-    oss << base_title << " (" << std::fixed << std::setprecision(1) << fps << " fps)";
-
-    return oss.str();
-}
-
-
 void Frontend::init(const std::string& title) {
-    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
-
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL ") + SDL_GetError());
     }
@@ -112,7 +102,7 @@ void Frontend::init(const std::string& title) {
         throw std::runtime_error(std::string("Failed to create texture ") + SDL_GetError());
     }
 
-    SDL_AudioSpec spec = {SDL_AUDIO_F32, 2, 44100};
+    SDL_AudioSpec spec = {SDL_AUDIO_F32, NUM_AUDIO_CHANNELS, (int)SAMPLES_PER_SECOND};
     audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
     if (!audio_stream) {
         teardown();
@@ -141,4 +131,20 @@ void Frontend::teardown() {
     }
 
     SDL_Quit();
+}
+
+
+void Frontend::set_title(const std::string& title) {
+    size_t start = title.find_last_of('/');
+    start = (start == std::string::npos) ? 0 : start + 1;
+    size_t end = title.find_last_of('.');
+    base_title = title.substr(start, end - start);
+}
+
+
+std::string Frontend::update_title() {
+    std::ostringstream oss;
+    oss << base_title << " (" << std::fixed << std::setprecision(1) << fps << " fps)";
+
+    return oss.str();
 }

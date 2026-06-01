@@ -3,17 +3,18 @@
 void Emulator::load(const std::string& rom_file) {
     reset();
     memory_bus.load_rom(rom_file);
-
-    size_t start = rom_file.find_last_of('/');
-    start = (start == std::string::npos) ? 0 : start + 1;
-    size_t end = rom_file.find_last_of('.');
-    frontend.set_title(rom_file.substr(start, end - start));
+    frontend.set_title(rom_file);
 }
 
 
 void Emulator::run() {
     while (true) {
         cpu.step();
+
+        if (joypad.is_save_requested()) {
+            memory_bus.save();
+            joypad.save_acknowledged();
+        }
 
         if (frame_complete) {
             frame_complete = false;
@@ -28,8 +29,12 @@ void Emulator::run() {
  * Reset the Emulator and all of its members to their post Boot ROM states
  */
 void Emulator::reset() {
-    last_frame_time = std::chrono::steady_clock::now();
-    last_save_time = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    last_frame_time = now;
+    last_save_time = now;
+
+    frame_count = 0;
+    fps_timer = now;
 
     interrupt.reset();
     joypad.reset();
@@ -38,34 +43,30 @@ void Emulator::reset() {
     timer.reset();
     memory_bus.reset();
     cpu.reset();
-
 }
 
 
 void Emulator::on_frame_ready() {
     frame_complete = true;
-
     update_fps();
 
-    if (dma_active) {
+    if (memory_bus.is_dma_active()) {
         return;
     }
 
     frontend.present(ppu.get_frame(), apu.flush_audio_buffer());
-
     autosave();
 }
 
 
 void Emulator::update_fps() {
-    static int frame_count = 0;
-    static auto fps_timer = std::chrono::steady_clock::now();
     frame_count++;
     if (frame_count % 60 == 0) {
         auto now = std::chrono::steady_clock::now();
         double fps = 60.0 / std::chrono::duration<double>(now - fps_timer).count();
         frontend.set_fps(fps);
         fps_timer = now;
+        frame_count = 0;
     }
 }
 

@@ -83,8 +83,8 @@ void Channel1::trigger(const bool next_step_clocks_length) {
             length_timer -= 1;
         }
     }
+    
     duty_cycle = (timer_and_duty_cycle & 0xC0) >> 6;
-
     current_volume = (volume_and_envelope & 0xF0) >> 4;
     period_timer = 2048 - (((period_high_and_control & 0x07) << 8) | period_low);
 
@@ -394,7 +394,7 @@ void Channel2::envelope_sweep() {
 Byte Channel3::read(const Address address) const {
     if (address >= WAVE_RAM_START && address <= WAVE_RAM_END) {
         if (active) {
-            return cgb_mode ? wave_ram[position_counter >> 1] : OPEN_BUS_VALUE;
+            return wave_ram[position_counter >> 1];
         }
         return wave_ram[address - WAVE_RAM_START];
     }

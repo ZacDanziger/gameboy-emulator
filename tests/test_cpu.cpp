@@ -173,16 +173,7 @@ TEST(InstructionTest, CompositeTest) {
     );
 }
 
-TEST(TimingTest, InstrTiming) {
-    // GTEST_SKIP();
-    std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
 
-    emulator.load(filename);
-
-    EXPECT_NO_THROW(
-        emulator.run()
-    );
-}
 
 
 

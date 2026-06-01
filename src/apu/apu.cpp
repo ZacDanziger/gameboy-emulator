@@ -214,9 +214,6 @@ void APU::frame_sequencer() {
 
 
 std::vector<float> APU::flush_audio_buffer() {
-    // if (sample_count > 0) {
-    //     push_sample();
-    // }
     std::vector<float> buffer_copy = std::move(audio_buffer);
     audio_buffer.clear();
 
@@ -284,9 +281,6 @@ void APU::push_sample() {
 
     audio_buffer.push_back(filtered_left);
     audio_buffer.push_back(filtered_right);
-
-    // audio_buffer.push_back(left_sample);
-    // audio_buffer.push_back(right_sample);
 }
 
 

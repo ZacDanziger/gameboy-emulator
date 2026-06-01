@@ -12,7 +12,8 @@
 #include <SDL3/SDL.h>
 
 constexpr int DISPLAY_SCALE = 5;    // initial scaling factor of screen
-constexpr int TARGET_QUEUE_BYTES = 44100 * 2 * sizeof(float) * 0.1f;
+constexpr int NUM_AUDIO_CHANNELS = 2;
+constexpr int TARGET_QUEUE_BYTES = SAMPLES_PER_SECOND * NUM_AUDIO_CHANNELS * sizeof(float) * 0.1f;
 
 /**
  * Handles all SDL3 code, including window & screen, keyboard input, and audio
@@ -29,8 +30,8 @@ class Frontend {
             joypad(j),
 
             base_title(title),
-            fps(60.0),
 
+            fps(60.0),
             frame_count(0)
         {
             init(title);
@@ -41,7 +42,7 @@ class Frontend {
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer);
         bool poll_events(); 
 
-        void set_title(const std::string& title) { base_title = title; }
+        void set_title(const std::string& title);
         void set_fps(const double new_fps) { fps = new_fps; }
     private:
         SDL_Window* window;
@@ -53,8 +54,8 @@ class Frontend {
         Joypad& joypad;
         
         std::string base_title;
-        double fps;
 
+        double fps;
         int frame_count;
         
         void init(const std::string& title);
