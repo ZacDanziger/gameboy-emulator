@@ -7,6 +7,7 @@ When I was a kid I really enjoyed playing on my GameBoy Color my parents bought 
 
 ## TODO:
 * Make emulator a stand-alone app for MacOS
+* Allow loading new game ROMs while emulator is running
 * CPU
     * Implement HALT bug
     * Debug double speed mode

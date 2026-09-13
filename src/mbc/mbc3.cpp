@@ -132,11 +132,27 @@ void MBC3::save() const {
 
     std::vector<Byte> data(eram.begin(), eram.end());
 
-    data.push_back(latched_seconds);
-    data.push_back(latched_minutes);
-    data.push_back(latched_hours);
-    data.push_back(latched_days_low);
-    data.push_back(latched_days_high);
+    // For making save file time data match expected format
+    // https://bgb.bircd.org/rtcsave.html?utm_source=chatgpt.com
+    auto append_rtc_value = [&data](Byte value) {
+        data.push_back(value);
+        data.push_back(0x00);
+        data.push_back(0x00);
+        data.push_back(0x00);
+    };
+
+    append_rtc_value(latched_seconds);
+    append_rtc_value(latched_minutes);
+    append_rtc_value(latched_hours);
+    append_rtc_value(latched_days_low);
+    append_rtc_value(latched_days_high);
+
+    // append same data twice, because we're not keeping separate latched vs real timestamps
+    append_rtc_value(latched_seconds);
+    append_rtc_value(latched_minutes);
+    append_rtc_value(latched_hours);
+    append_rtc_value(latched_days_low);
+    append_rtc_value(latched_days_high);
 
     // timestamp - 8 bytes
     uint64_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(rtc_start_time.time_since_epoch()).count();
@@ -173,21 +189,18 @@ void MBC3::load(const std::string& filename) {
     size_t eram_size = eram.size();
     
     std::copy_n(data.begin(), eram_size, eram.begin());
-    
-    // older save files without RTC data
-    if (data.size() == eram_size) {
-        return;
-    }
+
+
 
     latched_seconds = data[eram_size];
-    latched_minutes = data[eram_size + 1];
-    latched_hours = data[eram_size + 2];
-    latched_days_low = data[eram_size + 3];
-    latched_days_high = data[eram_size + 4];
+    latched_minutes = data[eram_size + 4];
+    latched_hours = data[eram_size + 8];
+    latched_days_low = data[eram_size + 12];
+    latched_days_high = data[eram_size + 16];
 
     uint64_t timestamp = 0;
     for (int i = 0; i < 8; i++) {
-        timestamp |= static_cast<uint64_t>(data[eram_size + 5 + i]) << (i * 8);
+        timestamp |= static_cast<uint64_t>(data[eram_size + 40 + i]) << (i * 8);
     }
     if (timestamp != 0) {
         rtc_start_time = std::chrono::system_clock::time_point(std::chrono::seconds(timestamp));
