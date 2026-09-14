@@ -52,12 +52,9 @@ void Emulator::run() {
         if (auto rom = frontend.take_pending_rom()) {
             load(*rom);
         }
-
-        if (state != EmulatorState::Running) {
-            SDL_Delay(16);  // ~60 Hz
-        }
     }
 }
+
 
 /**
  * Reset the Emulator and all of its members to their post Boot ROM states

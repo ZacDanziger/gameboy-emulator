@@ -85,6 +85,7 @@ bool Frontend::poll_events() {
 
 
 void Frontend::open_rom_dialog() {
+    pause_requested = true;
     SDL_DialogFileFilter filters[] = {
         {"Game Boy / Game Boy Color ROMs", "gb;gbc"}
         //{"Game Boy Advance ROMs", "gba"}
