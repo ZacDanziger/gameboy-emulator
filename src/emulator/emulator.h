@@ -15,9 +15,17 @@
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
 const std::string EMULATOR_NAME = "GameBoy Color Emulator";
 
+enum class EmulatorState {
+    Idle,
+    Running,
+    Paused
+};
+
 class Emulator {
     public:
         Emulator():
+            state(EmulatorState::Idle),
+
             interrupt(),
             joypad(interrupt),
             ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
@@ -26,8 +34,6 @@ class Emulator {
             memory_bus(interrupt, joypad, timer, ppu, apu),
             cpu(interrupt, joypad, timer, memory_bus),
             frontend(EMULATOR_NAME, joypad),
-
-            rom_loaded(false),
             
             frame_complete(false),
 
@@ -41,6 +47,8 @@ class Emulator {
         void load(const std::string& rom_file);
         void run();
     private:
+        EmulatorState state;
+
         InterruptController interrupt;
         Joypad joypad;
         PPU ppu;
@@ -49,8 +57,6 @@ class Emulator {
         MemoryBus memory_bus;
         CPU cpu;
         Frontend frontend;
-
-        bool rom_loaded;
 
         bool frame_complete;
 

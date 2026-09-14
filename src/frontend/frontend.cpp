@@ -64,7 +64,7 @@ bool Frontend::poll_events() {
                 joypad.set_key(Key::Down, pressed);
                 break;
             case SDL_SCANCODE_P:
-                joypad.set_key(Key::SAVE, pressed);
+                if (pressed) pause_requested = true;
                 break;
             case SDL_SCANCODE_O:
                 if (pressed) open_rom_dialog();
@@ -86,19 +86,25 @@ bool Frontend::poll_events() {
 
 void Frontend::open_rom_dialog() {
     SDL_DialogFileFilter filters[] = {
-        {"ROM files", "gb;gbc"},
-        {"All files", "*"}
+        {"Game Boy / Game Boy Color ROMs", "gb;gbc"}
+        //{"Game Boy Advance ROMs", "gba"}
     };
 
-    SDL_ShowOpenFileDialog(file_dialog_callback, this, window, filters, 2, nullptr, false);
+    SDL_ShowOpenFileDialog(file_dialog_callback, this, window, filters, 1, nullptr, false);
 }
 
 
-std::string Frontend::take_pending_rom() {
-    std::string rom = pending_rom;
-    pending_rom.clear();
-    return rom;
+std::optional<std::string> Frontend::take_pending_rom() {
+    return std::exchange(pending_rom, std::nullopt);
 }
+
+
+bool Frontend::take_pause_request() {
+    bool requested = pause_requested;
+    pause_requested = false;
+    return requested;
+}
+
 
 void SDLCALL Frontend::file_dialog_callback(void* userdata, const char* const* filelist, int filter) {
     Frontend* self = static_cast<Frontend*>(userdata);

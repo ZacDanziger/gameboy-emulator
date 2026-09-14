@@ -27,8 +27,7 @@ class Joypad {
         void set_key(Key key, bool pressed);
         bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
 
-        bool is_save_requested() const {return save_requested; }
-        void save_acknowledged() { save_requested = false; }
+        bool take_save_request();
 
         void reset() { joypad_register = 0x00; button_keys = 0x0F; direction_keys = 0x0F; }
     private:

@@ -77,3 +77,10 @@ void Joypad::set_key(Key key, bool pressed) {
         set_bit(*target, bit);
     }
 }
+
+
+bool Joypad::take_save_request() {
+    bool request = save_requested;
+    save_requested = false;
+    return request;
+}

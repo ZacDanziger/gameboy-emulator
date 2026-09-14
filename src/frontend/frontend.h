@@ -5,6 +5,8 @@
 #include <array>
 #include <sstream>
 #include <iomanip>
+#include <optional>
+#include <utility>
 
 #include "../types.h"
 #include "../joypad/joypad.h"
@@ -30,9 +32,10 @@ class Frontend {
             joypad(j),
 
             base_title(title),
-            pending_rom(""),
+            pending_rom(),
 
             focus_requested(false),
+            pause_requested(false),
 
             fps(60.0),
             frame_count(0)
@@ -46,7 +49,8 @@ class Frontend {
         bool poll_events(); 
 
         void open_rom_dialog();
-        std::string take_pending_rom();
+        std::optional<std::string> take_pending_rom();
+        bool take_pause_request();
 
         void clear_audio() { SDL_ClearAudioStream(audio_stream); }
 
@@ -62,9 +66,10 @@ class Frontend {
         Joypad& joypad;
         
         std::string base_title;
-        std::string pending_rom;
+        std::optional<std::string> pending_rom;
 
         bool focus_requested;
+        bool pause_requested;
 
         double fps;
         int frame_count;

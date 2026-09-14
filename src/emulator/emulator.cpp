@@ -1,7 +1,7 @@
 #include "emulator.h"
 
 void Emulator::load(const std::string& rom_file) {
-    if (rom_loaded) {
+    if (state != EmulatorState::Idle) {
         memory_bus.save();
     }
 
@@ -9,18 +9,17 @@ void Emulator::load(const std::string& rom_file) {
     memory_bus.load_rom(rom_file);
     frontend.set_title(rom_file);
 
-    rom_loaded = true;
+    state = EmulatorState::Running;
 }
 
 
 void Emulator::run() {
     while (true) {
-        if (rom_loaded) {
+        if (state == EmulatorState::Running) {
             cpu.step();
     
-            if (joypad.is_save_requested()) {
+            if (joypad.take_save_request()) {
                 memory_bus.save();
-                joypad.save_acknowledged();
             }
             
             if (!frame_complete) {
@@ -30,16 +29,31 @@ void Emulator::run() {
             frame_complete = false;
         }
 
+        // if window was closed, exit emulator
         if (!frontend.poll_events()) {
             break;
         }
 
-        std::string rom = frontend.take_pending_rom();
-        if (!rom.empty()) {
-            load(rom);
+        // If pause was pressed, toggle pause
+        if (frontend.take_pause_request()) {
+            switch(state) {
+                case EmulatorState::Idle:
+                    break;
+                case EmulatorState::Running:
+                    state = EmulatorState::Paused;
+                    break;
+                case EmulatorState::Paused:
+                    state = EmulatorState::Running;
+                    break;
+            }
         }
 
-        if (!rom_loaded) {
+        // if a new ROM has been loaded, switch to it
+        if (auto rom = frontend.take_pending_rom()) {
+            load(*rom);
+        }
+
+        if (state != EmulatorState::Running) {
             SDL_Delay(16);  // ~60 Hz
         }
     }
@@ -56,6 +70,8 @@ void Emulator::reset() {
     frame_count = 0;
     fps_timer = now;
     frame_complete = false;
+
+    state = EmulatorState::Idle;
 
     frontend.clear_audio();
     interrupt.reset();
