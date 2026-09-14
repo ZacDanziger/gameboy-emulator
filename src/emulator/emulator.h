@@ -37,6 +37,10 @@ class Emulator {
             
             frame_complete(false),
 
+            rom_dialog_opened(false),
+            rom_dialog_was_opened(false),
+            state_before_dialog(EmulatorState::Idle),
+
             last_frame_time(std::chrono::steady_clock::now()),
             last_save_time(std::chrono::steady_clock::now()),
 
@@ -59,6 +63,10 @@ class Emulator {
         Frontend frontend;
 
         bool frame_complete;
+
+        bool rom_dialog_opened;
+        bool rom_dialog_was_opened;
+        EmulatorState state_before_dialog;
 
         std::chrono::steady_clock::time_point last_frame_time;
         std::chrono::steady_clock::time_point last_save_time;

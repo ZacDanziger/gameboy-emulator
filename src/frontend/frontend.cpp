@@ -85,7 +85,8 @@ bool Frontend::poll_events() {
 
 
 void Frontend::open_rom_dialog() {
-    pause_requested = true;
+    rom_dialog_open = true;
+
     SDL_DialogFileFilter filters[] = {
         {"Game Boy / Game Boy Color ROMs", "gb;gbc"}
         //{"Game Boy Advance ROMs", "gba"}
@@ -110,12 +111,17 @@ bool Frontend::take_pause_request() {
 void SDLCALL Frontend::file_dialog_callback(void* userdata, const char* const* filelist, int filter) {
     Frontend* self = static_cast<Frontend*>(userdata);
 
-    if (!filelist || !filelist[0]) {
+    if (filelist == nullptr) {
+        self->rom_dialog_open = false;
         return;
     }
 
-    self->pending_rom = filelist[0];
-    self->focus_requested = true;
+    if (filelist[0] != nullptr) {
+        self->pending_rom = filelist[0];
+        self->focus_requested = true;
+    }
+
+    self->rom_dialog_open = false;
 }
 
 

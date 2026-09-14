@@ -48,10 +48,26 @@ void Emulator::run() {
             }
         }
 
-        // if a new ROM has been loaded, switch to it
-        if (auto rom = frontend.take_pending_rom()) {
-            load(*rom);
+        rom_dialog_opened = frontend.is_rom_dialog_open();
+
+        // rising edge, pause the emulator
+        if (!rom_dialog_was_opened && rom_dialog_opened) {
+            state_before_dialog = state;
+            state = EmulatorState::Paused;
         }
+
+        // falling edge, if no ROM was selected return to previous state, otherwise load ROM
+        if (rom_dialog_was_opened && !rom_dialog_opened) {
+            // if a new ROM has been loaded, switch to it
+            if (auto rom = frontend.take_pending_rom()) {
+                load(*rom);
+            } else {
+                state = state_before_dialog;
+            }
+        }
+
+        rom_dialog_was_opened = rom_dialog_opened;
+
     }
 }
 

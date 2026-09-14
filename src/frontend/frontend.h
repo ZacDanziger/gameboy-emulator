@@ -36,6 +36,7 @@ class Frontend {
 
             focus_requested(false),
             pause_requested(false),
+            rom_dialog_open(false),
 
             fps(60.0),
             frame_count(0)
@@ -56,6 +57,8 @@ class Frontend {
 
         void set_title(const std::string& title);
         void set_fps(const double new_fps) { fps = new_fps; }
+
+        bool is_rom_dialog_open() const { return rom_dialog_open; }
     private:
         SDL_Window* window;
         SDL_Renderer* renderer;
@@ -70,6 +73,7 @@ class Frontend {
 
         bool focus_requested;
         bool pause_requested;
+        bool rom_dialog_open;
 
         double fps;
         int frame_count;
