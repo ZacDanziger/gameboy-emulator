@@ -30,6 +30,9 @@ class Frontend {
             joypad(j),
 
             base_title(title),
+            pending_rom(""),
+
+            focus_requested(false),
 
             fps(60.0),
             frame_count(0)
@@ -41,6 +44,11 @@ class Frontend {
 
         void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer);
         bool poll_events(); 
+
+        void open_rom_dialog();
+        std::string take_pending_rom();
+
+        void clear_audio() { SDL_ClearAudioStream(audio_stream); }
 
         void set_title(const std::string& title);
         void set_fps(const double new_fps) { fps = new_fps; }
@@ -54,12 +62,17 @@ class Frontend {
         Joypad& joypad;
         
         std::string base_title;
+        std::string pending_rom;
+
+        bool focus_requested;
 
         double fps;
         int frame_count;
         
         void init(const std::string& title);
         void teardown();
+
+        static void SDLCALL file_dialog_callback(void* userdata, const char* const* filelist, int filter);
 
         std::string update_title();
 };

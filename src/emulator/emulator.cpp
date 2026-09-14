@@ -1,26 +1,46 @@
 #include "emulator.h"
 
 void Emulator::load(const std::string& rom_file) {
+    if (rom_loaded) {
+        memory_bus.save();
+    }
+
     reset();
     memory_bus.load_rom(rom_file);
     frontend.set_title(rom_file);
+
+    rom_loaded = true;
 }
 
 
 void Emulator::run() {
     while (true) {
-        cpu.step();
+        if (rom_loaded) {
+            cpu.step();
+    
+            if (joypad.is_save_requested()) {
+                memory_bus.save();
+                joypad.save_acknowledged();
+            }
+            
+            if (!frame_complete) {
+                continue;
+            }
 
-        if (joypad.is_save_requested()) {
-            memory_bus.save();
-            joypad.save_acknowledged();
+            frame_complete = false;
         }
 
-        if (frame_complete) {
-            frame_complete = false;
-            if (!frontend.poll_events()) {
-                break;
-            }
+        if (!frontend.poll_events()) {
+            break;
+        }
+
+        std::string rom = frontend.take_pending_rom();
+        if (!rom.empty()) {
+            load(rom);
+        }
+
+        if (!rom_loaded) {
+            SDL_Delay(16);  // ~60 Hz
         }
     }
 }
@@ -35,7 +55,9 @@ void Emulator::reset() {
 
     frame_count = 0;
     fps_timer = now;
+    frame_complete = false;
 
+    frontend.clear_audio();
     interrupt.reset();
     joypad.reset();
     ppu.reset();

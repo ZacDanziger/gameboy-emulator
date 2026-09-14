@@ -63,7 +63,7 @@ class MemoryBus {
         void hdma_tick();
         bool is_dma_active() const { return dma_active; }
 
-        void save () { mbc->save(); }
+        void save () { if(mbc) mbc->save(); }
     private:
         InterruptController& interrupt;
         Joypad& joypad;

@@ -26,6 +26,8 @@ class Emulator {
             memory_bus(interrupt, joypad, timer, ppu, apu),
             cpu(interrupt, joypad, timer, memory_bus),
             frontend(EMULATOR_NAME, joypad),
+
+            rom_loaded(false),
             
             frame_complete(false),
 
@@ -47,6 +49,8 @@ class Emulator {
         MemoryBus memory_bus;
         CPU cpu;
         Frontend frontend;
+
+        bool rom_loaded;
 
         bool frame_complete;
 

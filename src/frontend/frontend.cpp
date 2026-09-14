@@ -66,13 +66,49 @@ bool Frontend::poll_events() {
             case SDL_SCANCODE_P:
                 joypad.set_key(Key::SAVE, pressed);
                 break;
+            case SDL_SCANCODE_O:
+                if (pressed) open_rom_dialog();
+                break;
             default:
                 break;
             }
         }
     }
 
+    if (focus_requested) {
+        SDL_RaiseWindow(window);
+        focus_requested = false;
+    }
+
     return true;
+}
+
+
+void Frontend::open_rom_dialog() {
+    SDL_DialogFileFilter filters[] = {
+        {"ROM files", "gb;gbc"},
+        {"All files", "*"}
+    };
+
+    SDL_ShowOpenFileDialog(file_dialog_callback, this, window, filters, 2, nullptr, false);
+}
+
+
+std::string Frontend::take_pending_rom() {
+    std::string rom = pending_rom;
+    pending_rom.clear();
+    return rom;
+}
+
+void SDLCALL Frontend::file_dialog_callback(void* userdata, const char* const* filelist, int filter) {
+    Frontend* self = static_cast<Frontend*>(userdata);
+
+    if (!filelist || !filelist[0]) {
+        return;
+    }
+
+    self->pending_rom = filelist[0];
+    self->focus_requested = true;
 }
 
 
