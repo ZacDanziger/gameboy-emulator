@@ -3,9 +3,9 @@
 
 #include <stdexcept>
 
-#include "../common/types.h"
-#include "../common/memory_map.h"
-#include "../common/bit_utils.h"
+#include "../types.h"
+#include "../memory/memory_map.h"
+#include "../utils/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 
 using TickCallback = std::function<void()>;

@@ -4,9 +4,10 @@
 #include <stdexcept>
 #include <functional>
 
-#include "../common/types.h"
-#include "../common/bit_utils.h"
+#include "../types.h"
+#include "../utils/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
+#include "../../common/input.h"
 
 class Joypad {
     public:
@@ -24,7 +25,7 @@ class Joypad {
         Byte read() const;
         void write(const Byte data);
 
-        void set_key(Key key, bool pressed);
+        void set_key(InputEvent e);
         bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
 
         bool take_save_request();

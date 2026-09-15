@@ -1,10 +1,11 @@
 #ifndef APU_H
 #define APU_H
 
-#include "../common/memory_map.h"
-#include "../common/types.h"
-#include "../common/bit_utils.h"
+#include "../memory/memory_map.h"
+#include "../types.h"
+#include "../utils/bit_utils.h"
 #include "channels.h"
+#include "../common/output.h"
 
 #include <iostream>
 

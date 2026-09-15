@@ -1,7 +1,7 @@
 #ifndef BIT_UTILS_H
 #define BIT_UTILS_H
 
-#include "types.h"
+#include "../types.h"
 
 inline bool is_set(const Byte byte, const Bit bit) { return (byte & static_cast<Byte>(bit)) > 0; }
 inline bool is_set(const Word word, const Bit bit) { return (word & static_cast<Word>(bit)) > 0; }

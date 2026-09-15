@@ -8,7 +8,6 @@
 using Byte = uint8_t;
 using Word = uint16_t;
 using Address = uint16_t;
-using RGBA32 = uint32_t;
 
 
 enum class Bit : Word {
@@ -40,11 +39,7 @@ enum class Interrupt : Byte {
 };
 
 
-enum class Key {
-    A, B, Select, Start,    // button keys
-    Right, Left, Up, Down,  // direction keys
-    SAVE                    // save
-};
+
 
 
 enum class Mode {
@@ -73,8 +68,7 @@ constexpr std::size_t SCREEN_HEIGHT = 144;
 
 // m-cycle frequency
 constexpr float CYCLES_PER_SECOND = 1048576.0f;
-// audio sample frequency
-constexpr float SAMPLES_PER_SECOND = 44100.0f;
+
 
 constexpr Byte OPEN_BUS_VALUE = 0xFF;
 

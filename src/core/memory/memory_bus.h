@@ -5,9 +5,9 @@
 #include <array>
 #include <vector>
 
-#include "../common/types.h"
-#include "../common/memory_map.h"
-#include "../common/bit_utils.h"
+#include "../types.h"
+#include "memory_map.h"
+#include "../utils/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 #include "../joypad/joypad.h"
 #include "../ppu/ppu.h"

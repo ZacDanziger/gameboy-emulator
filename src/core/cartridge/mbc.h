@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "../common/types.h"
+#include "../types.h"
 
 /**
  * Memory Bank Controller

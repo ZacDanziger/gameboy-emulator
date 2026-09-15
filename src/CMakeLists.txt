@@ -1,7 +1,6 @@
 set (SourceFiles
     core/apu/apu.cpp
     core/apu/channels.cpp
-    core/cartridge/file_io.cpp
     core/cartridge/mbc0.cpp
     core/cartridge/mbc1.cpp
     core/cartridge/mbc3.cpp
@@ -12,9 +11,12 @@ set (SourceFiles
     core/memory/memory_bus.cpp
     core/ppu/ppu.cpp
     core/timer/timer.cpp
+    core/utils/file_io.cpp
     core/emulation_core.cpp
 
     frontend/frontend.cpp
+
+    app/emulator.cpp
 )
 
 

@@ -271,6 +271,8 @@ void PPU::update() {
         return;
     }
 
+    frame_ready = false;
+
     cycles += 1;
     cycles %= CYCLES_PER_SCANLINE;
 
@@ -301,7 +303,7 @@ void PPU::update() {
                 interrupt.request_interrupt(Interrupt::LCDStat);
             }
 
-            frame_ready();
+            frame_ready = true;
             window_line_counter = 0;
         }
 
@@ -359,10 +361,10 @@ void PPU::draw_scanline() {
 
     // Fill scanline with white if DMG, and background palette 0 color 0 if CGB
     int buffer_index = lcd_y * SCREEN_WIDTH;
-    RGBA32 fill_color = cgb_mode ? color_id_to_rgba(0, 0x00, false) : dmg_palette[0];
+    Pixel fill_color = cgb_mode ? color_id_to_rgba(0, 0x00, false) : dmg_palette[0];
     std::fill(
-        frame_buffer.begin() + buffer_index,
-        frame_buffer.begin() + buffer_index + SCREEN_WIDTH,
+        frame_buffer.pixels.begin() + buffer_index,
+        frame_buffer.pixels.begin() + buffer_index + SCREEN_WIDTH,
         fill_color
     );
 
@@ -581,7 +583,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         }
         
 
-        frame_buffer[buffer_index] = color_id_to_rgba(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette, true);
+        frame_buffer.pixels[buffer_index] = color_id_to_rgba(sprite_buffer[pixel_column].color_id, sprite_buffer[pixel_column].palette, true);
     }
 }
 
@@ -691,7 +693,7 @@ void PPU::refresh_tile(const Address tile_address, int bank) {
  * @param palette byte that matches color ids in the range [0,3] to palette indices in the range[0,3]
  * @returns the RGBA32 color value associated with that color id
  */
-RGBA32 PPU::color_id_to_rgba(const int color_id, const Byte palette, const bool is_sprite) const {
+Pixel PPU::color_id_to_rgba(const int color_id, const Byte palette, const bool is_sprite) const {
     if ((color_id < 0) || (color_id >= 4)) {
         throw std::runtime_error("color id must be a value between 0 and 3 (inclusive)");
     }
@@ -808,7 +810,7 @@ void PPU::draw_bg_pixel(
 
     int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
 
-    frame_buffer[buffer_index] = cgb_mode
+    frame_buffer.pixels[buffer_index] = cgb_mode
         ? color_id_to_rgba(pixel_color_id, palette)
         : color_id_to_rgba(pixel_color_id, background_palette);
 }

@@ -5,10 +5,11 @@
 #include <array>
 #include <functional>
 
-#include "../common/types.h"
-#include "../common/memory_map.h"
-#include "../common/bit_utils.h"
+#include "../types.h"
+#include "../memory/memory_map.h"
+#include "../utils/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
+#include "../../common/output.h"
 
 using FrameCallback = std::function<void()>;
 using HDMACallback = std::function<void()>;
@@ -25,7 +26,7 @@ constexpr int SCANLINES_PER_FRAME = 154;
 constexpr int OAM_SCAN_END = 20;
 constexpr int TRANSFER_END = 78;  // average, based on pan docs numbers [172, 289] dots
 
-constexpr RGBA32 dmg_palette[4] = {
+constexpr Pixel dmg_palette[4] = {
     0xEFEFEFFF, // White
     0x9F9F9FFF, // Light Gray
     0x5F5F5FFF, // Dark Gray
@@ -38,9 +39,8 @@ constexpr RGBA32 dmg_palette[4] = {
  */
 class PPU {
     public:
-        PPU(InterruptController& i, FrameCallback f, HDMACallback h) :
+        PPU(InterruptController& i, HDMACallback h) :
             interrupt(i),
-            frame_ready(f),
             hblank(h),
 
             vram{},
@@ -51,6 +51,7 @@ class PPU {
 
             tile_cache{},
             frame_buffer{},
+            frame_ready(false),
 
             lcd_control(0x91),
             lcd_status(0x00),
@@ -84,7 +85,8 @@ class PPU {
 
         void load(const Address address, const std::vector<Byte>& data);
 
-        const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& get_frame() const { return frame_buffer; }
+        const bool is_frame_ready() const { return frame_ready; }
+        const Frame& get_frame() const { return frame_buffer; }
 
         void update();
         void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
@@ -95,7 +97,6 @@ class PPU {
         };
 
         InterruptController& interrupt;
-        FrameCallback frame_ready;
         HDMACallback hblank;
         
         std::array<Byte, 2 * VRAM_SIZE> vram;      // 0x8000 - 0x9FFF, two banks on CGB
@@ -106,7 +107,8 @@ class PPU {
         std::array<Byte, 64> object_color_ram;
 
         std::array<Tile, 2 * TILES_PER_BANK> tile_cache;
-        std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT> frame_buffer;
+        Frame frame_buffer;
+        bool frame_ready;
         
         // PPU's IO Registers
         Byte lcd_control;                 // LCDC REGISTER
@@ -145,7 +147,7 @@ class PPU {
         std::array<int, 8> fetch_pixel_slice(const Byte low_byte, const Byte high_byte) const;
         void refresh_tile(const Address tile_address, int bank = 0);
 
-        RGBA32 color_id_to_rgba(const int color_id, const Byte palette, const bool is_sprite = false) const;
+        Pixel color_id_to_rgba(const int color_id, const Byte palette, const bool is_sprite = false) const;
 
         std::array<Address, 10> select_sprites(const int sprite_height);
 

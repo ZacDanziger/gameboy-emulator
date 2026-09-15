@@ -28,49 +28,46 @@ void Joypad::write(const Byte data) {
  * @param key the key that has been changed
  * @param pressed true if pressed, false if released
  */
-void Joypad::set_key(Key key, bool pressed) {
+void Joypad::set_key(InputEvent e) {
     Byte* target = nullptr;
     Bit bit = Bit::Bit0;
 
-    switch(key) {
-    case Key::A:
+    switch(e.button) {
+    case Button::A:
         target = &button_keys;
         bit = Bit::Bit0;
         break;
-    case Key::B:
+    case Button::B:
         target = &button_keys;
         bit = Bit::Bit1;
         break;
-    case Key::Select:
+    case Button::Select:
         target = &button_keys;
         bit = Bit::Bit2;
         break;
-    case Key::Start:
+    case Button::Start:
         target = &button_keys;
         bit = Bit::Bit3;
         break;
-    case Key::Right:
+    case Button::Right:
         target = &direction_keys;
         bit = Bit::Bit0;
         break;
-    case Key::Left:
+    case Button::Left:
         target = &direction_keys;
         bit = Bit::Bit1;
         break;
-    case Key::Up:
+    case Button::Up:
         target = &direction_keys;
         bit = Bit::Bit2;
         break;
-    case Key::Down:
+    case Button::Down:
         target = &direction_keys;
         bit = Bit::Bit3;
         break;
-    case Key::SAVE:
-        save_requested = true;
-        return;
     }   
 
-    if (pressed) {
+    if (e.pressed) {
         reset_bit(*target, bit);
         interrupt.request_interrupt(Interrupt::Joypad);
     } else {

@@ -8,7 +8,8 @@
 #include <optional>
 #include <utility>
 
-#include "../core/common/types.h"
+#include "../common/app_event.h"
+#include "../common/output.h"
 #include "../core/joypad/joypad.h"
 
 #include <SDL3/SDL.h>
@@ -22,21 +23,16 @@ constexpr int TARGET_QUEUE_BYTES = SAMPLES_PER_SECOND * NUM_AUDIO_CHANNELS * siz
  */
 class Frontend {
     public:
-        Frontend(const std::string& title, Joypad& j) :
+        Frontend(const std::string& title) :
             window(nullptr),
             renderer(nullptr),
             texture(nullptr),
 
             audio_stream(nullptr),
 
-            joypad(j),
-
             base_title(title),
-            pending_rom(),
 
             focus_requested(false),
-            pause_requested(false),
-            rom_dialog_open(false),
 
             fps(60.0),
             frame_count(0)
@@ -46,19 +42,16 @@ class Frontend {
 
         ~Frontend();
 
-        void present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer);
-        bool poll_events(); 
+        void present(const Frame& frame, const std::vector<float>& audio_buffer);
+
+        void poll_events(); 
+        std::vector<AppEvent> take_events();
 
         void open_rom_dialog();
-        std::optional<std::string> take_pending_rom();
-        bool take_pause_request();
 
         void clear_audio() { SDL_ClearAudioStream(audio_stream); }
-
         void set_title(const std::string& title);
         void set_fps(const double new_fps) { fps = new_fps; }
-
-        bool is_rom_dialog_open() const { return rom_dialog_open; }
     private:
         SDL_Window* window;
         SDL_Renderer* renderer;
@@ -66,14 +59,12 @@ class Frontend {
         
         SDL_AudioStream* audio_stream;
         
-        Joypad& joypad;
-        
         std::string base_title;
+        std::vector<AppEvent> event_buffer;
+
         std::optional<std::string> pending_rom;
 
         bool focus_requested;
-        bool pause_requested;
-        bool rom_dialog_open;
 
         double fps;
         int frame_count;
