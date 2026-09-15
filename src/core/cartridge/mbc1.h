@@ -6,9 +6,10 @@
 #include <stdexcept>
 
 #include "mbc.h"
-#include "../types.h"
-#include "../memory_map.h"
-#include "../utils/utils.h"
+#include "../common/types.h"
+#include "../common/memory_map.h"
+#include "../common/bit_utils.h"
+#include "file_io.h"
 
 class MBC1 : public MBC {
     public:

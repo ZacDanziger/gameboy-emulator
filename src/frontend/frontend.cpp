@@ -5,6 +5,7 @@ Frontend::~Frontend() {
     teardown();
 }
 
+
 void Frontend::present(const std::array<RGBA32, SCREEN_WIDTH * SCREEN_HEIGHT>& frame, const std::vector<float>& audio_buffer) {
     frame_count += 1;
     if (frame_count == 60) {

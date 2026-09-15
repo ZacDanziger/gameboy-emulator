@@ -1,4 +1,4 @@
-#include "../emulator/emulator.h"
+#include "../src/core/emulation_core.h"
 #include "gtest/gtest.h"
 
 Emulator emulator;

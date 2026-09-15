@@ -3,9 +3,9 @@
 
 #include <stdexcept>
 
-#include "../types.h"
-#include "../memory_map.h"
-#include "../utils/utils.h"
+#include "../common/types.h"
+#include "../common/memory_map.h"
+#include "../common/bit_utils.h"
 
 class InterruptController {
     public:

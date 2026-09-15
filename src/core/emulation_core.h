@@ -3,13 +3,14 @@
 
 #include <chrono>
 
-#include "../interrupt/interrupt_controller.h"
-#include "../joypad/joypad.h"
-#include "../ppu/ppu.h"
-#include "../apu/apu.h"
-#include "../timer/timer.h"
-#include "../memory/memory_bus.h"
-#include "../cpu/cpu.h"
+#include "apu/apu.h"
+#include "cpu/cpu.h"
+#include "interrupt/interrupt_controller.h"
+#include "joypad/joypad.h"
+#include "memory/memory_bus.h"
+#include "ppu/ppu.h"
+#include "timer/timer.h"
+
 #include "../frontend/frontend.h"
 
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);

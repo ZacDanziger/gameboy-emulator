@@ -6,8 +6,8 @@
 #include <stdexcept>
 
 #include "mbc.h"
-#include "../types.h"
-#include "../memory_map.h"
+#include "../common/types.h"
+#include "../common/memory_map.h"
 
 /**
  * AKA no MBC

@@ -1,4 +1,4 @@
-#include "emulator.h"
+#include "emulation_core.h"
 
 void Emulator::load(const std::string& rom_file) {
     if (state != EmulatorState::Idle) {

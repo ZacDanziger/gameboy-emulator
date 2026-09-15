@@ -8,8 +8,8 @@
 #include <optional>
 #include <utility>
 
-#include "../types.h"
-#include "../joypad/joypad.h"
+#include "../core/common/types.h"
+#include "../core/joypad/joypad.h"
 
 #include <SDL3/SDL.h>
 

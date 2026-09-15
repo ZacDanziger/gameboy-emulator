@@ -1,19 +1,20 @@
 set (SourceFiles
-    utils/utils.cpp
-    interrupt/interrupt_controller.cpp
-    joypad/joypad.cpp
-    memory/memory_bus.cpp
-    timer/timer.cpp
-    cpu/cpu.cpp
-    cpu/optables.cpp
-    ppu/ppu.cpp
+    core/apu/apu.cpp
+    core/apu/channels.cpp
+    core/cartridge/file_io.cpp
+    core/cartridge/mbc0.cpp
+    core/cartridge/mbc1.cpp
+    core/cartridge/mbc3.cpp
+    core/cpu/cpu.cpp
+    core/cpu/optables.cpp
+    core/interrupt/interrupt_controller.cpp
+    core/joypad/joypad.cpp
+    core/memory/memory_bus.cpp
+    core/ppu/ppu.cpp
+    core/timer/timer.cpp
+    core/emulation_core.cpp
+
     frontend/frontend.cpp
-    mbc/mbc0.cpp
-    mbc/mbc1.cpp
-    mbc/mbc3.cpp
-    emulator/emulator.cpp
-    apu/apu.cpp
-    apu/channels.cpp
 )
 
 

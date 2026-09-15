@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <functional>
 
-#include "../types.h"
-#include "../utils/utils.h"
+#include "../common/types.h"
+#include "../common/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 
 class Joypad {

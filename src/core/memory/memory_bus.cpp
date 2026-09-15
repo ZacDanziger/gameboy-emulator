@@ -1,7 +1,7 @@
 #include "memory_bus.h"
-#include "../mbc/mbc0.h"
-#include "../mbc/mbc1.h"
-#include "../mbc/mbc3.h"
+#include "../cartridge/mbc0.h"
+#include "../cartridge/mbc1.h"
+#include "../cartridge/mbc3.h"
 
 /**
  * Reset Memory Bus to its post Boot ROM state

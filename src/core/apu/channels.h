@@ -3,9 +3,9 @@
 
 #include <array>
 
-#include "../types.h"
-#include "../memory_map.h"
-#include "../utils/utils.h"
+#include "../common/types.h"
+#include "../common/memory_map.h"
+#include "../common/bit_utils.h"
 
 static constexpr bool duty_table[4][8] = {
     {0, 0, 0, 0, 0, 0, 0, 1},   // 12.5%

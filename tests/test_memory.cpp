@@ -5,7 +5,7 @@
 #include <fstream>
 #include <array>
 
-#include "../src/emulator/emulator.h"
+#include "../src/core/emulation_core.h"
 
 Emulator emulator;
 

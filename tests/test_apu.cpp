@@ -1,4 +1,4 @@
-#include "../src/emulator/emulator.h"
+#include "../src/core/emulation_core.h"
 #include "gtest/gtest.h"
 
 bool SKIP_INDIVIDUAL_TESTS = true;

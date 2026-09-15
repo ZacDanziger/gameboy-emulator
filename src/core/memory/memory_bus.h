@@ -5,15 +5,15 @@
 #include <array>
 #include <vector>
 
-#include "../memory_map.h"
-#include "../types.h"
-#include "../utils/utils.h"
+#include "../common/types.h"
+#include "../common/memory_map.h"
+#include "../common/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 #include "../joypad/joypad.h"
 #include "../ppu/ppu.h"
 #include "../apu/apu.h"
 #include "../timer/timer.h"
-#include "../mbc/mbc.h"
+#include "../cartridge/mbc.h"
 
 /**
  * Memory Management Unit

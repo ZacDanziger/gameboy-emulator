@@ -5,9 +5,9 @@
 #include <array>
 #include <functional>
 
-#include "../types.h"
-#include "../memory_map.h"
-#include "../utils/utils.h"
+#include "../common/types.h"
+#include "../common/memory_map.h"
+#include "../common/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 
 using FrameCallback = std::function<void()>;
