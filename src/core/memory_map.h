@@ -1,7 +1,7 @@
 #ifndef MEMORY_MAP_H
 #define MEMORY_MAP_H
 
-#include "../types.h"
+#include "types.h"
 
 constexpr size_t KiB = 0x0400;
 

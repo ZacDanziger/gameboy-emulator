@@ -4,16 +4,7 @@
 #include <functional>
 
 #include "../types.h"
-#include "../interrupt/interrupt_controller.h"
-#include "../joypad/joypad.h"
-#include "../timer/timer.h"
-#include "../memory/memory_bus.h"
 
-using MicroOp = std::function<void(class CPU&)>;
-struct Instruction {
-    std::array<MicroOp, 6> steps;   // max number of micro-ops in an instruction is 6
-    uint8_t step_count;             // keeps track of how many micro-ops are in the instruction
-};
 
 using Flag = Bit;
 
@@ -28,12 +19,7 @@ static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
 class CPU {
     public:
     //test
-        CPU(InterruptController& i, Joypad& j, Timer& t, MemoryBus& m) :
-            interrupt(i),
-            joypad(j),
-            timer(t),
-            memory_bus(m),
-
+        CPU() :
             reg_A(0x11),
             reg_F(0x80),
             reg_B(0x00),
@@ -50,23 +36,12 @@ class CPU {
             DE({&reg_D, &reg_E}),
             HL({&reg_H, &reg_L}),
 
-            optable{},
-            cb_optable{},
-
-            current_opcode(0x00),
-            next_opcode(0x00),
-            current_step(0),
-            fetching(true),
-            
             interrupts_enabled(false),
             ei_pending(false),
             halted(false),
             stopped(false),
             speed_switch_halt(false)
-        {
-            init_optable();
-            init_cb_optable();
-        }
+        {}
 
         void reset();
         
@@ -78,11 +53,6 @@ class CPU {
 
         
     private:
-        InterruptController& interrupt;
-        Joypad& joypad;
-        Timer& timer;
-        MemoryBus& memory_bus;
-
         // Pair of 8-bit registers
         struct Pair {
             Byte *reg_high;
@@ -107,12 +77,6 @@ class CPU {
         // 16-bit Stack Pointer and Program Counter
         Word reg_SP;
         Word reg_PC;
-
-        std::array<Instruction, 256> optable;
-        std::array<Instruction, 256> cb_optable;
-
-        void init_optable();
-        void init_cb_optable();
 
         Byte current_opcode;
         Byte next_opcode;

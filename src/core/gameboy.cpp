@@ -1,30 +1,21 @@
-#include "memory_bus.h"
-#include "../cartridge/mbc0.h"
-#include "../cartridge/mbc1.h"
-#include "../cartridge/mbc3.h"
+#include "gameboy.h"
+#include "cartridge/mbc0.h"
+#include "cartridge/mbc1.h"
+#include "cartridge/mbc3.h"
 
 /**
- * Reset Memory Bus to its post Boot ROM state
+ * Run the GameBoy until a frame is ready to be displayed, at which point the frame should be passed to the Frontend
+ *  TODO: figure out how I want to pass the frame to the Frontend, maybe a callback function or something
  */
-void MemoryBus::reset() {
-    wram = {0};
-    hram = {0};
-
-    cgb_mode = false;
-
-    prep_speed_switch = 0x7E;
-    vram_source_high = 0xFF;
-    vram_source_low = 0xFF;
-    vram_dest_high = 0xFF;
-    vram_dest_low = 0xFF;
-    vram_dma_control = 0xFF;
-    wram_bank = 0x01;
-
-    hdma_active = false;
-    hdma_source = 0x0000;
-    hdma_destination = 0x0000;
-    hdma_remaining = 0x0000;
+void GameBoy::run_until_frame() {
+    while (!ppu.is_frame_ready()) {
+        cpu.tick();
+        timer.tick();
+        apu.tick();
+        ppu.tick();
+    }
 }
+
 
 /**
  * Read data from a file and write it to ROM
@@ -32,8 +23,10 @@ void MemoryBus::reset() {
  * 
  * @param filename the filename containing the data to be read from
 */
-void MemoryBus::load_rom(const std::string& filename) {
-    std::vector<Byte> data = read_file(filename);
+void GameBoy::load(const std::string& rom_file) {
+    reset();
+    
+    std::vector<Byte> data = read_file(rom_file);
 
     // check header checksum
     Byte checksum = 0x00;
@@ -102,7 +95,41 @@ void MemoryBus::load_rom(const std::string& filename) {
         throw std::runtime_error("Unsupported MBC type");
     }
 
-    mbc->load(filename);
+    mbc->load(rom_file);
+}
+
+
+/**
+ * Reset the GameBoy and all of its members to their post Boot ROM states
+ */
+void GameBoy::reset() {
+    interrupt.reset();
+    joypad.reset();
+    ppu.reset();
+    apu.reset();
+    timer.reset();
+    cpu.reset();
+
+    wram = {0};
+    hram = {0};
+
+    cgb_mode = false;
+
+    prep_speed_switch = 0x7E;
+    vram_source_high = 0xFF;
+    vram_source_low = 0xFF;
+    vram_dest_high = 0xFF;
+    vram_dest_low = 0xFF;
+    vram_dma_control = 0xFF;
+    wram_bank = 0x01;
+
+    cgb_mode = false;
+    dma_active = false;
+
+    hdma_active = false;
+    hdma_source = 0x0000;
+    hdma_destination = 0x0000;
+    hdma_remaining = 0x0000;
 }
 
 
@@ -113,7 +140,7 @@ void MemoryBus::load_rom(const std::string& filename) {
  * @param address the address to be read from
  * @returns the value in memory at address
 */
-Byte MemoryBus::read(Address address) const {
+Byte GameBoy::read(Address address) const {
     // ROM read
     if (address < VRAM_START) {
         return mbc ? mbc->read(address) : 0x00;
@@ -238,8 +265,9 @@ Byte MemoryBus::read(Address address) const {
     }
 
     // not sure how you would get here
-    throw std::runtime_error("MemoryBus read called on invalid address");
+    throw std::runtime_error("GameBoy read called on invalid address");
 }
+
 
 
 /**
@@ -249,7 +277,7 @@ Byte MemoryBus::read(Address address) const {
  * @param address the address to be written to
  * @param data the data to be written in the address
 */
-void MemoryBus::write(Address address, Byte data) {
+void GameBoy::write(Address address, Byte data) {
     // ROM write
     if (address < VRAM_START) {
         if (mbc) {
@@ -407,7 +435,52 @@ void MemoryBus::write(Address address, Byte data) {
     }
 
     // not sure how you would get here
-    throw std::runtime_error("MemoryBus write called on invalid address");
+    throw std::runtime_error("GameBoy write called on invalid address");
+}
+
+
+/**
+ * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
+ * CGB only
+ */
+void GameBoy::hdma_tick() {
+    if (!hdma_active) {
+        return;
+    }
+
+    int chunk_size = 16;
+
+
+    for (int i = 0; i < chunk_size; i++) {
+        hdma_chunk_buffer[i] = read(hdma_source + i);
+    }
+
+    if (hdma_destination + chunk_size > ERAM_START) {
+        hdma_active = false;
+        vram_dma_control = 0xFF;
+        return;
+    }
+
+    ppu.load(hdma_destination, hdma_chunk_buffer);
+
+    hdma_source += chunk_size;
+    hdma_destination += chunk_size;
+    hdma_remaining -= chunk_size;
+
+    if (hdma_remaining == 0) {
+        hdma_active = false;
+        vram_dma_control = 0xFF;
+    } else {
+        Byte new_val = (hdma_remaining >> 4) - 1;
+        vram_dma_control &= 0x80;
+        vram_dma_control |= (new_val & 0x7F);
+    }
+
+    // takes 4 m-cycles in double speed mode, 8 in single speed
+    int cycles = timer.get_double_speed() ? 4 : 8;
+    for (int i = 0; i < cycles; i++) {
+        timer.tick();
+    }
 }
 
 
@@ -416,7 +489,7 @@ void MemoryBus::write(Address address, Byte data) {
  * 
  * @param value the upper byte of the address to start transferring data from
  */
-void MemoryBus::oam_dma_transfer(const Byte value) {
+void GameBoy::oam_dma_transfer(const Byte value) {
     Address address = static_cast<Address>(value) << 8;
     std::vector<Byte> dma_data(OAM_SIZE);
 
@@ -435,13 +508,14 @@ void MemoryBus::oam_dma_transfer(const Byte value) {
 }
 
 
+
 /**
  * Transfer a section of data to VRAM
  * CGB only
  * 
  * @param value whether to use HBlank DMA or general DMA, as well as the length of data to be transferred
  */
-void MemoryBus::vram_dma_transfer(const Byte value) {
+void GameBoy::vram_dma_transfer(const Byte value) {
     if (!cgb_mode) {
         return;
     }
@@ -482,50 +556,5 @@ void MemoryBus::vram_dma_transfer(const Byte value) {
             timer.tick();
         }
         dma_active = false;
-    }
-}
-
-
-/**
- * Transfer 16 bytes of data to VRAM during the PPU's HBlank mode
- * CGB only
- */
-void MemoryBus::hdma_tick() {
-    if (!hdma_active) {
-        return;
-    }
-
-    int chunk_size = 16;
-
-
-    for (int i = 0; i < chunk_size; i++) {
-        hdma_chunk_buffer[i] = read(hdma_source + i);
-    }
-
-    if (hdma_destination + chunk_size > ERAM_START) {
-        hdma_active = false;
-        vram_dma_control = 0xFF;
-        return;
-    }
-
-    ppu.load(hdma_destination, hdma_chunk_buffer);
-
-    hdma_source += chunk_size;
-    hdma_destination += chunk_size;
-    hdma_remaining -= chunk_size;
-
-    if (hdma_remaining == 0) {
-        hdma_active = false;
-        vram_dma_control = 0xFF;
-    } else {
-        Byte new_val = (hdma_remaining >> 4) - 1;
-        vram_dma_control &= 0x80;
-        vram_dma_control |= (new_val & 0x7F);
-    }
-
-    // takes 4 m-cycles in double speed mode, 8 in single speed
-    int cycles = timer.get_double_speed() ? 4 : 8;
-    for (int i = 0; i < cycles; i++) {
-        timer.tick();
     }
 }

@@ -6,7 +6,7 @@
 #include <functional>
 
 #include "../types.h"
-#include "../memory/memory_map.h"
+#include "../memory_map.h"
 #include "../utils/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 #include "../../common/output.h"
@@ -39,9 +39,8 @@ constexpr Pixel dmg_palette[4] = {
  */
 class PPU {
     public:
-        PPU(InterruptController& i, HDMACallback h) :
+        PPU(InterruptController& i) :
             interrupt(i),
-            hblank(h),
 
             vram{},
             oam{},
@@ -88,7 +87,7 @@ class PPU {
         const bool is_frame_ready() const { return frame_ready; }
         const Frame& get_frame() const { return frame_buffer; }
 
-        void update();
+        void tick();
         void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
     private:
         struct Tile {
@@ -97,7 +96,6 @@ class PPU {
         };
 
         InterruptController& interrupt;
-        HDMACallback hblank;
         
         std::array<Byte, 2 * VRAM_SIZE> vram;      // 0x8000 - 0x9FFF, two banks on CGB
         std::array<Byte, OAM_SIZE> oam;            // 0xFE00 - 0xFE9F

@@ -23,31 +23,6 @@ void CPU::reset() {
 }
 
 /**
- * Tick the CPU forward one m-cycle
- */
-void CPU::tick() {
-    if (fetching) {
-        current_opcode = fetch();
-        current_step = 0;
-        fetching = false;
-
-        if (optable[current_opcode].step_count == 1) {
-            optable[current_opcode].steps[0](*this);
-            fetching = true;
-        }
-
-        return;
-    }
-
-    optable[current_opcode].steps[current_step](*this);
-    current_step++;
-
-    if (current_step == optable[current_opcode].step_count) {
-        fetching = true;
-    }
-}
-
-/**
  * Perform one loop of the fetch -> decode -> execute cycle
 */
 void CPU::step() {
@@ -63,26 +38,26 @@ void CPU::step() {
     }
 
     // TODO: implement halt bug
-    int counter = 0;
-    while(halted) {
-        // if we entered HALT from a STOP call when a speed switch was requested, exit HALT after 0x8000 m-cycles
-        if (speed_switch_halt) {
-            if (counter == 0x8000) {
-                halted = false;
-                speed_switch_halt = false;
-                counter = 0;
-                break;
-            }
-            counter++;
-        }
+    // int counter = 0;
+    // while(halted) {
+    //     // if we entered HALT from a STOP call when a speed switch was requested, exit HALT after 0x8000 m-cycles
+    //     if (speed_switch_halt) {
+    //         if (counter == 0x8000) {
+    //             halted = false;
+    //             speed_switch_halt = false;
+    //             counter = 0;
+    //             break;
+    //         }
+    //         counter++;
+    //     }
 
-        if (interrupt.interrupt_pending()) {
-            handle_interrupts();
-            halted = false;
-            break;
-        }
-        timer.tick();
-    }
+    //     if (interrupt.interrupt_pending()) {
+    //         handle_interrupts();
+    //         halted = false;
+    //         break;
+    //     }
+    //     timer.tick();
+    // }
 
     handle_interrupts();
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <chrono>
 
-#include "../core/emulation_core.h"
+#include "../core/gameboy.h"
 #include "../frontend/frontend.h"
 
 constexpr auto AUTOSAVE_INTERVAL = std::chrono::minutes(5);
@@ -19,7 +19,7 @@ enum class AppState {
 class Emulator {
     public:
         Emulator() : 
-            emulation_core() ,
+            gameboy(),
             frontend(EMULATOR_NAME),
 
             state(AppState::Idle),
@@ -32,15 +32,8 @@ class Emulator {
         {}
 
         void run();
-        void handle_events();
-        void handle_rom_selection();
-
-        void update_fps();
-        void autosave();
-
-        void present_output();
     private:
-        EmulationCore emulation_core;
+        GameBoy gameboy;
         Frontend frontend;
 
         AppState state;

@@ -1,5 +1,13 @@
 #include "emulator.h"
 
+void Emulator::run() {
+    while(state == AppState::Running) {
+        gameboy.run_until_frame();
+        frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
+    }
+}
+
+
 void Emulator::update_fps() {
     frame_count++;
     if (frame_count % 60 == 0) {
@@ -15,7 +23,7 @@ void Emulator::update_fps() {
 void Emulator::autosave() {
     auto now = std::chrono::steady_clock::now();
     if (now - last_save_time >= AUTOSAVE_INTERVAL) {
-        memory_bus.save();
+        gameboy.save();
         last_save_time = now;
     }
 }

@@ -4,7 +4,7 @@
 #include <array>
 
 #include "../types.h"
-#include "../memory/memory_map.h"
+#include "../memory_map.h"
 #include "../utils/bit_utils.h"
 
 static constexpr bool duty_table[4][8] = {

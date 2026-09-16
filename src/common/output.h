@@ -1,5 +1,5 @@
-#ifndef VIDEO_H
-#define VIDEO_H
+#ifndef OUTPUT_H
+#define OUTPUT_H
 
 #include <cstdint>
 #include <array>
@@ -16,4 +16,4 @@ struct Frame {
 // audio sample frequency
 constexpr float SAMPLES_PER_SECOND = 44100.0f;
 
-#endif  // VIDEO_H
+#endif  // OUTPUT_H

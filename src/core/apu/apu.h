@@ -1,7 +1,7 @@
 #ifndef APU_H
 #define APU_H
 
-#include "../memory/memory_map.h"
+#include "../memory_map.h"
 #include "../types.h"
 #include "../utils/bit_utils.h"
 #include "channels.h"
@@ -48,7 +48,7 @@ class APU {
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
 
-        void update();
+        void tick();
         void frame_sequencer();
 
         std::vector<float> flush_audio_buffer();

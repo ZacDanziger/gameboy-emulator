@@ -265,7 +265,7 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
  * Step the PPU forward 1 m-cycle
  * Modes: (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
  */
-void PPU::update() {
+void PPU::tick() {
     // if screen is disabled, just return
     if (!is_set(lcd_control, Bit::Bit7)) {
         return;

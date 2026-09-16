@@ -1,32 +1,32 @@
-#ifndef MEMORY_BUS_H
-#define MEMORY_BUS_H
+#ifndef GAMEBOY_H
+#define GAMEBOY_H
 
-#include <string>
-#include <array>
-#include <vector>
+#include <memory>
 
-#include "../types.h"
+#include "types.h"
 #include "memory_map.h"
-#include "../utils/bit_utils.h"
-#include "../interrupt/interrupt_controller.h"
-#include "../joypad/joypad.h"
-#include "../ppu/ppu.h"
-#include "../apu/apu.h"
-#include "../timer/timer.h"
-#include "../cartridge/mbc.h"
 
-/**
- * Memory Management Unit
- * Byte-addressable 16-bit address size
-*/
-class MemoryBus {
+#include "utils/file_io.h"
+
+#include "cartridge/mbc.h"
+#include "interrupt/interrupt_controller.h"
+#include "joypad/joypad.h"
+#include "timer/timer.h"
+#include "ppu/ppu.h"
+#include "apu/apu.h"
+#include "cpu/cpu.h"
+
+
+
+class GameBoy {
     public:
-        MemoryBus(InterruptController& i, Joypad& j, Timer& t, PPU& p, APU& a) :
-            interrupt(i),
-            joypad(j),
-            ppu(p),
-            apu(a),
-            timer(t),
+        GameBoy():
+            interrupt(),
+            joypad(interrupt),
+            timer(interrupt),
+            ppu(interrupt),
+            apu(),
+            cpu(),
 
             wram{},
             hram{},
@@ -49,35 +49,42 @@ class MemoryBus {
             hdma_destination(0x0000),
             hdma_remaining(0x0000)
         {}
-        
-        ~MemoryBus() {
+
+        ~GameBoy() {
             save();
         }
+        
+        void run_until_frame();
 
+        Frame flush_frame() { return ppu.get_frame(); }
+        std::vector<float> flush_audio() { return apu.flush_audio_buffer(); }
+
+        void save() { if (mbc) mbc->save(); }
+        void load(const std::string& rom_file);
         void reset();
-        void load_rom(const std::string& filename);
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
 
+        // TODO: Take a look at these, see if they need to be public or private
         void hdma_tick();
         bool is_dma_active() const { return dma_active; }
-
-        void save () { if(mbc) mbc->save(); }
     private:
-        InterruptController& interrupt;
-        Joypad& joypad;
-        PPU& ppu;
-        APU& apu;
-        Timer& timer;
+        InterruptController interrupt;
+        Joypad joypad;
+        Timer timer;
+        PPU ppu;
+        APU apu;
+        CPU cpu;
 
+        // TODO: Rename MBC, Rework handling
         std::unique_ptr<MBC> mbc;
 
         std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
 
         std::vector<Byte> hdma_chunk_buffer;
-        
+
         bool cgb_mode;
         bool dma_active;
         
@@ -99,4 +106,5 @@ class MemoryBus {
         void vram_dma_transfer(const Byte value);
 };
 
-#endif // MEMORY_BUS_H
+
+#endif // GAMEBOY_H

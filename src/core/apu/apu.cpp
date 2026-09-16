@@ -166,7 +166,7 @@ void APU::write(const Address address, const Byte data) {
 
 
 // step the APU forward 1 m-cycle
-void APU::update() {
+void APU::tick() {
     channel_1.clock();
     channel_2.clock();
     channel_3.clock();

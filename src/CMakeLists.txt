@@ -8,11 +8,10 @@ set (SourceFiles
     core/cpu/optables.cpp
     core/interrupt/interrupt_controller.cpp
     core/joypad/joypad.cpp
-    core/memory/memory_bus.cpp
     core/ppu/ppu.cpp
     core/timer/timer.cpp
     core/utils/file_io.cpp
-    core/emulation_core.cpp
+    core/gameboy.cpp
 
     frontend/frontend.cpp
 
@@ -22,6 +21,6 @@ set (SourceFiles
 
 add_library(gameboy ${SourceFiles})
 target_include_directories(gameboy PUBLIC
-    utils interrupt joypad memory mbc timer cpu ppu apu frontend emulator 
+    core frontend app
 )
 target_link_libraries(gameboy vendored)

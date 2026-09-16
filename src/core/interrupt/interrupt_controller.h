@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include "../types.h"
-#include "../memory/memory_map.h"
+#include "../memory_map.h"
 #include "../utils/bit_utils.h"
 
 class InterruptController {
