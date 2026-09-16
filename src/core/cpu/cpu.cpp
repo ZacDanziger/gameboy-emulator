@@ -31,12 +31,14 @@ void CPU::step() {
         ei_pending = false;
     }
 
-    while(stopped) {
-        if (joypad.any_button_pressed()) {
-            stopped = false;
-        }
-    }
+    // TODO: move STOP handling out of CPU and into GameBoy, since STOP is a system-wide instruction
+    // while(stopped) {
+    //     if (joypad.any_button_pressed()) {
+    //         stopped = false;
+    //     }
+    // }
 
+    // TODO: move HALT handling out of CPU and into GameBoy, since HALT is a system-wide instruction
     // TODO: implement halt bug
     // int counter = 0;
     // while(halted) {

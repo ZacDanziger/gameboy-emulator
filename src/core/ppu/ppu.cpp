@@ -1,6 +1,138 @@
 #include "ppu.h"
 
 /**
+ * Step the PPU forward 1 m-cycle
+ * Modes: (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
+ */
+void PPU::tick() {
+    // if screen is disabled, just return
+    if (!is_set(lcd_control, Bit::Bit7)) {
+        return;
+    }
+
+    frame_ready = false;
+
+    cycles += 1;
+    cycles %= CYCLES_PER_SCANLINE;
+
+    if (cycles == 0) {
+        lcd_y += 1;
+        lcd_y %= SCANLINES_PER_FRAME;
+
+        if (lcd_y == ly_compare) {
+
+            set_bit(lcd_status, Bit::Bit2);
+            if (is_set(lcd_status, Bit::Bit6)) {
+                interrupt.request_interrupt(Interrupt::LCDStat);
+            }
+        } else {
+            reset_bit(lcd_status, Bit::Bit2);
+        }
+    }
+
+    // VBlank period
+    if (lcd_y > 143) {
+        if (mode != Mode::VBLANK) {
+            mode = Mode::VBLANK;
+            reset_bit(lcd_status, Bit::Bit1);
+            set_bit(lcd_status, Bit::Bit0);
+
+            interrupt.request_interrupt(Interrupt::VBlank);
+            if (is_set(lcd_status, Bit::Bit4)) {
+                interrupt.request_interrupt(Interrupt::LCDStat);
+            }
+
+            frame_ready = true;
+            window_line_counter = 0;
+        }
+
+        return;
+    }
+
+    if (cycles < OAM_SCAN_END) {
+        if (mode != Mode::OAM_SCAN) {
+            mode = Mode::OAM_SCAN;
+            set_bit(lcd_status, Bit::Bit1);
+            reset_bit(lcd_status, Bit::Bit0);
+        
+            // if interrupt on OAM is set, request interrupt
+            if (is_set(lcd_status, Bit::Bit5)) {
+                interrupt.request_interrupt(Interrupt::LCDStat);
+            }
+        }
+    }
+
+    else if (cycles < TRANSFER_END) {
+        if (mode != Mode::TRANSFER) {
+            mode = Mode::TRANSFER;
+            set_bit(lcd_status, Bit::Bit1);
+            set_bit(lcd_status, Bit::Bit0);
+            
+            // do the actual work here
+            draw_scanline();
+        }
+    }
+    
+    else {
+        if (mode != Mode::HBLANK) {
+            mode = Mode::HBLANK;
+            reset_bit(lcd_status, Bit::Bit1);
+            reset_bit(lcd_status, Bit::Bit0);
+
+            // call MemoryBus::hdma_tick()
+            hblank_event = true;
+        
+            // if interrupt on HBlank is set, request interrupt
+            if (is_set(lcd_status, Bit::Bit3)) {
+                interrupt.request_interrupt(Interrupt::LCDStat);
+            }
+        }
+    }
+}
+
+
+/**
+ * Loads the data into a section of memory owned by the PPU
+ * 
+ * @param address either a value in VRAM [0x8000, 0x9FFF] (CGB mode only) or the start of OAM [0xFE00]
+ * @param data the data to be loaded into VRAM or OAM
+ */
+void PPU::load(const Address address, const std::vector<Byte>& data) {
+    size_t size = 0;
+
+    if (address >= VRAM_START && address < ERAM_START) {
+        if (!cgb_mode) {
+            return;
+        }
+
+        size = std::min(data.size(), static_cast<size_t>(ERAM_START - address));
+        size_t offset = (address - VRAM_START) + (vram_bank * VRAM_SIZE);
+        std::copy_n(data.begin(), size, vram.begin() + offset);
+
+        // Mark any affected tiles as dirty
+        for (size_t i = 0; i < size; i += 16) {
+            Address tile_address = address + i;
+            if (tile_address < TILE_MAP_0_START) {
+                int index = address_to_index(tile_address, vram_bank);
+                tile_cache[index].dirty = true;
+            }
+        }
+
+        return;
+    }
+
+    if (address == OAM_START) {
+        size = std::min(data.size(), static_cast<size_t>(OAM_SIZE));
+
+        std::copy_n(data.begin(), size, oam.begin());
+        return;
+    }
+
+    throw std::runtime_error("PPU Load called on incorrect starting address");
+}
+
+
+/**
  * Reset the PPU to its post Boot ROM state
  */
 void PPU::reset() {
@@ -220,137 +352,11 @@ void PPU::write(const Address address, const Byte value) {
 }
 
 
-/**
- * Loads the data into a section of memory owned by the PPU
- * 
- * @param address either a value in VRAM [0x8000, 0x9FFF] (CGB mode only) or the start of OAM [0xFE00]
- * @param data the data to be loaded into VRAM or OAM
- */
-void PPU::load(const Address address, const std::vector<Byte>& data) {
-    size_t size = 0;
-
-    if (address >= VRAM_START && address < ERAM_START) {
-        if (!cgb_mode) {
-            return;
-        }
-
-        size = std::min(data.size(), static_cast<size_t>(ERAM_START - address));
-        size_t offset = (address - VRAM_START) + (vram_bank * VRAM_SIZE);
-        std::copy_n(data.begin(), size, vram.begin() + offset);
-
-        // Mark any affected tiles as dirty
-        for (size_t i = 0; i < size; i += 16) {
-            Address tile_address = address + i;
-            if (tile_address < TILE_MAP_0_START) {
-                int index = address_to_index(tile_address, vram_bank);
-                tile_cache[index].dirty = true;
-            }
-        }
-
-        return;
-    }
-
-    if (address == OAM_START) {
-        size = std::min(data.size(), static_cast<size_t>(OAM_SIZE));
-
-        std::copy_n(data.begin(), size, oam.begin());
-        return;
-    }
-
-    throw std::runtime_error("PPU Load called on incorrect starting address");
+bool PPU::take_hblank_event() {
+    bool event = hblank_event;
+    hblank_event = false;
+    return event;
 }
-
-
-/**
- * Step the PPU forward 1 m-cycle
- * Modes: (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
- */
-void PPU::tick() {
-    // if screen is disabled, just return
-    if (!is_set(lcd_control, Bit::Bit7)) {
-        return;
-    }
-
-    frame_ready = false;
-
-    cycles += 1;
-    cycles %= CYCLES_PER_SCANLINE;
-
-    if (cycles == 0) {
-        lcd_y += 1;
-        lcd_y %= SCANLINES_PER_FRAME;
-
-        if (lcd_y == ly_compare) {
-
-            set_bit(lcd_status, Bit::Bit2);
-            if (is_set(lcd_status, Bit::Bit6)) {
-                interrupt.request_interrupt(Interrupt::LCDStat);
-            }
-        } else {
-            reset_bit(lcd_status, Bit::Bit2);
-        }
-    }
-
-    // VBlank period
-    if (lcd_y > 143) {
-        if (mode != Mode::VBLANK) {
-            mode = Mode::VBLANK;
-            reset_bit(lcd_status, Bit::Bit1);
-            set_bit(lcd_status, Bit::Bit0);
-
-            interrupt.request_interrupt(Interrupt::VBlank);
-            if (is_set(lcd_status, Bit::Bit4)) {
-                interrupt.request_interrupt(Interrupt::LCDStat);
-            }
-
-            frame_ready = true;
-            window_line_counter = 0;
-        }
-
-        return;
-    }
-
-    if (cycles < OAM_SCAN_END) {
-        if (mode != Mode::OAM_SCAN) {
-            mode = Mode::OAM_SCAN;
-            set_bit(lcd_status, Bit::Bit1);
-            reset_bit(lcd_status, Bit::Bit0);
-        
-            // if interrupt on OAM is set, request interrupt
-            if (is_set(lcd_status, Bit::Bit5)) {
-                interrupt.request_interrupt(Interrupt::LCDStat);
-            }
-        }
-    }
-
-    else if (cycles < TRANSFER_END) {
-        if (mode != Mode::TRANSFER) {
-            mode = Mode::TRANSFER;
-            set_bit(lcd_status, Bit::Bit1);
-            set_bit(lcd_status, Bit::Bit0);
-            
-            // do the actual work here
-            draw_scanline();
-        }
-    }
-    
-    else {
-        if (mode != Mode::HBLANK) {
-            mode = Mode::HBLANK;
-            reset_bit(lcd_status, Bit::Bit1);
-            reset_bit(lcd_status, Bit::Bit0);
-
-            // call MemoryBus::hdma_tick()
-            hblank();
-        
-            // if interrupt on HBlank is set, request interrupt
-            if (is_set(lcd_status, Bit::Bit3)) {
-                interrupt.request_interrupt(Interrupt::LCDStat);
-            }
-        }
-    }
-}
-
 
 /**
  * Draw one scanline to the frame

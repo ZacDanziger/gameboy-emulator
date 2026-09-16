@@ -5,7 +5,7 @@
 #include "../types.h"
 #include "../utils/bit_utils.h"
 #include "channels.h"
-#include "../common/output.h"
+#include "../../common/output.h"
 
 #include <iostream>
 

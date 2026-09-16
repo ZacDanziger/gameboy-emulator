@@ -56,15 +56,15 @@ class GameBoy {
         
         void run_until_frame();
 
-        Frame flush_frame() { return ppu.get_frame(); }
-        std::vector<float> flush_audio() { return apu.flush_audio_buffer(); }
-
         void save() { if (mbc) mbc->save(); }
         void load(const std::string& rom_file);
         void reset();
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte data);
+
+        Frame flush_frame() { return ppu.get_frame(); }
+        std::vector<float> flush_audio() { return apu.flush_audio_buffer(); }
 
         // TODO: Take a look at these, see if they need to be public or private
         void hdma_tick();

@@ -1,9 +1,30 @@
 #include "emulator.h"
 
 void Emulator::run() {
-    while(state == AppState::Running) {
-        gameboy.run_until_frame();
-        frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
+    while(true) {
+        if (state == AppState::Running) {
+            gameboy.run_until_frame();
+            frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
+        }
+
+        // if window was closed, exit emulator
+        if (!frontend.poll_events()) {
+            break;
+        }
+
+        // If pause was pressed, toggle pause
+        if (frontend.take_pause_request()) {
+            switch(state) {
+                case EmulatorState::Idle:
+                    break;
+                case EmulatorState::Running:
+                    state = EmulatorState::Paused;
+                    break;
+                case EmulatorState::Paused:
+                    state = EmulatorState::Running;
+                    break;
+            }
+        }
     }
 }
 

@@ -73,21 +73,24 @@ class PPU {
             mode(Mode::VBLANK),
             cycles(-1),
             window_line_counter(0),
+            hblank_event(false),
 
             cgb_mode(false)
         {}
 
+        void tick();
+
+        void load(const Address address, const std::vector<Byte>& data);
         void reset();
         
         Byte read(const Address address) const;
         void write(const Address address, const Byte value);
 
-        void load(const Address address, const std::vector<Byte>& data);
+        bool take_hblank_event();
 
         const bool is_frame_ready() const { return frame_ready; }
         const Frame& get_frame() const { return frame_buffer; }
 
-        void tick();
         void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
     private:
         struct Tile {
@@ -131,6 +134,8 @@ class PPU {
         Mode mode;
         int cycles;
         int window_line_counter;
+        bool hblank_event;
+        
         bool cgb_mode;
 
         void draw_scanline();

@@ -13,6 +13,10 @@ void GameBoy::run_until_frame() {
         timer.tick();
         apu.tick();
         ppu.tick();
+
+        if (ppu.take_hblank_event() && hdma_active) {
+            hdma_tick();
+        }
     }
 }
 
