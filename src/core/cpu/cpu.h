@@ -1,11 +1,19 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <functional>
+
 #include "../types.h"
 #include "../interrupt/interrupt_controller.h"
 #include "../joypad/joypad.h"
 #include "../timer/timer.h"
 #include "../memory/memory_bus.h"
+
+using MicroOp = std::function<void(class CPU&)>;
+struct Instruction {
+    std::array<MicroOp, 6> steps;   // max number of micro-ops in an instruction is 6
+    uint8_t step_count;             // keeps track of how many micro-ops are in the instruction
+};
 
 using Flag = Bit;
 
@@ -41,16 +49,28 @@ class CPU {
             BC({&reg_B, &reg_C}),
             DE({&reg_D, &reg_E}),
             HL({&reg_H, &reg_L}),
+
+            optable{},
+            cb_optable{},
+
+            current_opcode(0x00),
+            next_opcode(0x00),
+            current_step(0),
+            fetching(true),
             
             interrupts_enabled(false),
             ei_pending(false),
             halted(false),
             stopped(false),
             speed_switch_halt(false)
-        {}
+        {
+            init_optable();
+            init_cb_optable();
+        }
 
         void reset();
         
+        void tick();
         void step();
         
         bool is_halted() const { return halted; }
@@ -87,6 +107,17 @@ class CPU {
         // 16-bit Stack Pointer and Program Counter
         Word reg_SP;
         Word reg_PC;
+
+        std::array<Instruction, 256> optable;
+        std::array<Instruction, 256> cb_optable;
+
+        void init_optable();
+        void init_cb_optable();
+
+        Byte current_opcode;
+        Byte next_opcode;
+        uint8_t current_step;
+        bool fetching;
 
         bool interrupts_enabled;    // IME
         bool ei_pending;

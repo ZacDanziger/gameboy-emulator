@@ -18,7 +18,7 @@ void Frontend::present(const Frame& frame, const std::vector<float>& audio_buffe
 
     SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 
-    SDL_UpdateTexture(texture, nullptr, frame.pixels.data(), frame.width * sizeof(Pixel));
+    SDL_UpdateTexture(texture, nullptr, frame.pixels.data(), Frame::WIDTH * sizeof(Pixel));
     SDL_RenderClear(renderer);
     SDL_RenderTexture(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
@@ -135,20 +135,20 @@ void Frontend::init(const std::string& title) {
 
     if (!SDL_CreateWindowAndRenderer(
         update_title().c_str(),
-        DISPLAY_SCALE * SCREEN_WIDTH,
-        DISPLAY_SCALE * SCREEN_HEIGHT, 
+        DISPLAY_SCALE * Frame::WIDTH,
+        DISPLAY_SCALE * Frame::HEIGHT,
         SDL_WINDOW_RESIZABLE, &window, &renderer))
     {
         teardown();
         throw std::runtime_error(std::string("Failed to create window and renderer ") + SDL_GetError());
     }
 
-    if (!SDL_SetRenderLogicalPresentation(renderer, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX)) {
+    if (!SDL_SetRenderLogicalPresentation(renderer, Frame::WIDTH, Frame::HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX)) {
         teardown();
         throw std::runtime_error(std::string("Failed to set renderer logical presentation ") + SDL_GetError());
     }
 
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, Frame::WIDTH, Frame::HEIGHT);
     if (!texture) {
         teardown();
         throw std::runtime_error(std::string("Failed to create texture ") + SDL_GetError());

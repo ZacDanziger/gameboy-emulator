@@ -20,7 +20,7 @@ class EmulationCore {
         EmulationCore():
             interrupt(),
             joypad(interrupt),
-            ppu(interrupt, [this]{ this->on_frame_ready(); }, [this]{ memory_bus.hdma_tick(); }),
+            ppu(interrupt, [this]{ memory_bus.hdma_tick(); }),
             apu(),
             timer(interrupt, [this]{ ppu.update(); apu.update(); }, [this]{ apu.frame_sequencer(); }),
             memory_bus(interrupt, joypad, timer, ppu, apu),

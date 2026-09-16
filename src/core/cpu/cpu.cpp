@@ -22,6 +22,30 @@ void CPU::reset() {
     speed_switch_halt = false;
 }
 
+/**
+ * Tick the CPU forward one m-cycle
+ */
+void CPU::tick() {
+    if (fetching) {
+        current_opcode = fetch();
+        current_step = 0;
+        fetching = false;
+
+        if (optable[current_opcode].step_count == 1) {
+            optable[current_opcode].steps[0](*this);
+            fetching = true;
+        }
+
+        return;
+    }
+
+    optable[current_opcode].steps[current_step](*this);
+    current_step++;
+
+    if (current_step == optable[current_opcode].step_count) {
+        fetching = true;
+    }
+}
 
 /**
  * Perform one loop of the fetch -> decode -> execute cycle
@@ -120,9 +144,7 @@ void CPU::handle_interrupts() {
  * @return the value in mem[PC]
 */
 Byte CPU::fetch() {
-    Byte opcode = memory_bus.read(reg_PC++);
-    timer.tick();
-    return opcode;
+    return memory_bus.read(reg_PC++);
 }
 
 

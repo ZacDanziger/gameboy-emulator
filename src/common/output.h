@@ -7,10 +7,10 @@
 using Pixel = uint32_t;
 
 struct Frame {
-    static constexpr std::size_t width = 160;
-    static constexpr std::size_t height = 144;
+    static constexpr std::size_t WIDTH = 160;
+    static constexpr std::size_t HEIGHT = 144;
 
-    std::array<Pixel, width * height> pixels;
+    std::array<Pixel, WIDTH * HEIGHT> pixels;
 };
 
 // audio sample frequency

@@ -10,7 +10,6 @@
 
 #include "../common/app_event.h"
 #include "../common/output.h"
-#include "../core/joypad/joypad.h"
 
 #include <SDL3/SDL.h>
 
