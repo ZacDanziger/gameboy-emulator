@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "../gameboy.h"
 
 /*
  * n8 - immediate 8-bit data
@@ -14,28 +15,110 @@
  * 
  * @param opcode an 8-bit opcode to be executed
 */
-void CPU::decode_execute(const Byte opcode) {
+bool CPU::decode_execute(const Byte opcode, GameBoy& gameboy) {
     switch(opcode) {
-        case 0x00: { return; }                                      // NOP
-        case 0x01: { LD(BC, fetch16()); return; }                   // B <- n16[15:8], C <- n16[7:0]
-        case 0x02: { LD(get_pair(BC), reg_A); return; }             // memory[BC] <- A
-        case 0x03: { INC(BC); timer.tick(); return; }               // INC BC++
-        case 0x04: { INC(reg_B); return; }                          // B++
-        case 0x05: { DEC(reg_B); return; }                          // B--
-        case 0x06: { LD(reg_B, fetch()); return; }                  // B <- n8
-        case 0x07: { RLA(true); return; }                           // RLCA
-        case 0x08: { write_SP(fetch16()); return; }                 // memory[n16] <- SP[7:0], memory[n16+1] <- SP[15:8]
-        case 0x09: { ADD_HL(get_pair(BC)); return; }                // HL += BC
-        case 0x0A: { LD(reg_A, get_pair(BC)); return; }             // A <- memory[BC]
-        case 0x0B: { DEC(BC); timer.tick(); return; }               // BC--
-        case 0x0C: { INC(reg_C); return; }                          // C++
-        case 0x0D: { DEC(reg_C); return; }                          // C--
-        case 0x0E: { LD(reg_C, fetch()); return; }                  // C <- n8
-        case 0x0F: { RRA(true); return; }                           // RRCA
+        case 0x00: { // NOP                                                   
+            return true; 
+        }
+        case 0x01: { // B <- n16[15:8], C <- n16[7:0]                                                    
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: reg_C = gameboy.read(reg_PC++); return false;
+                case 2: reg_B = gameboy.read(reg_PC++); return true;
+            } 
+        }
+        case 0x02: { // memory[BC] <- A                                                    
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: gameboy.write(get_pair(BC), reg_A); return true;
+            } 
+        }
+        case 0x03: { // INC BC++                                                              
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: INC(BC); return true;
+            }
+        }  
+        case 0x04: { // B++                                                    
+            INC(reg_B); return true; 
+        }               
+        case 0x05: { // B--                                                      
+            DEC(reg_B); return true; 
+        } 
+        case 0x06: { // B <- n8                                                    
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: reg_B = gameboy.read(reg_PC++); return true;
+            }
+        }    
+        case 0x07: { // RLCA                                                
+            RLA(true); return true;
+        }           
+        case 0x08: { // memory[n16] <- SP[7:0], memory[n16+1] <- SP[15:8]                   
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: scratch_register |= gameboy.read(reg_PC++); return false;
+                case 2: scratch_register |= (gameboy.read(reg_PC++) << 8); return false;
+                case 3: reg_SP = 0x0000 | (scratch_register & 0x00FF); return false;
+                case 4: reg_SP = 0x0000 | (scratch_register & 0xFF00) >> 8; return true;
+            }
+        }
+        case 0x09: { // HL += BC
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: ADD_HL(get_pair(BC)); return true;
+            }
+        
+        }    
+        case 0x0A: { // A <- memory[BC]
+            switch(m_cycle) {
+                case 0: return false;
+                case 1: reg_A = gameboy.read(get_pair(BC)); return true;
+            }
+        }   
+        case 0x0B: { // BC--
+            switch (m_cycle) {
+                case 0: return false;
+                case 1: DEC(BC); return true;
+            }
+        }               
+        case 0x0C: { // C++
+            INC(reg_C); return true; 
+        }     
+        case 0x0D: { // C--
+            DEC(reg_C); return true;
+        }      
+        case 0x0E: { // C <- n8
+            switch (m_cycle) {
+                case 0: return false;
+                case 1: reg_C = gameboy.read(reg_PC++); return true;
+            }
+        }
+        case 0x0F: { // RRCA
+            RRA(true); return true;
+        }                           
 
-        case 0x10: { STOP(); return; }                              // STOP
-        case 0x11: { LD(DE, fetch16()); return; }                   // D <- n16[15:8], E <- n16[7:0]
-        case 0x12: { LD(get_pair(DE), reg_A); return; }             // memory[DE] <- A
+
+        case 0x10: { // STOP
+            // TODO: Look at STOP in the refactor
+            return true;
+        }                              
+        case 0x11: { // D <- n16[15:8], E <- n16[7:0]
+            switch (m_cycle) {
+                case 0: return false;
+                case 1: reg_E = gameboy.read(reg_PC++); return false;
+                case 2: reg_D = gameboy.read(reg_PC++); return true;
+            }
+        }                   
+        case 0x12: { // memory[DE] <- A
+            switch (m_cycle) {
+                case 0: return false;
+                case 1: gameboy.write(get_pair(DE), reg_A); return true;
+            }
+        }          
+        
+        // STOPPED HERE SEP 16th
+
         case 0x13: { INC(DE); timer.tick(); return; }               // DE++
         case 0x14: { INC(reg_D); return; }                          // D++
         case 0x15: { DEC(reg_D); return; }                          // D--

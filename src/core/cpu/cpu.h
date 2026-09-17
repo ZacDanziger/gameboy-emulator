@@ -5,6 +5,7 @@
 
 #include "../types.h"
 
+class GameBoy;
 
 using Flag = Bit;
 
@@ -36,6 +37,10 @@ class CPU {
             DE({&reg_D, &reg_E}),
             HL({&reg_H, &reg_L}),
 
+            current_opcode(0x00),
+            m_cycle(0),
+            scratch_register(0x0000),
+
             interrupts_enabled(false),
             ei_pending(false),
             halted(false),
@@ -45,7 +50,7 @@ class CPU {
 
         void reset();
         
-        void tick();
+        void tick(GameBoy& gameboy);
         void step();
         
         bool is_halted() const { return halted; }
@@ -79,9 +84,8 @@ class CPU {
         Word reg_PC;
 
         Byte current_opcode;
-        Byte next_opcode;
-        uint8_t current_step;
-        bool fetching;
+        uint8_t m_cycle;
+        Word scratch_register; // used for temporary storage during multi-cycle instructions
 
         bool interrupts_enabled;    // IME
         bool ei_pending;
@@ -109,9 +113,8 @@ class CPU {
         // Fetch -> Decode -> Execute loop
 
         Byte fetch();
-        Word fetch16();
-        void decode_execute(const Byte opcode);
-        void decode_execute_cb();
+        bool decode_execute(const Byte opcode, GameBoy& gameboy);
+        bool decode_execute_cb();
 
         // Helper Functions
 

@@ -22,6 +22,15 @@ void CPU::reset() {
     speed_switch_halt = false;
 }
 
+
+void CPU::tick(GameBoy& gameboy) {
+    if (m_cycle == 0) {
+        current_opcode = fetch();
+    }
+
+    bool finished = decode_execute(current_opcode);
+}
+
 /**
  * Perform one loop of the fetch -> decode -> execute cycle
 */
@@ -980,7 +989,6 @@ void CPU::ADD_HL(const Word value) {
 
     
     set_pair(HL, (res & 0xFFFF));
-    timer.tick();
 
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);

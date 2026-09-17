@@ -28,6 +28,9 @@ class Timer {
             apu_previous_high(false),
             overflow_delay(false),
             timer_reload_cycle(false),
+
+            div_apu_event(false),
+
             double_speed_mode(false)
         {
             // initialize timer_control, div_bit, and enabled
@@ -40,6 +43,8 @@ class Timer {
 
         Byte read(const Address address) const;
         void write(const Address address, const Byte value);
+
+        bool take_div_apu_event();
 
         bool get_double_speed() const { return double_speed_mode; }
         void set_double_speed(const bool ds) { double_speed_mode = ds; }
@@ -58,6 +63,8 @@ class Timer {
         bool apu_previous_high;
         bool overflow_delay;
         bool timer_reload_cycle;
+
+        bool div_apu_event;
 
         bool double_speed_mode;
 };

@@ -9,7 +9,7 @@
  */
 void GameBoy::run_until_frame() {
     while (!ppu.is_frame_ready()) {
-        cpu.tick();
+        cpu.tick(*this);
         timer.tick();
         apu.tick();
         ppu.tick();

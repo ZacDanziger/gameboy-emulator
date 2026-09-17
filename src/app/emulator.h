@@ -31,6 +31,8 @@ class Emulator {
             fps_timer(std::chrono::steady_clock::now())
         {}
 
+        void load_rom(const std::string& rom_file);
+
         void run();
     private:
         GameBoy gameboy;

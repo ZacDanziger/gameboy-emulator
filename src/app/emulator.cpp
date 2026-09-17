@@ -1,5 +1,12 @@
 #include "emulator.h"
 
+void Emulator::load_rom(const std::string& rom_file) {
+    gameboy.load(rom_file);
+    frontend.set_title(rom_file);
+    state = AppState::Running;
+}
+
+
 void Emulator::run() {
     while(true) {
         if (state == AppState::Running) {
@@ -15,13 +22,13 @@ void Emulator::run() {
         // If pause was pressed, toggle pause
         if (frontend.take_pause_request()) {
             switch(state) {
-                case EmulatorState::Idle:
+                case AppState::Idle:
                     break;
-                case EmulatorState::Running:
-                    state = EmulatorState::Paused;
+                case AppState::Running:
+                    state = AppState::Paused;
                     break;
-                case EmulatorState::Paused:
-                    state = EmulatorState::Running;
+                case AppState::Paused:
+                    state = AppState::Running;
                     break;
             }
         }

@@ -35,12 +35,6 @@ void Timer::tick() {
 
     divider_internal += 1;
 
-    // Update the PPU every tick in regular mode, or every other tick in double speed mode
-    // Update the APU as well
-    if (!double_speed_mode || (divider_internal & 0x0001)) {
-        on_tick();
-    }
-
     // check timer enable bit
     bool set = is_set(divider_internal, div_bit);
     bool high = (enabled && set);
@@ -48,7 +42,7 @@ void Timer::tick() {
     // drive the DIV-APU tick
     bool apu_high = is_set(divider_internal, div_apu_bit);
     if (!apu_high && apu_previous_high) {
-        div_apu_tick();
+        div_apu_event = true;
     }
     apu_previous_high = apu_high;
 
@@ -63,6 +57,28 @@ void Timer::tick() {
     }
 
     previous_high = high;
+}
+
+
+/**
+ * Read the value from DIV, TIMA, TMA, or TAC registers
+ * 
+ * @param address the address of one of the registers that Timer controls
+ * @return the value in the requested register
+ */
+Byte Timer::read(const Address address) const {
+    switch (address) {
+    case DIV_REGISTER:
+        return ((divider_internal >> 6) & 0xFF);
+    case TIMA_REGISTER:
+        return timer;
+    case TMA_REGISTER:
+        return timer_modulo;
+    case TAC_REGISTER:
+        return timer_control;
+    default:
+        throw std::runtime_error("Timer read called on wrong address");
+    }
 }
 
 
@@ -127,23 +143,9 @@ void Timer::write(const Address address, const Byte value) {
 }
 
 
-/**
- * Read the value from DIV, TIMA, TMA, or TAC registers
- * 
- * @param address the address of one of the registers that Timer controls
- * @return the value in the requested register
- */
-Byte Timer::read(const Address address) const {
-    switch (address) {
-    case DIV_REGISTER:
-        return ((divider_internal >> 6) & 0xFF);
-    case TIMA_REGISTER:
-        return timer;
-    case TMA_REGISTER:
-        return timer_modulo;
-    case TAC_REGISTER:
-        return timer_control;
-    default:
-        throw std::runtime_error("Timer read called on wrong address");
-    }
+bool Timer::take_div_apu_event() {
+    bool event = div_apu_event;
+    div_apu_event = false;
+    return event;
 }
+
