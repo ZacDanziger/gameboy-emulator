@@ -1,384 +1,292 @@
 #include "cpu.h"
 #include "../gameboy.h"
 
-/*
- * n8 - immediate 8-bit data
- * n16 - immediate little-endian 16-bit data
- * a8 - 8-bit unsigned data
- * a16 - little-endian 16-bit data
- * e8 - 8-bit signed data
-*/
 
+void CPU::decode() {
+    switch (current_opcode) {
+        case 0x00: return;                                          // NOP
+        case 0x01: queue_load_r16_imm16(&registers.BC); return;     // BC <- Mem[Imm16]
+        case 0x02: queue_store_a_mem_r16(&registers.BC); return;    // Mem[BC] <- A
+        case 0x03: queue_inc_r16(&registers.BC); return;            // BC++
+        case 0x04: queue_inc_r8(&registers.B); return;              // B++
+        case 0x05: queue_dec_r8(&registers.B); return;              // B--
+        case 0x06: queue_load_r8_imm8(&registers.B); return;        // B <- Mem[PC++]
+        case 0x07: /* RLCA */ return;                               // RLCA
+        case 0x08: queue_store_sp_imm16(); return;                  // Mem[Imm16] <- SP[7:0]; Mem[Imm16+1] <- SP[15:8]
+        case 0x09: queue_add_hl_r16(&registers.BC); return;         // HL += BC
+        case 0x0A: queue_load_a_mem_r16(&registers.BC); return;     // A <- Mem[BC]
+        case 0x0B: queue_dec_r16(&registers.BC); return;            // BC--
+        case 0x0C: queue_inc_r8(&registers.C); return;              // C++
+        case 0x0D: queue_dec_r8(&registers.C); return;              // C--
+        case 0x0E: queue_load_r8_imm8(&registers.C); return;        // C <- Mem[PC++]
+        case 0x0F: /* RRCA */ return;                               // RRCA
 
-/**
- * Matches opcode to operation and executes that operation
- * 
- * @param opcode an 8-bit opcode to be executed
-*/
-bool CPU::decode_execute(const Byte opcode, GameBoy& gameboy) {
-    switch(opcode) {
-        case 0x00: { // NOP                                                   
-            return true; 
-        }
-        case 0x01: { // B <- n16[15:8], C <- n16[7:0]                                                    
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: reg_C = gameboy.read(reg_PC++); return false;
-                case 2: reg_B = gameboy.read(reg_PC++); return true;
-            } 
-        }
-        case 0x02: { // memory[BC] <- A                                                    
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: gameboy.write(get_pair(BC), reg_A); return true;
-            } 
-        }
-        case 0x03: { // INC BC++                                                              
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: INC(BC); return true;
-            }
-        }  
-        case 0x04: { // B++                                                    
-            INC(reg_B); return true; 
-        }               
-        case 0x05: { // B--                                                      
-            DEC(reg_B); return true; 
-        } 
-        case 0x06: { // B <- n8                                                    
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: reg_B = gameboy.read(reg_PC++); return true;
-            }
-        }    
-        case 0x07: { // RLCA                                                
-            RLA(true); return true;
-        }           
-        case 0x08: { // memory[n16] <- SP[7:0], memory[n16+1] <- SP[15:8]                   
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: scratch_register |= gameboy.read(reg_PC++); return false;
-                case 2: scratch_register |= (gameboy.read(reg_PC++) << 8); return false;
-                case 3: reg_SP = 0x0000 | (scratch_register & 0x00FF); return false;
-                case 4: reg_SP = 0x0000 | (scratch_register & 0xFF00) >> 8; return true;
-            }
-        }
-        case 0x09: { // HL += BC
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: ADD_HL(get_pair(BC)); return true;
-            }
-        
-        }    
-        case 0x0A: { // A <- memory[BC]
-            switch(m_cycle) {
-                case 0: return false;
-                case 1: reg_A = gameboy.read(get_pair(BC)); return true;
-            }
-        }   
-        case 0x0B: { // BC--
-            switch (m_cycle) {
-                case 0: return false;
-                case 1: DEC(BC); return true;
-            }
-        }               
-        case 0x0C: { // C++
-            INC(reg_C); return true; 
-        }     
-        case 0x0D: { // C--
-            DEC(reg_C); return true;
-        }      
-        case 0x0E: { // C <- n8
-            switch (m_cycle) {
-                case 0: return false;
-                case 1: reg_C = gameboy.read(reg_PC++); return true;
-            }
-        }
-        case 0x0F: { // RRCA
-            RRA(true); return true;
-        }                           
+        case 0x10: /* STOP */ return;                               // STOP
+        case 0x11: queue_load_r16_imm16(&registers.DE); return;     // DE <- Mem[Imm16]
+        case 0x12: queue_store_a_mem_r16(&registers.DE); return;    // Mem[DE] <- A
+        case 0x13: queue_inc_r16(&registers.DE); return;            // DE++
+        case 0x14: queue_inc_r8(&registers.D); return;              // D++
+        case 0x15: queue_dec_r8(&registers.D); return;              // D--
+        case 0x16: queue_load_r8_imm8(&registers.D); return;        // D <- Mem[PC++]
+        case 0x17: /* RLA */ return;                                // RLA
+        case 0x18: queue_jr(); return;                              // PC += (int16_t)(Mem[PC++])
+        case 0x19: queue_add_hl_r16(&registers.DE); return;         // HL += DE
+        case 0x1A: queue_load_a_mem_r16(&registers.DE); return;     // A <- Mem[DE]
+        case 0x1B: queue_dec_r16(&registers.DE); return;            // DE--
+        case 0x1C: queue_inc_r8(&registers.E); return;              // E++
+        case 0x1D: queue_dec_r8(&registers.E); return;              // E--
+        case 0x1E: queue_load_r8_imm8(&registers.E); return;        // E <- Mem[PC++]
+        case 0x1F: /* RRA */ return;                                // RRA
 
+        case 0x20: queue_jr_cond(); return;                         // If NZ, PC += (int16_t)(Mem[PC++])
+        case 0x21: queue_load_r16_imm16(&registers.HL); return;     // HL <- Mem[Imm16]
+        case 0x22: queue_store_a_mem_r16(&registers.HL); return;    // Mem[HL++] <- A
+        case 0x23: queue_inc_r16(&registers.HL); return;            // HL++
+        case 0x24: queue_inc_r8(&registers.H); return;              // H++
+        case 0x25: queue_dec_r8(&registers.H); return;              // H--
+        case 0x26: queue_load_r8_imm8(&registers.H); return;        // H <- Mem[PC++]
+        case 0x27: /* DAA */ return;                                // DAA
+        case 0x28: queue_jr_cond(); return;                         // If Z, PC += (int16_t)(Mem[PC++])
+        case 0x29: queue_add_hl_r16(&registers.HL); return;         // HL += HL
+        case 0x2A: queue_load_a_mem_r16(&registers.HL); return;     // A <- Mem[HL++]
+        case 0x2B: queue_dec_r16(&registers.HL); return;            // HL--
+        case 0x2C: queue_inc_r8(&registers.L); return;              // L++
+        case 0x2D: queue_dec_r8(&registers.L); return;              // L--
+        case 0x2E: queue_load_r8_imm8(&registers.L); return;        // L <- Mem[PC++]
+        case 0x2F: /* CPL */ return;                                // CPL
 
-        case 0x10: { // STOP
-            // TODO: Look at STOP in the refactor
-            return true;
-        }                              
-        case 0x11: { // D <- n16[15:8], E <- n16[7:0]
-            switch (m_cycle) {
-                case 0: return false;
-                case 1: reg_E = gameboy.read(reg_PC++); return false;
-                case 2: reg_D = gameboy.read(reg_PC++); return true;
-            }
-        }                   
-        case 0x12: { // memory[DE] <- A
-            switch (m_cycle) {
-                case 0: return false;
-                case 1: gameboy.write(get_pair(DE), reg_A); return true;
-            }
-        }          
-        
-        // STOPPED HERE SEP 16th
+        case 0x30: queue_jr_cond(); return;                         // If NC, PC += (int16_t)(Mem[PC++])
+        case 0x31: queue_load_r16_imm16(&registers.SP); return;     // SP <- Mem[Imm16]
+        case 0x32: queue_store_a_mem_r16(&registers.HL); return;    // Mem[HL--] <- A
+        case 0x33: queue_inc_r16(&registers.SP); return;            // SP++
+        case 0x34: queue_inc_dec_mem_hl(); return;                  // Mem[HL]++
+        case 0x35: queue_inc_dec_mem_hl(); return;                  // Mem[HL]--
+        case 0x36: queue_load_mem_hl_imm8(); return;                // Mem[HL] <- Mem[PC++]
+        case 0x37: /* SCF */ return;                                // SCF
+        case 0x38: queue_jr_cond(); return;                         // If C, PC += (int16_t)(Mem[PC++])
+        case 0x39: queue_add_hl_r16(&registers.SP); return;         // HL += SP
+        case 0x3A: queue_load_a_mem_r16(&registers.SP); return;     // A <- Mem[HL--]
+        case 0x3B: queue_dec_r16(&registers.DE); return;            // SP--
+        case 0x3C: queue_inc_r8(&registers.A); return;              // A++
+        case 0x3D: queue_dec_r8(&registers.A); return;              // A--
+        case 0x3E: queue_load_r8_imm8(&registers.A); return;        // A <- Mem[PC++]
+        case 0x3F: /* CCF */ return;                                 // CCF
 
-        case 0x13: { INC(DE); timer.tick(); return; }               // DE++
-        case 0x14: { INC(reg_D); return; }                          // D++
-        case 0x15: { DEC(reg_D); return; }                          // D--
-        case 0x16: { LD(reg_D, fetch()); return; }                  // D <- n8
-        case 0x17: { RLA(false); return; }                          // RLA
-        case 0x18: { JR(); return; }                                // SP += e8
-        case 0x19: { ADD_HL(get_pair(DE)); return; }                // HL += DE
-        case 0x1A: { LD(reg_A, get_pair(DE)); return; }             // A <- memory[DE]
-        case 0x1B: { DEC(DE); timer.tick(); return; }               // DE--
-        case 0x1C: { INC(reg_E); return; }                          // E++
-        case 0x1D: { DEC(reg_E); return; }                          // E--
-        case 0x1E: { LD(reg_E, fetch()); return; }                  // E <- n8
-        case 0x1F: { RRA(false); return; }                          // RRA
+        case 0x40: return;                                                  // B <- B (essentially a NOP)
+        case 0x41: queue_load_r8_r8(&registers.B, &registers.C); return;    // B <- C
+        case 0x42: queue_load_r8_r8(&registers.B, &registers.D); return;    // B <- D
+        case 0x43: queue_load_r8_r8(&registers.B, &registers.E); return;    // B <- E
+        case 0x44: queue_load_r8_r8(&registers.B, &registers.H); return;    // B <- H
+        case 0x45: queue_load_r8_r8(&registers.B, &registers.L); return;    // B <- L
+        case 0x46: queue_load_r8_r16(&registers.B, &registers.HL); return;  // B <- Mem[HL]
+        case 0x47: queue_load_r8_r8(&registers.B, &registers.A); return;    // B <- A
+        case 0x48: queue_load_r8_r8(&registers.C, &registers.B); return;    // C <- B
+        case 0x49: return;                                                  // C <- C (essentially a NOP)
+        case 0x4A: queue_load_r8_r8(&registers.C, &registers.D); return;    // C <- D
+        case 0x4B: queue_load_r8_r8(&registers.C, &registers.E); return;    // C <- E
+        case 0x4C: queue_load_r8_r8(&registers.C, &registers.H); return;    // C <- H
+        case 0x4D: queue_load_r8_r8(&registers.C, &registers.L); return;    // C <- L
+        case 0x4E: queue_load_r8_r16(&registers.C, &registers.HL); return;  // C <- Mem[HL]
+        case 0x4F: queue_load_r8_r8(&registers.C, &registers.A); return;    // C <- A
 
-        case 0x20: { (JR_IF(FLAG_ZERO, false)); return; }           // JR NZ, e8
-        case 0x21: { LD(HL, fetch16()); return; }                   // LD HL, n16
-        case 0x22: { LD(get_pair(HL), reg_A); INC(HL); return; }    // memory[HL++] <- A
-        case 0x23: { INC(HL); timer.tick(); return; }               // INC HL
-        case 0x24: { INC(reg_H); return; }                          // H++
-        case 0x25: { DEC(reg_H); return; }                          // H--
-        case 0x26: { LD(reg_H, fetch()); return; }                  // H <- n8
-        case 0x27: { DAA(); return; }                               // DAA
-        case 0x28: { (JR_IF(FLAG_ZERO, true)); return; }            // JR Z, e8
-        case 0x29: { ADD_HL(get_pair(HL)); return; }                // ADD HL, HL
-        case 0x2A: { LD(reg_A, get_pair(HL)); INC(HL); return; }    // A <- memory[HL++]
-        case 0x2B: { DEC(HL); timer.tick(); return; }               // HL--
-        case 0x2C: { INC(reg_L); return; }                          // L++
-        case 0x2D: { DEC(reg_L); return; }                          // L--
-        case 0x2E: { LD(reg_L, fetch()); return; }                  // L <- n8
-        case 0x2F: { CPL(); return; }                               // A <- ~A
+        case 0x50: queue_load_r8_r8(&registers.D, &registers.B);return;     // D <- B
+        case 0x51: queue_load_r8_r8(&registers.D, &registers.C); return;    // D <- C
+        case 0x52: return;                                                  // D <- D (essentially a NOP)
+        case 0x53: queue_load_r8_r8(&registers.D, &registers.E); return;    // D <- E
+        case 0x54: queue_load_r8_r8(&registers.D, &registers.H); return;    // D <- H
+        case 0x55: queue_load_r8_r8(&registers.D, &registers.L); return;    // D <- L
+        case 0x56: queue_load_r8_r16(&registers.D, &registers.HL); return;  // D <- Mem[HL]
+        case 0x57: queue_load_r8_r8(&registers.D, &registers.A); return;    // D <- A
+        case 0x58: queue_load_r8_r8(&registers.E, &registers.B); return;    // E <- B
+        case 0x59: queue_load_r8_r8(&registers.E, &registers.C); return;    // E <- C
+        case 0x5A: queue_load_r8_r8(&registers.E, &registers.D); return;    // E <- D
+        case 0x5B: return;                                                  // E <- E (essentially a NOP)
+        case 0x5C: queue_load_r8_r8(&registers.E, &registers.H); return;    // E <- H
+        case 0x5D: queue_load_r8_r8(&registers.E, &registers.L); return;    // E <- L
+        case 0x5E: queue_load_r8_r16(&registers.E, &registers.HL); return;  // E <- Mem[HL]
+        case 0x5F: queue_load_r8_r8(&registers.E, &registers.A); return;    // E <- A
 
-        case 0x30: { (JR_IF(FLAG_CARRY, false)); return; }          // JR NC, e8
-        case 0x31: { LD(reg_SP, fetch16()); return; }               // LD SP, n16
-        case 0x32: { LD(get_pair(HL), reg_A); DEC(HL); return; }    // memory[HL--] <- A
-        case 0x33: { INC(reg_SP); return; }                         // SP++
-        case 0x34: { INC_HL(); return; }                            // memory[HL]++
-        case 0x35: { DEC_HL(); return; }                            // memory[HL]--
-        case 0x36: { LD(get_pair(HL), fetch()); return; }           // memory[HL] <- n8
-        case 0x37: { SCF(); return; }                               // {Z N H C} = {- 0 0}
-        case 0x38: { (JR_IF(FLAG_CARRY, true)); return; }           // JR C, e8
-        case 0x39: { ADD_HL(reg_SP); return; }                      // HL += SP
-        case 0x3A: { LD(reg_A, get_pair(HL)); DEC(HL); return; }    // A <- memory[HL--]
-        case 0x3B: { DEC(reg_SP); return; }                         // SP--
-        case 0x3C: { INC(reg_A); return; }                          // A++
-        case 0x3D: { DEC(reg_A); return; }                          // A--
-        case 0x3E: { LD(reg_A, fetch()); return; }                  // A <- n8
-        case 0x3F: { CCF(); return; }                               // CCF
+        case 0x60: queue_load_r8_r8(&registers.H, &registers.B);return;     // H <- B
+        case 0x61: queue_load_r8_r8(&registers.H, &registers.C); return;    // H <- C
+        case 0x62: queue_load_r8_r8(&registers.H, &registers.D); return;    // H <- D
+        case 0x63: queue_load_r8_r8(&registers.H, &registers.E); return;    // H <- E
+        case 0x64: return;                                                  // H <- H (essentially a NOP)
+        case 0x65: queue_load_r8_r8(&registers.H, &registers.L); return;    // H <- L
+        case 0x66: queue_load_r8_r16(&registers.H, &registers.HL); return;  // H <- Mem[HL]
+        case 0x67: queue_load_r8_r8(&registers.H, &registers.A); return;    // H <- A
+        case 0x68: queue_load_r8_r8(&registers.L, &registers.B); return;    // L <- B
+        case 0x69: queue_load_r8_r8(&registers.L, &registers.C); return;    // L <- C
+        case 0x6A: queue_load_r8_r8(&registers.L, &registers.D); return;    // L <- D
+        case 0x6B: queue_load_r8_r8(&registers.L, &registers.E); return;    // L <- E
+        case 0x6C: queue_load_r8_r8(&registers.L, &registers.H); return;    // L <- H
+        case 0x6D:  return;                                                 // L <- L (essentially a NOP)
+        case 0x6E: queue_load_r8_r16(&registers.L, &registers.HL); return;  // L <- Mem[HL]
+        case 0x6F: queue_load_r8_r8(&registers.L, &registers.A); return;    // L <- A
 
-        case 0x40: { return; }                                      // LD B, B - essentially a NOP
-        case 0x41: { LD(reg_B, reg_C); return; }                    // B <- C
-        case 0x42: { LD(reg_B, reg_D); return; }                    // B <- D
-        case 0x43: { LD(reg_B, reg_E); return; }                    // B <- E
-        case 0x44: { LD(reg_B, reg_H); return; }                    // B <- H
-        case 0x45: { LD(reg_B, reg_L); return; }                    // B <- L
-        case 0x46: { LD(reg_B, get_pair(HL)); return; }             // B <- memory[HL]
-        case 0x47: { LD(reg_B, reg_A); return; }                    // B <- A
-        case 0x48: { LD(reg_C, reg_B); return; }                    // C <- B
-        case 0x49: { return; }                                      // LD C, C - essentially a NOP
-        case 0x4A: { LD(reg_C, reg_D); return; }                    // C <- D
-        case 0x4B: { LD(reg_C, reg_E); return; }                    // C <- E
-        case 0x4C: { LD(reg_C, reg_H); return; }                    // C <- H
-        case 0x4D: { LD(reg_C, reg_L); return; }                    // C <- L
-        case 0x4E: { LD(reg_C, get_pair(HL)); return; }             // C <- memory[HL]
-        case 0x4F: { LD(reg_C, reg_A); return; }                    // C <- A
+        case 0x70: queue_load_r16_r8(&registers.HL, &registers.B); return;  // Mem[HL] <- B
+        case 0x71: queue_load_r16_r8(&registers.HL, &registers.C); return;  // Mem[HL] <- C
+        case 0x72: queue_load_r16_r8(&registers.HL, &registers.D); return;  // Mem[HL] <- D
+        case 0x73: queue_load_r16_r8(&registers.HL, &registers.E); return;  // Mem[HL] <- E
+        case 0x74: queue_load_r16_r8(&registers.HL, &registers.H); return;  // Mem[HL] <- H
+        case 0x75: queue_load_r16_r8(&registers.HL, &registers.L); return;  // Mem[HL] <- L
+        case 0x76: /* HALT */ return;                                       // HALT
+        case 0x77: queue_load_r16_r8(&registers.HL, &registers.A); return;  // Mem[HL] <- A
+        case 0x78: queue_load_r8_r8(&registers.A, &registers.B); return;    // A <- B
+        case 0x79: queue_load_r8_r8(&registers.A, &registers.C); return;    // A <- C
+        case 0x7A: queue_load_r8_r8(&registers.A, &registers.D); return;    // A <- D
+        case 0x7B: queue_load_r8_r8(&registers.A, &registers.E); return;    // A <- E
+        case 0x7C: queue_load_r8_r8(&registers.A, &registers.H); return;    // A <- H
+        case 0x7D: queue_load_r8_r8(&registers.A, &registers.L); return;    // A <- L
+        case 0x7E: queue_load_r8_r16(&registers.A, &registers.HL); return;  // A <- Mem[HL]
+        case 0x7F: return;                                                  // A <- A (essentially a NOP)
 
-        case 0x50: { LD(reg_D, reg_B); return; }                    // D <- B
-        case 0x51: { LD(reg_D, reg_C); return; }                    // D <- C
-        case 0x52: { return; }                                      // LD D, D - essentially a NOP
-        case 0x53: { LD(reg_D, reg_E); return; }                    // D <- E
-        case 0x54: { LD(reg_D, reg_H); return; }                    // D <- H
-        case 0x55: { LD(reg_D, reg_L); return; }                    // D <- L
-        case 0x56: { LD(reg_D, get_pair(HL)); return; }             // D <- memory[HL]
-        case 0x57: { LD(reg_D, reg_A); return; }                    // D <- A
-        case 0x58: { LD(reg_E, reg_B); return; }                    // E <- B
-        case 0x59: { LD(reg_E, reg_C); return; }                    // E <- C
-        case 0x5A: { LD(reg_E, reg_D); return; }                    // E <- D
-        case 0x5B: {return; }                                       // LD E, E - essentially a NOP
-        case 0x5C: { LD(reg_E, reg_H); return; }                    // E <- H
-        case 0x5D: { LD(reg_E, reg_L); return; }                    // E <- L
-        case 0x5E: { LD(reg_E, get_pair(HL)); return; }             // E <- memory[HL]
-        case 0x5F: { LD(reg_E, reg_A); return; }                    // E <- A
+        case 0x80: queue_alu_op(&registers.B); return;    // A += B (no carry)
+        case 0x81: queue_alu_op(&registers.C); return;    // A += C (no carry)
+        case 0x82: queue_alu_op(&registers.D); return;    // A += D (no carry)
+        case 0x83: queue_alu_op(&registers.E); return;    // A += E (no carry)
+        case 0x84: queue_alu_op(&registers.H); return;    // A += H (no carry)
+        case 0x85: queue_alu_op(&registers.L); return;    // A += L (no carry)
+        case 0x86: /* A += Mem[HL] */ return;
+        case 0x87: queue_alu_op(&registers.A); return;    // A += A (no carry)
+        case 0x88: queue_alu_op(&registers.B); return;    // A += B (with carry)
+        case 0x89: queue_alu_op(&registers.C); return;    // A += C (with carry)
+        case 0x8A: queue_alu_op(&registers.D); return;    // A += D (with carry)
+        case 0x8B: queue_alu_op(&registers.E); return;    // A += E (with carry)
+        case 0x8C: queue_alu_op(&registers.H); return;    // A += H (with carry)
+        case 0x8D: queue_alu_op(&registers.L); return;    // A += L (with carry)
+        case 0x8E: /* A += Mem[HL] w/carry*/ return;
+        case 0x8F: queue_alu_op(&registers.A); return;    // A += A (with carry)
 
-        case 0x60: { LD(reg_H, reg_B); return; }                    // H <- B
-        case 0x61: { LD(reg_H, reg_C); return; }                    // H <- C
-        case 0x62: { LD(reg_H, reg_D); return; }                    // H <- D
-        case 0x63: { LD(reg_H, reg_E); return; }                    // H <- E
-        case 0x64: { return; }                                      // LD H, H - essentially a NOP
-        case 0x65: { LD(reg_H, reg_L); return; }                    // H <- L
-        case 0x66: { LD(reg_H, get_pair(HL)); return; }             // H <- memory[HL]
-        case 0x67: { LD(reg_H, reg_A); return; }                    // H <- A
-        case 0x68: { LD(reg_L, reg_B); return; }                    // L <- B
-        case 0x69: { LD(reg_L, reg_C); return; }                    // L <- C
-        case 0x6A: { LD(reg_L, reg_D); return; }                    // L <- D
-        case 0x6B: { LD(reg_L, reg_E); return; }                    // L <- E
-        case 0x6C: { LD(reg_L, reg_H); return; }                    // L <- H
-        case 0x6D: { LD(reg_L, reg_L); return; }                    // L <- L
-        case 0x6E: { LD(reg_L, get_pair(HL)); return; }             // L <- memory[HL]
-        case 0x6F: { LD(reg_L, reg_A); return; }                    // L <- A
+        case 0x90: queue_alu_op(&registers.B); return;    // A -= B (no carry)
+        case 0x91: queue_alu_op(&registers.C); return;    // A -= C (no carry)
+        case 0x92: queue_alu_op(&registers.D); return;    // A -= D (no carry)
+        case 0x93: queue_alu_op(&registers.E); return;    // A -= E (no carry)
+        case 0x94: queue_alu_op(&registers.H); return;    // A -= H (no carry)
+        case 0x95: queue_alu_op(&registers.L); return;    // A -= L (no carry)
+        case 0x96: /* A += Mem[HL] */ return;
+        case 0x97: queue_alu_op(&registers.A); return;    // A -= A (no carry)
+        case 0x98: queue_alu_op(&registers.B); return;    // A -= B (with carry)
+        case 0x99: queue_alu_op(&registers.C); return;    // A -= C (with carry)
+        case 0x9A: queue_alu_op(&registers.D); return;    // A -= D (with carry)
+        case 0x9B: queue_alu_op(&registers.E); return;    // A -= E (with carry)
+        case 0x9C: queue_alu_op(&registers.H); return;    // A -= H (with carry)
+        case 0x9D: queue_alu_op(&registers.L); return;    // A -= L (with carry)
+        case 0x9E: /* A += Mem[HL] w/carry*/ return;
+        case 0x9F: queue_alu_op(&registers.A); return;    // A -= A (with carry)
 
-        case 0x70: { LD(get_pair(HL), reg_B); return; }             // memory[HL] <- B
-        case 0x71: { LD(get_pair(HL), reg_C); return; }             // memory[HL] <- C
-        case 0x72: { LD(get_pair(HL), reg_D); return; }             // memory[HL] <- D
-        case 0x73: { LD(get_pair(HL), reg_E); return; }             // memory[HL] <- E
-        case 0x74: { LD(get_pair(HL), reg_H); return; }             // memory[HL] <- H
-        case 0x75: { LD(get_pair(HL), reg_L); return; }             // memory[HL] <- L
-        case 0x76: { HALT(); return; }                              // HALT
-        case 0x77: { LD(get_pair(HL), reg_A); return; }             // memory[HL] <- A
-        case 0x78: { LD(reg_A, reg_B); return; }                    // A <- B
-        case 0x79: { LD(reg_A, reg_C); return; }                    // A <- C
-        case 0x7A: { LD(reg_A, reg_D); return; }                    // A <- D
-        case 0x7B: { LD(reg_A, reg_E); return; }                    // A <- E
-        case 0x7C: { LD(reg_A, reg_H); return; }                    // A <- H
-        case 0x7D: { LD(reg_A, reg_L); return; }                    // A <- L
-        case 0x7E: { LD(reg_A, get_pair(HL)); return; }             // A <- memory[HL]
-        case 0x7F: { return; }                                      // LD A, A - essentially a NOP
+        case 0xA0: queue_alu_op(&registers.B); return;    // A &= B
+        case 0xA1: queue_alu_op(&registers.C); return;    // A &= C
+        case 0xA2: queue_alu_op(&registers.D); return;    // A &= D
+        case 0xA3: queue_alu_op(&registers.E); return;    // A &= E
+        case 0xA4: queue_alu_op(&registers.H); return;    // A &= H
+        case 0xA5: queue_alu_op(&registers.L); return;    // A &= L
+        case 0xA6: /* A += Mem[HL] */ return;
+        case 0xA7: queue_alu_op(&registers.A); return;    // A &= A
+        case 0xA8: queue_alu_op(&registers.B); return;    // A ^= B
+        case 0xA9: queue_alu_op(&registers.C); return;    // A ^= C
+        case 0xAA: queue_alu_op(&registers.D); return;    // A ^= D
+        case 0xAB: queue_alu_op(&registers.E); return;    // A ^= E
+        case 0xAC: queue_alu_op(&registers.H); return;    // A ^= H
+        case 0xAD: queue_alu_op(&registers.L); return;    // A ^= L
+        case 0xAE: /* A += Mem[HL] w/carry*/ return;
+        case 0xAF: queue_alu_op(&registers.A); return;    // A ^= A
 
-        case 0x80: { ADD(reg_B, false); return; }                   // A += B
-        case 0x81: { ADD(reg_C, false); return; }                   // A += C
-        case 0x82: { ADD(reg_D, false); return; }                   // A += D
-        case 0x83: { ADD(reg_E, false); return; }                   // A += E
-        case 0x84: { ADD(reg_H, false); return; }                   // A += H
-        case 0x85: { ADD(reg_L, false); return; }                   // A += L
-        case 0x86: { ADD(read_hl(), false); return; }               // A += memory[HL]
-        case 0x87: { ADD(reg_A, false); return; }                   // A += A
-        case 0x88: { ADD(reg_B, true); return; }                    // A += (B + carry)
-        case 0x89: { ADD(reg_C, true); return; }                    // A += (C + carry)
-        case 0x8A: { ADD(reg_D, true); return; }                    // A += (D + carry)
-        case 0x8B: { ADD(reg_E, true); return; }                    // A += (E + carry)
-        case 0x8C: { ADD(reg_H, true); return; }                    // A += (H + carry)
-        case 0x8D: { ADD(reg_L, true); return; }                    // A += (L + carry)
-        case 0x8E: { ADD(read_hl(), true); return; }                // A += (memory[HL] + carry)
-        case 0x8F: { ADD(reg_A, true); return; }                    // A += (A + carry)
+        case 0xB0: queue_alu_op(&registers.B); return;    // A |= B
+        case 0xB1: queue_alu_op(&registers.C); return;    // A |= C
+        case 0xB2: queue_alu_op(&registers.D); return;    // A |= D
+        case 0xB3: queue_alu_op(&registers.E); return;    // A |= E
+        case 0xB4: queue_alu_op(&registers.H); return;    // A |= H
+        case 0xB5: queue_alu_op(&registers.L); return;    // A |= L
+        case 0xB6: /* A += Mem[HL] */ return;
+        case 0xB7: queue_alu_op(&registers.A); return;    // A |= A
+        case 0xB8: queue_alu_op(&registers.B); return;    // CP(B) (Set flags for A - B)
+        case 0xB9: queue_alu_op(&registers.C); return;    // CP(C) (Set flags for A - C)
+        case 0xBA: queue_alu_op(&registers.D); return;    // CP(D) (Set flags for A - D)
+        case 0xBB: queue_alu_op(&registers.E); return;    // CP(E) (Set flags for A - E)
+        case 0xBC: queue_alu_op(&registers.H); return;    // CP(H) (Set flags for A - H)
+        case 0xBD: queue_alu_op(&registers.L); return;    // CP(L) (Set flags for A - L)
+        case 0xBE: /* A += Mem[HL] w/carry*/ return;
+        case 0xBF: queue_alu_op(&registers.A); return;    // CP(A) (Set flags for A - A)
 
-        case 0x90: { SUB(reg_B, false); return; }                   // A -= B
-        case 0x91: { SUB(reg_C, false); return; }                   // A -= C
-        case 0x92: { SUB(reg_D, false); return; }                   // A -= D
-        case 0x93: { SUB(reg_E, false); return; }                   // A -= E
-        case 0x94: { SUB(reg_H, false); return; }                   // A -= H
-        case 0x95: { SUB(reg_L, false); return; }                   // A -= L
-        case 0x96: { SUB(read_hl(), false); return; }               // A -= memory[HL]
-        case 0x97: { SUB(reg_A, false); return; }                   // A -= A
-        case 0x98: { SUB(reg_B, true); return; }                    // A -= (B + carry)
-        case 0x99: { SUB(reg_C, true); return; }                    // A -= (C + carry)
-        case 0x9A: { SUB(reg_D, true); return; }                    // A -= (D + carry)
-        case 0x9B: { SUB(reg_E, true); return; }                    // A -= (E + carry)
-        case 0x9C: { SUB(reg_H, true); return; }                    // A -= (H + carry)
-        case 0x9D: { SUB(reg_L, true); return; }                    // A -= (L + carry)
-        case 0x9E: { SUB(read_hl(), true); return; }                // A -= (memory[HL] + carry)
-        case 0x9F: { SUB(reg_A, true); return; }                    // A -= (A + carry)
+        case 0xC0: queue_ret_cond(); return;              // If NZ, PC[7:0] <- Mem[SP++]; PC[15:8] <- Mem[SP++]
+        case 0xC1: queue_pop_r16(&registers.BC); return;  // C <- Mem[SP++]; B <- Mem[SP++]
+        case 0xC2: queue_jp_cond(); return;               // If NZ, PC <- Imm16
+        case 0xC3: queue_jp(); return;                    // PC <- imm16
+        case 0xC4: queue_call_cond(); return;             // If NZ, Push PC, PC <- imm16
+        case 0xC5: queue_push_r16(&registers.BC); return; // Mem[--SP] <- B; Mem[--SP] <- C
+        case 0xC6: queue_alu_imm8(); return;              // A += Mem[PC++] (no carry)
+        case 0xC7: queue_rst(); return;                   // Push PC, PC <- 0x0000
+        case 0xC8: queue_ret_cond(); return;              // If Z, PC[7:0] <- Mem[SP++]; PC[15:8] <- Mem[SP++]
+        case 0xC9: queue_ret(); return;                   // PC[7:0] <- Mem[SP++]; PC[15:8] <- Mem[SP++]
+        case 0xCA: queue_jp_cond(); return;               // If Z, PC <- Imm16
+        case 0xCB: /* CB PREFIX*/ return;                 // PREFIX
+        case 0xCC: queue_call_cond(); return;             // If Z, Push PC, PC <- imm16
+        case 0xCD: queue_call(); return;                  // Push PC, PC <- imm16
+        case 0xCE: queue_alu_imm8(); return;              // A += Mem[PC++] (with carry)
+        case 0xCF: queue_rst(); return;                   // Push PC, PC <- 0x0008
 
-        case 0xA0: { AND(reg_B); return; }                          // A &= B
-        case 0xA1: { AND(reg_C); return; }                          // A &= C
-        case 0xA2: { AND(reg_D); return; }                          // A &= D
-        case 0xA3: { AND(reg_E); return; }                          // A &= E
-        case 0xA4: { AND(reg_H); return; }                          // A &= H
-        case 0xA5: { AND(reg_L); return; }                          // A &= L
-        case 0xA6: { AND(read_hl()); return; }                      // A &= memory[HL]
-        case 0xA7: { AND(reg_A); return; }                          // A &= A
-        case 0xA8: { XOR(reg_B); return; }                          // A ^= B
-        case 0xA9: { XOR(reg_C); return; }                          // A ^= C
-        case 0xAA: { XOR(reg_D); return; }                          // A ^= D
-        case 0xAB: { XOR(reg_E); return; }                          // A ^= E
-        case 0xAC: { XOR(reg_H); return; }                          // A ^= H
-        case 0xAD: { XOR(reg_L); return; }                          // A ^= L
-        case 0xAE: { XOR(read_hl()); return; }                      // A ^= memory[HL]
-        case 0xAF: { XOR(reg_A); return; }                          // A ^= A
+        case 0xD0: queue_ret_cond(); return;              // If NC, PC[7:0] <- Mem[SP++]; PC[15:8] <- Mem[SP++]
+        case 0xD1: queue_pop_r16(&registers.DE); return;  // E <- Mem[SP++]; D <- Mem[SP++]
+        case 0xD2: queue_jp_cond(); return;               // If NC, PC <- Imm16
+        case 0xD3: throw std::runtime_error("Opcode: D3 is bad");
+        case 0xD4: queue_call_cond(); return;             // If NC, Push PC, PC <- imm16
+        case 0xD5: queue_push_r16(&registers.DE); return; // Mem[--SP] <- D; Mem[--SP] <- E
+        case 0xD6: queue_alu_imm8(); return;              // A -= Mem[PC++] (no carry)
+        case 0xD7: queue_rst(); return;                   // Push PC, PC <- 0x0010
+        case 0xD8: queue_ret_cond(); return;              // If C, PC[7:0] <- Mem[SP++]; PC[15:8] <- Mem[SP++]
+        case 0xD9: queue_reti(); return;                  // PC[7:0] <- Mem[SP++]; PC[15:8] <- Mem[SP++], IME=1
+        case 0xDA: queue_jp_cond(); return;               // If C, PC <- Imm16
+        case 0xDB: throw std::runtime_error("Opcode: DB is bad");
+        case 0xDC: queue_call_cond(); return;             // If C, Push PC, PC <- imm16
+        case 0xDD: throw std::runtime_error("Opcode: DD is bad");
+        case 0xDE: queue_alu_imm8(); return;              // A -= Mem[PC++] (with carry)
+        case 0xDF: queue_rst(); return;                   // Push PC, PC <- 0x0018
 
-        case 0xB0: { OR(reg_B); return; }                           // A |= B
-        case 0xB1: { OR(reg_C); return; }                           // A |= C
-        case 0xB2: { OR(reg_D); return; }                           // A |= D
-        case 0xB3: { OR(reg_E); return; }                           // A |= E
-        case 0xB4: { OR(reg_H); return; }                           // A |= H
-        case 0xB5: { OR(reg_L); return; }                           // A |= L
-        case 0xB6: { OR(read_hl()); return; }                       // A |= memory[HL]
-        case 0xB7: { OR(reg_A); return; }                           // A |= A
-        case 0xB8: { CP(reg_B); return; }                           // Update flags for (A - B)
-        case 0xB9: { CP(reg_C); return; }                           // Update flags for (A - C)
-        case 0xBA: { CP(reg_D); return; }                           // Update flags for (A - D)
-        case 0xBB: { CP(reg_E); return; }                           // Update flags for (A - E)
-        case 0xBC: { CP(reg_H); return; }                           // Update flags for (A - H)
-        case 0xBD: { CP(reg_L); return; }                           // Update flags for (A - L)
-        case 0xBE: { CP(read_hl()); return; }                       // Update flags for (A - memory[HL])
-        case 0xBF: { CP(reg_A); return; }                           // Update flags for (A - A)
+        case 0xE0: /* Mem[0xFF00 + Mem[PC++]] <- A */ return;
+        case 0xE1: queue_pop_r16(&registers.HL); return;  // L <- Mem[SP++]; H <- Mem[SP++]
+        case 0xE2: /* Mem[0xFF00 + C] <- A */ return;
+        case 0xE3: throw std::runtime_error("Opcode: E3 is bad");
+        case 0xE4: throw std::runtime_error("Opcode: E4 is bad");
+        case 0xE5: queue_push_r16(&registers.HL); return; // Mem[--SP] <- H; Mem[--SP] <- L
+        case 0xE6: queue_alu_imm8(); return;              // A &= Mem[PC++]
+        case 0xE7: queue_rst(); return;                   // Push PC, PC <- 0x0020
+        case 0xE8: /* SP += (int16_t)Mem[PC++] */ return;
+        case 0xE9: queue_jp_hl(); return;                 // PC <- HL
+        case 0xEA: queue_load_imm16_a(); return;          // Mem[Imm16] <- A
+        case 0xEB: throw std::runtime_error("Opcode: EB is bad");
+        case 0xEC: throw std::runtime_error("Opcode: EC is bad");
+        case 0xED: throw std::runtime_error("Opcode: ED is bad");
+        case 0xEE: queue_alu_imm8(); return;              // A ^= Mem[PC++]
+        case 0xEF: queue_rst(); return;                   // Push PC, PC <- 0x0028
 
-        case 0xC0: { (RET_IF(FLAG_ZERO, false)); return; }          // RET NZ
-        case 0xC1: { POP(BC); return; }                             // C <- memory[SP++]; B <- memory[SP++]
-        case 0xC2: { (JP_IF(FLAG_ZERO, false)); return; }           // JP NZ, a16
-        case 0xC3: { JP(fetch16()); timer.tick(); return; }         // JP a16
-        case 0xC4: { (CALL_IF(FLAG_ZERO, false)); return; }         // CALL NZ, a16
-        case 0xC5: { PUSH(BC); return; }                            // memory[--SP] <- B; memory[--SP] <- C
-        case 0xC6: { ADD(fetch(), false); return; }                 // A += n8
-        case 0xC7: { RST(reset_vector[0]); return; }                // memory[SP] <- PC; PC = 0x0000
-        case 0xC8: { (RET_IF(FLAG_ZERO, true)); return; }           // RET Z
-        case 0xC9: { RET(); return; }                               // RET
-        case 0xCA: { (JP_IF(FLAG_ZERO, true)); return; }            // JP Z, a16
-        case 0xCB: { decode_execute_cb(); return; }                 // PREFIX
-        case 0xCC: { (CALL_IF(FLAG_ZERO, true)); return; }          // CALL Z, a16
-        case 0xCD: { CALL(); return; }                              // CALL a16
-        case 0xCE: { ADD(fetch(), true); return; }                  // A += (n8 + carry)
-        case 0xCF: { RST(reset_vector[1]); return; }                // memory[SP] <- PC; PC = 0x0008
+        case 0xF0: /* A <- Mem[0xFF00 + Mem[PC++]] */ return;
+        case 0xF1: queue_pop_r16(&registers.AF); return;  // F <- Mem[SP++]; A <- Mem[SP++]
+        case 0xF2: /* A <- Mem[0xFF00 + C] */ return;
+        case 0xF3: push_state(CPUState::DI); return;      // DI
+        case 0xF4: throw std::runtime_error("Opcode: F4 is bad");
+        case 0xF5: queue_push_r16(&registers.AF); return; // Mem[--SP] <- A; Mem[--SP] <- F
+        case 0xF6: queue_alu_imm8(); return;              // A |= Mem[PC++]
+        case 0xF7: queue_rst(); return;                   // Push PC, PC <- 0x0030
+        case 0xF8: /* HL = SP + (int16_t)Mem[PC++] */ return;
+        case 0xF9: queue_load_sp_hl(); return;            // SP <- HL
+        case 0xFA: queue_load_a_imm16(); return;          // A <- Mem[Imm16]
+        case 0xFB: push_state(CPUState::EI); return;      // EI
+        case 0xFC: throw std::runtime_error("Opcode: FC is bad");
+        case 0xFD: throw std::runtime_error("Opcode: FD is bad");
+        case 0xFE: queue_alu_imm8(); return;              // CP(Mem[PC++]) (Set flags for A - Mem[PC++])
+        case 0xFF: queue_rst(); return;                   // Push PC, PC <- 0x0038
 
-        case 0xD0: { (RET_IF(FLAG_CARRY, false)); return; }         // RET NC
-        case 0xD1: { POP(DE); return; }                             // E <- memory[++SP]; D <- memory[++SP]
-        case 0xD2: { (JP_IF(FLAG_CARRY, false)); return; }          // JP NC, a16
-        case 0xD3: { throw std::runtime_error("Opcode: D3 is bad"); } // --- BAD ---
-        case 0xD4: { (CALL_IF(FLAG_CARRY, false)); return; }        // CALL NC, a16
-        case 0xD5: { PUSH(DE); return; }                            // memory[--SP] <- D; memory[--SP] <- E
-        case 0xD6: { SUB(fetch(), false); return; }                 // A -= n8
-        case 0xD7: { RST(reset_vector[2]); return; }                // memory[SP] <- PC; PC = 0x0010
-        case 0xD8: { (RET_IF(FLAG_CARRY, true)); return; }          // RET C
-        case 0xD9: { RET(); interrupts_enabled = true; return; }    // RETI
-        case 0xDA: { (JP_IF(FLAG_CARRY, true)); return; }           // JP C, a16
-        case 0xDB: { throw std::runtime_error("Opcode: DB is bad"); } // --- BAD ---
-        case 0xDC: { (CALL_IF(FLAG_CARRY, true)); return; }         // CALL C, a16
-        case 0xDD: { throw std::runtime_error("Opcode: DD is bad"); } // --- BAD ---
-        case 0xDE: { SUB(fetch(), true); return; }                  // A -= (n8 + carry)
-        case 0xDF: { RST(reset_vector[3]); return; }                // memory[SP] <- PC; PC = 0x0018
-
-        case 0xE0: { LDH(fetch(), false); return; }                 // memory[$FF00 + n8] <- A
-        case 0xE1: { POP(HL); return; }                             // L <- memory[++SP]; H <- memory[++SP]
-        case 0xE2: { LDH(reg_C, false); return; }                   // memory[$FF00 + C] <- A
-        case 0xE3: { throw std::runtime_error("Opcode: E3 is bad"); } // --- BAD ---
-        case 0xE4: { throw std::runtime_error("Opcode: E4 is bad"); } // --- BAD ---
-        case 0xE5: { PUSH(HL); return; }                            // memory[--SP] <- H; memory[--SP] <- L
-        case 0xE6: { AND(fetch()); return; }                        // A &= n8
-        case 0xE7: { RST(reset_vector[4]); return; }                // memory[SP] <- PC; PC = 0x0020
-        case 0xE8: { reg_SP = ADD_SP(); timer.tick(); return; }    // SP += e8
-        case 0xE9: { JP(get_pair(HL)); return; }                    // PC <- HL
-        case 0xEA: { LD(fetch16(), reg_A); return; }                // memory[n16] <- A
-        case 0xEB: { throw std::runtime_error("Opcode: EB is bad"); } // --- BAD ---
-        case 0xEC: { throw std::runtime_error("Opcode: EC is bad"); } // --- BAD ---
-        case 0xED: { throw std::runtime_error("Opcode: ED is bad"); } // --- BAD ---
-        case 0xEE: { XOR(fetch()); return; }                        // A ^= n8
-        case 0xEF: { RST(reset_vector[5]); return; }                // memory[SP] <- PC; PC = 0x0028
-
-        case 0xF0: { LDH(fetch(), true); return; }                  // A <- memory[$FF00 + n8]
-        case 0xF1: { POP(AF); reg_F &= 0xF0; return; }              // F <- memory[++SP]; A <- memory[++SP]
-        case 0xF2: { LDH(reg_C, true); return; }                    // A <- memory[$FF00 + C]
-        case 0xF3: { DI(); return; }                                // DI
-        case 0xF4: { throw std::runtime_error("Opcode: F4 is bad"); } // --- BAD ---
-        case 0xF5: { PUSH(AF); return; }                            // memory[--SP] <- A; memory[--SP] <- F
-        case 0xF6: { OR(fetch()); return; }                         // A |= n8
-        case 0xF7: { RST(reset_vector[6]); return; }                // memory[SP] <- PC; PC = 0x0030
-        case 0xF8: { LD(HL, ADD_SP()); return; }                    // HL <- SP + e8
-        case 0xF9: { LD(reg_SP, get_pair(HL)); timer.tick(); return; } // LD SP, HL
-        case 0xFA: { LD(reg_A, fetch16()); return; }                // A <- memory[n16]
-        case 0xFB: { EI(); return; }                                // EI
-        case 0xFC: { throw std::runtime_error("Opcode: FC is bad"); } // --- BAD ---
-        case 0xFD: { throw std::runtime_error("Opcode: FD is bad"); } // --- BAD ---
-        case 0xFE: { CP(fetch()); return; }                         // Update flags for (A - imm8)
-        case 0xFF: { RST(reset_vector[7]); return; }                // memory[SP] <- PC; PC = 0x0038
-
-        default: {throw std::runtime_error("How did you get here?"); }
-    } 
+        default: throw std::runtime_error("How did you get here?");
+    };
 }
+
 
 /**
  * CB Prefix Rotates, Shifts, and Bit Operations
+ * 
+ * TODO: Convert to queue system
 */
-void CPU::decode_execute_cb() {
+void CPU::decode_cb() {
     Byte opcode = fetch();
 
     switch (opcode) {
@@ -656,4 +564,135 @@ void CPU::decode_execute_cb() {
 
         default: { throw std::runtime_error("How did you get here?"); }
     }
+}
+
+
+/**
+ * Matches opcode to operation and executes that operation
+ * 
+ * @param opcode an 8-bit opcode to be executed
+*/
+void CPU::execute_state(const CPUState state, GameBoy& bus) {
+    switch(state) {
+        /**
+         * 1 m-cycle microstates
+         */
+        case CPUState::InternalDelay:                                                  
+            return; 
+        case CPUState::Mem_Source_to_Dest_Byte:
+            *dest_byte_ptr = bus.read(source_addr_ptr->word);
+            return;
+        case CPUState::Mem_Source_to_Dest_Addr_Low:
+            dest_addr_ptr->low = bus.read(source_addr_ptr->word);
+            return;
+        case CPUState::Mem_Source_to_Dest_Addr_High:
+            dest_addr_ptr->high = bus.read(source_addr_ptr->word);
+            return;
+        case CPUState::Source_Byte_to_Mem_Dest:
+            bus.write(dest_addr_ptr->word, *source_byte_ptr);
+            return;
+        case CPUState::Source_Addr_Low_to_Mem_Dest:
+            bus.write(dest_addr_ptr->word, source_addr_ptr->low);
+            return;
+        case CPUState::Source_Addr_High_to_Mem_Dest:
+            bus.write(dest_addr_ptr->word, source_addr_ptr->high);
+            return;
+        
+        /**
+         * 0 m-cycle microstates
+         */
+
+        case CPUState::CheckCond: {
+            uint8_t condition = (current_opcode >> 3) & 0x03;
+            bool condition_met = false;
+
+            switch (condition) {
+                case 0: condition_met = !get_flag(FLAG_ZERO);  break; // NZ
+                case 1: condition_met =  get_flag(FLAG_ZERO);  break; // Z
+                case 2: condition_met = !get_flag(FLAG_CARRY); break; // NC
+                case 3: condition_met =  get_flag(FLAG_CARRY); break; // C
+            }
+
+            if (condition_met) {
+                return; 
+            }
+            
+            // If we get here, the check failed. Wipe the pipeline to skip the jump/call cycles.
+            clear_pipeline();
+            return; 
+        }
+        case CPUState::EI:
+            ei_pending = true;
+            return;
+        case CPUState::EI_Immediate:
+            interrupts_enabled = true;
+            return;
+        case CPUState::DI:
+            interrupts_enabled = false;
+            return;
+
+        case CPUState::Source_Byte_to_Dest_Byte:
+            *dest_byte_ptr = *source_byte_ptr;
+            return;
+        case CPUState::Source_Addr_to_Dest_Addr:
+            *dest_addr_ptr = *source_addr_ptr;
+            return;
+
+        case CPUState::Make_SP_Source_Addr:
+            source_addr_ptr = &registers.SP;
+            return;
+        case CPUState::Make_SP_Dest_Addr:
+            dest_addr_ptr = &registers.SP;
+            return;
+        case CPUState::Make_Scratch_Source_Addr:
+            source_addr_ptr = &scratch_register;
+            return;
+
+        case CPUState::INC_Source_Addr:
+            (*source_addr_ptr)++;
+            return;
+        case CPUState::DEC_Source_Addr:
+            (*source_addr_ptr)--;
+            return;
+        case CPUState::INC_Dest_Addr:
+            (*dest_addr_ptr)++;
+            return;
+        case CPUState::DEC_Dest_Addr:
+            (*dest_addr_ptr)--;
+            return;
+
+        case CPUState::INC_Dest_Byte:
+            INC(dest_byte_ptr);
+            return;
+        case CPUState::DEC_Dest_Byte:
+            DEC(dest_byte_ptr);
+            return;
+
+        case CPUState::EXEC_ALU: {
+            uint8_t alu_op = (current_opcode >> 3) & 0x07;
+
+            switch (alu_op) {
+                case 0: ADD(*source_byte_ptr, false); return;
+                case 1: ADD(*source_byte_ptr, true);  return;
+                case 2: SUB(*source_byte_ptr, false); return;
+                case 3: SUB(*source_byte_ptr, true);  return;
+                case 4: AND(*source_byte_ptr); return;
+                case 5: XOR(*source_byte_ptr); return;
+                case 6: OR(*source_byte_ptr);  return;
+                case 7: CP(*source_byte_ptr);  return;
+            }
+        }
+        case CPUState::ADD_HL:
+            ADD_HL(source_addr_ptr->word);
+            return;
+
+        case CPUState::JR:
+            registers.PC.word += (int16_t)(int8_t)scratch_register.low;
+            return;
+        case CPUState::JP:
+            registers.PC.word = scratch_register.word;
+            return;
+        
+        default: throw std::runtime_error("Execute state called on bad CPU State");
+    } 
 }

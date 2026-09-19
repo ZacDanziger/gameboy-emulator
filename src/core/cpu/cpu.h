@@ -4,8 +4,12 @@
 #include <functional>
 
 #include "../types.h"
+#include "cpu_state.h"
+#include "cpu_registers.h"
 
 class GameBoy;
+
+static constexpr int MAX_PIPELINE_SIZE = 12;    // may need to update as time goes on
 
 using Flag = Bit;
 
@@ -21,25 +25,20 @@ class CPU {
     public:
     //test
         CPU() :
-            reg_A(0x11),
-            reg_F(0x80),
-            reg_B(0x00),
-            reg_C(0x00),
-            reg_D(0xFF),
-            reg_E(0x56),
-            reg_H(0x00),
-            reg_L(0x0D),
-            reg_SP(0xFFFE),
-            reg_PC(0x0100),
+            registers(),
 
-            AF({&reg_A, &reg_F}),
-            BC({&reg_B, &reg_C}),
-            DE({&reg_D, &reg_E}),
-            HL({&reg_H, &reg_L}),
+            pipeline{},
+            pipeline_size(0),
+            pipeline_index(0),
 
             current_opcode(0x00),
-            m_cycle(0),
-            scratch_register(0x0000),
+
+            source_byte_ptr(nullptr),
+            dest_byte_ptr(nullptr),
+            source_addr_ptr(nullptr),
+            dest_addr_ptr(nullptr),
+
+            scratch_register(),
 
             interrupts_enabled(false),
             ei_pending(false),
@@ -50,42 +49,27 @@ class CPU {
 
         void reset();
         
-        void tick(GameBoy& gameboy);
+        void tick(GameBoy& bus);
         void step();
         
         bool is_halted() const { return halted; }
         bool is_stopped() const { return stopped; }
 
-        
     private:
-        // Pair of 8-bit registers
-        struct Pair {
-            Byte *reg_high;
-            Byte *reg_low;
-        };
-        
-        // Gameboy's Eight 8-bit registers
-        Byte reg_A;   // Accumulator
-        Byte reg_F;   // Flags
-        Byte reg_B;
-        Byte reg_C;
-        Byte reg_D;
-        Byte reg_E;
-        Byte reg_H;
-        Byte reg_L;
+        CPUState pipeline[MAX_PIPELINE_SIZE];
+        uint8_t pipeline_size;
+        uint8_t pipeline_index;
 
-        Pair AF;
-        Pair BC;
-        Pair DE;
-        Pair HL;
-
-        // 16-bit Stack Pointer and Program Counter
-        Word reg_SP;
-        Word reg_PC;
+        Registers registers;
 
         Byte current_opcode;
-        uint8_t m_cycle;
-        Word scratch_register; // used for temporary storage during multi-cycle instructions
+
+        Byte* source_byte_ptr;
+        Byte* dest_byte_ptr;
+        Register16* source_addr_ptr;
+        Register16* dest_addr_ptr;
+
+        Register16 scratch_register;
 
         bool interrupts_enabled;    // IME
         bool ei_pending;
@@ -95,10 +79,6 @@ class CPU {
         // one of the many possible outcomes of STOP is entering HALT mode
         //      which will automatically exit after 0x8000 m-cycles
         bool speed_switch_halt;
-
-        constexpr static Byte reset_vector[8]{
-            0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38
-        };
 
         constexpr static Byte interrupt_vector[5]{
             0x40,   // IVT[0] - V Blank
@@ -112,17 +92,72 @@ class CPU {
         
         // Fetch -> Decode -> Execute loop
 
-        Byte fetch();
-        bool decode_execute(const Byte opcode, GameBoy& gameboy);
-        bool decode_execute_cb();
+        void fetch(GameBoy& bus);
+        void decode();
+        void decode_cb();
+        void execute_state(const CPUState state, GameBoy& bus);
+        
+        Byte* get_register_by_id(uint8_t id);
+        Register16* get_register16_by_id(uint8_t id);
+        bool accesses_memory(const CPUState state) {return state <= CPUState::Source_Addr_High_to_Mem_Dest; }
+        
+        void push_state(const CPUState state) { pipeline[pipeline_index++] = state; }
+        void clear_pipeline() { pipeline_size = 0; pipeline_index = 0; }
 
         // Helper Functions
 
         bool get_flag(const Flag flag) const;
         void update_flag(const Flag flag, bool new_val);
-        Word get_pair(const Pair& pair) const;
-        void set_pair(const Pair& pair, const Word value);
         Byte read_hl() const;
+
+        /** -------------------
+         * Instruction Decoders
+         * ------------------- */ 
+
+        // Memory Accesses
+
+        void queue_load_r16_imm16(Register16* dest_reg);
+        void queue_store_a_mem_r16(Register16* dest_addr);
+        void queue_load_r8_imm8(Byte* dest_byte);
+        void queue_store_sp_imm16();
+        void queue_load_a_mem_r16(Register16* source_addr);
+        void queue_load_r8_r16(Byte* dest_byte, Register16* source_addr);
+        void queue_load_r16_r8(Register16* dest_addr, Byte* source_byte);
+        void queue_pop_r16(Register16* dest_reg);
+        void queue_push_r16(Register16* source_reg);
+        void queue_load_imm16_a();
+        void queue_load_a_imm16();
+        void load_mem_hl_imm8();
+
+        // Jumps and Discontinuities
+
+        void queue_jr();
+        void queue_jr_cond();
+        void queue_ret();
+        void queue_reti();
+        void queue_ret_cond();
+        void queue_jp();
+        void queue_jp_hl();
+        void queue_jp_cond();
+        void queue_call();
+        void queue_call_cond();
+        void queue_rst();
+
+        // Register to Register
+
+        void queue_load_r8_r8(Byte* dest_byte, Byte* source_byte);
+        void queue_load_sp_hl();
+
+        // Math & Logic operations
+
+        void queue_alu_op(Byte* source_byte);
+        void queue_alu_imm8();
+        void queue_inc_r16(Register16* dest_reg);
+        void queue_dec_r16(Register16* dest_reg);
+        void queue_inc_r8(Byte* dest_byte);
+        void queue_dec_r8(Byte* dest_byte);
+        void queue_add_hl_r16(Register16* source_reg);
+        void queue_inc_dec_mem_hl();
 
         // Control and Miscellaneous Instructions
 
@@ -137,18 +172,6 @@ class CPU {
         void DI();
         void EI();
 
-        // Jumps and Calls
-
-        void JP(const Address address);
-        bool JP_IF(const Flag flag, bool set);
-        void JR();
-        bool JR_IF(const Flag flag, bool set);
-        void CALL();
-        bool CALL_IF(const Flag flag, bool set);
-        void RST(const Byte offset);
-        void RET();
-        bool RET_IF(const Flag flag, bool set);
-
         // Bit Operations
 
         void BIT(const Byte reg, const Bit bit);
@@ -156,22 +179,6 @@ class CPU {
         void SET_HL(const Bit bit);
         void RES(Byte& reg, const Bit bit);
         void RES_HL(const Bit bit);
-
-        // 8-bit loads
-
-        void LD(Byte& dest, const Byte value);          // dest <- value
-        void LD(Byte& dest, const Address address);     // dest <- memory[address]
-        void LD(const Address dest, Byte value);        // memory[address] <- value
-        void LDH(const Byte reg, bool into_A);
-
-        // 16-bit loads
-
-        void LD(Word& dest, const Word value);          // dest <- value
-        void LD(Pair& pair, const Word value);          // [high | low] <- [value 15:8 | value 7:0]
-        void write_SP(const Address address);
-        void PUSH(const Pair& pair);
-        void PUSH_PC();
-        void POP(Pair& pair);
 
         // 8-bit arithmetic
 
@@ -181,19 +188,13 @@ class CPU {
         void XOR(const Byte value);
         void OR(const Byte value);
         void CP(const Byte value);
-        void INC(Byte& reg);
-        void INC_HL();
-        void DEC(Byte& reg);
-        void DEC_HL();
+        void INC(Byte* reg);
+        void DEC(Byte* reg);
 
         // 16-bit arithmetic
 
         void ADD_HL(const Word value);
         Word ADD_SP();
-        void INC(Word& reg);
-        void INC(Pair& pair);
-        void DEC(Word& reg);
-        void DEC(Pair& pair);
 
         // Rotates and Shifts
 
