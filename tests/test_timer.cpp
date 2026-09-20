@@ -7,7 +7,7 @@ TEST(TimingTest, InstrTiming) {
     // GTEST_SKIP();
     std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
 
-    emulator.load(filename);
+    emulator.load_rom(filename);
 
     EXPECT_NO_THROW(
         emulator.run()
@@ -17,7 +17,7 @@ TEST(TimingTest, InstrTiming) {
 TEST(TimingTests, InterruptTime) {
     std::string filename = "../../gb-test-roms/instr_timing/instr_timing.gb";
 
-    emulator.load(filename);
+    emulator.load_rom(filename);
 
     EXPECT_NO_THROW(
         emulator.run();

@@ -5,7 +5,9 @@ set (SourceFiles
     core/cartridge/mbc1.cpp
     core/cartridge/mbc3.cpp
     core/cpu/cpu.cpp
-    core/cpu/optables.cpp
+    core/cpu/cpu_alu.cpp
+    core/cpu/cpu_queues.cpp
+    core/cpu/microcode.cpp
     core/interrupt/interrupt_controller.cpp
     core/joypad/joypad.cpp
     core/ppu/ppu.cpp

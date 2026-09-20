@@ -12,7 +12,7 @@ Emulator emulator;
 TEST(TimingTest, MemTiming01) {
     std::string filename = "../../gb-test-roms/mem_timing/mem_timing.gb";
 
-    emulator.load(filename);
+    emulator.load_rom(filename);
 
     EXPECT_NO_THROW(
         emulator.run();
@@ -22,7 +22,7 @@ TEST(TimingTest, MemTiming01) {
 TEST(TimingTest, MemTiming02) {
     std::string filename = "../../gb-test-roms/mem_timing-2/mem_timing.gb";
 
-    emulator.load(filename);
+    emulator.load_rom(filename);
 
     EXPECT_NO_THROW(
         emulator.run();

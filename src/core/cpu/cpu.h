@@ -4,12 +4,16 @@
 #include <functional>
 
 #include "../types.h"
-#include "cpu_state.h"
+#include "../memory_map.h"
+
+#include "../interrupt/interrupt_controller.h"
+
+#include "microops.h"
 #include "cpu_registers.h"
 
 class GameBoy;
 
-static constexpr int MAX_PIPELINE_SIZE = 12;    // may need to update as time goes on
+static constexpr int MAX_QUEUE_SIZE = 16;    // current highest queue size required = 12
 
 using Flag = Bit;
 
@@ -24,12 +28,13 @@ static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
 class CPU {
     public:
     //test
-        CPU() :
+        CPU(InterruptController& interrupt_controller) :
+            interrupt(interrupt_controller),
             registers(),
 
-            pipeline{},
-            pipeline_size(0),
-            pipeline_index(0),
+            microcode_queue{},
+            queue_size(0),
+            queue_index(0),
 
             current_opcode(0x00),
 
@@ -50,17 +55,18 @@ class CPU {
         void reset();
         
         void tick(GameBoy& bus);
-        void step();
         
         bool is_halted() const { return halted; }
         bool is_stopped() const { return stopped; }
+        void clear_stopped() { stopped = false; }
 
     private:
-        CPUState pipeline[MAX_PIPELINE_SIZE];
-        uint8_t pipeline_size;
-        uint8_t pipeline_index;
-
+        InterruptController& interrupt;
         Registers registers;
+
+        MicroOp microcode_queue[MAX_QUEUE_SIZE];
+        uint8_t queue_size;
+        uint8_t queue_index;
 
         Byte current_opcode;
 
@@ -80,13 +86,7 @@ class CPU {
         //      which will automatically exit after 0x8000 m-cycles
         bool speed_switch_halt;
 
-        constexpr static Byte interrupt_vector[5]{
-            0x40,   // IVT[0] - V Blank
-            0x48,   // IVT[1] - LCD
-            0x50,   // IVT[2] - Timer 
-            0x58,   // IVT[3] - Serial
-            0x60    // IVT[4] - Joypad
-        };
+
         
         void handle_interrupts();
         
@@ -95,23 +95,20 @@ class CPU {
         void fetch(GameBoy& bus);
         void decode();
         void decode_cb();
-        void execute_state(const CPUState state, GameBoy& bus);
+        void execute_microop(const MicroOp microop, GameBoy& bus);
         
-        Byte* get_register_by_id(uint8_t id);
-        Register16* get_register16_by_id(uint8_t id);
-        bool accesses_memory(const CPUState state) {return state <= CPUState::Source_Addr_High_to_Mem_Dest; }
+        bool accesses_memory(const MicroOp microop) {return microop <= MicroOp::WriteMemFromSourceHigh; }
         
-        void push_state(const CPUState state) { pipeline[pipeline_index++] = state; }
-        void clear_pipeline() { pipeline_size = 0; pipeline_index = 0; }
+        void push_microop(const MicroOp microop);
+        void clear_queue() { queue_size = 0; queue_index = 0; }
 
         // Helper Functions
 
         bool get_flag(const Flag flag) const;
         void update_flag(const Flag flag, bool new_val);
-        Byte read_hl() const;
 
         /** -------------------
-         * Instruction Decoders
+         * Instruction Queues
          * ------------------- */ 
 
         // Memory Accesses
@@ -127,7 +124,13 @@ class CPU {
         void queue_push_r16(Register16* source_reg);
         void queue_load_imm16_a();
         void queue_load_a_imm16();
-        void load_mem_hl_imm8();
+        void queue_load_mem_hl_imm8();
+        void queue_load_high_a_imm8();
+        void queue_load_high_imm8_a();
+        void queue_load_high_a_c();
+        void queue_load_high_c_a();
+        void queue_prefix_cb();
+        void queue_interrupt(const Byte interrupt_vector);
 
         // Jumps and Discontinuities
 
@@ -147,10 +150,14 @@ class CPU {
 
         void queue_load_r8_r8(Byte* dest_byte, Byte* source_byte);
         void queue_load_sp_hl();
+        void queue_add_sp();
+        void queue_load_hl_sp_e8();
 
         // Math & Logic operations
 
         void queue_alu_op(Byte* source_byte);
+        void queue_alu_op_mem_hl();
+        void queue_af_op();
         void queue_alu_imm8();
         void queue_inc_r16(Register16* dest_reg);
         void queue_dec_r16(Register16* dest_reg);
@@ -158,27 +165,19 @@ class CPU {
         void queue_dec_r8(Byte* dest_byte);
         void queue_add_hl_r16(Register16* source_reg);
         void queue_inc_dec_mem_hl();
+        void queue_cb_op(Byte* dest_byte);
+        void queue_cb_op_mem_hl();
+        void queue_cb_bit_mem_hl();
 
         // Control and Miscellaneous Instructions
 
-        void SWAP(Byte& value);
-        void SWAP_HL();
         void DAA();
         void CPL();
         void CCF();
         void SCF();
-        void HALT();
-        void STOP();
+
         void DI();
         void EI();
-
-        // Bit Operations
-
-        void BIT(const Byte reg, const Bit bit);
-        void SET(Byte& reg, const Bit bit);
-        void SET_HL(const Bit bit);
-        void RES(Byte& reg, const Bit bit);
-        void RES_HL(const Bit bit);
 
         // 8-bit arithmetic
 
@@ -196,20 +195,17 @@ class CPU {
         void ADD_HL(const Word value);
         Word ADD_SP();
 
-        // Rotates and Shifts
+        // CB operations
 
-        void RLA(bool circular);
         void RL(Byte& reg, bool circular);
-        void RL_HL(bool circular);
-        void RRA(bool circular);
         void RR(Byte& reg, bool circular);
-        void RR_HL(bool circular);
         void SLA(Byte& reg);
-        void SLA_HL();
         void SRA(Byte& reg);
-        void SRA_HL();
         void SRL(Byte& reg);
-        void SRL_HL();
+        void SWAP(Byte& value);
+        void BIT(const Byte reg, const Bit bit);
+        void SET(Byte& reg, const Bit bit);
+        void RES(Byte& reg, const Bit bit);
 };
 
 #endif // CPU_H

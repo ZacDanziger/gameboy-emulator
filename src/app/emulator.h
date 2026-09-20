@@ -28,7 +28,10 @@ class Emulator {
             last_save_time(std::chrono::steady_clock::now()),
 
             frame_count(0),
-            fps_timer(std::chrono::steady_clock::now())
+            fps_timer(std::chrono::steady_clock::now()),
+
+            rom_dialog_was_open(false),
+            state_before_dialog(AppState::Idle)
         {}
 
         void load_rom(const std::string& rom_file);
@@ -45,6 +48,9 @@ class Emulator {
 
         int frame_count;
         std::chrono::steady_clock::time_point fps_timer;
+
+        bool rom_dialog_was_open;
+        AppState state_before_dialog;
 
         void update_fps();
         void autosave();

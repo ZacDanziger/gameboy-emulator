@@ -10,7 +10,7 @@ TEST(IndividualTest, CGBTest01) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/01-registers.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/01-registers.gb");
 
     emulator.run();
 }
@@ -20,7 +20,7 @@ TEST(IndividualTest, CGBTest02) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/02-len ctr.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/02-len ctr.gb");
 
     emulator.run();
 }
@@ -30,7 +30,7 @@ TEST(IndividualTest, CGBTest03) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/03-trigger.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/03-trigger.gb");
 
     emulator.run();
 }
@@ -40,7 +40,7 @@ TEST(IndividualTest, CGBTest04) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/04-sweep.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/04-sweep.gb");
 
     emulator.run();
 }
@@ -50,7 +50,7 @@ TEST(IndividualTest, CGBTest05) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/05-sweep details.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/05-sweep details.gb");
 
     emulator.run();
 }
@@ -60,7 +60,7 @@ TEST(IndividualTest, CGBTest06) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/06-overflow on trigger.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/06-overflow on trigger.gb");
 
     emulator.run();
 }
@@ -70,7 +70,7 @@ TEST(IndividualTest, CGBTest07) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/07-len sweep period sync.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/07-len sweep period sync.gb");
 
     emulator.run();
 }
@@ -80,7 +80,7 @@ TEST(IndividualTest, CGBTest08) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/08-len ctr during power.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/08-len ctr during power.gb");
 
     emulator.run();
 }
@@ -90,7 +90,7 @@ TEST(IndividualTest, CGBTest09) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/09-wave read while on.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/09-wave read while on.gb");
 
     emulator.run();
 }
@@ -100,7 +100,7 @@ TEST(IndividualTest, CGBTest10) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/10-wave trigger while on.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/10-wave trigger while on.gb");
 
     emulator.run();
 }
@@ -110,7 +110,7 @@ TEST(IndividualTest, CGBTest11) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/11-regs after power.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/11-regs after power.gb");
 
     emulator.run();
 }
@@ -120,7 +120,7 @@ TEST(IndividualTest, CGBTest12) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/rom_singles/12-wave.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/rom_singles/12-wave.gb");
 
     emulator.run();
 }
@@ -130,7 +130,7 @@ TEST(SoundTest, CompositeTest) {
         GTEST_SKIP();
     }
 
-    emulator.load("../../gb-test-roms/cgb_sound/cgb_sound.gb");
+    emulator.load_rom("../../gb-test-roms/cgb_sound/cgb_sound.gb");
 
     emulator.run();
 }

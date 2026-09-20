@@ -14,7 +14,9 @@ void Frontend::present(const Frame& frame, const std::vector<float>& audio_buffe
     }
 
     // sync-by-audio
-    while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {}
+    while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {
+        SDL_Delay(1);   // Unsure about this - remove if it impacts performance
+    }
 
     SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
 
@@ -29,50 +31,15 @@ void Frontend::poll_events() {
     SDL_Event e;
     while(SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT) {
-            event_buffer.push_back(QuitRequested{});
+            window_closed = true;
             return;
         }
 
-        if ((e.type == SDL_EVENT_KEY_DOWN) || (e.type == SDL_EVENT_KEY_UP)) {
-            bool pressed = (e.type == SDL_EVENT_KEY_DOWN);
-
-            switch(e.key.scancode) {
-            case SDL_SCANCODE_Z:
-                event_buffer.push_back(InputEvent{Button::A, pressed});
-                break;
-            case SDL_SCANCODE_X:
-                event_buffer.push_back(InputEvent{Button::B, pressed});
-                break;
-            case SDL_SCANCODE_RSHIFT:
-                event_buffer.push_back(InputEvent{Button::Select, pressed});
-                break;
-            case SDL_SCANCODE_RETURN:
-                event_buffer.push_back(InputEvent{Button::Start, pressed});
-                break;
-            case SDL_SCANCODE_RIGHT:
-            case SDL_SCANCODE_D:
-                event_buffer.push_back(InputEvent{Button::Right, pressed});
-                break;
-            case SDL_SCANCODE_LEFT:
-            case SDL_SCANCODE_A:
-                event_buffer.push_back(InputEvent{Button::Left, pressed});
-                break;
-            case SDL_SCANCODE_UP:
-            case SDL_SCANCODE_W:
-                event_buffer.push_back(InputEvent{Button::Up, pressed});
-                break;
-            case SDL_SCANCODE_DOWN:
-            case SDL_SCANCODE_S:
-                event_buffer.push_back(InputEvent{Button::Down, pressed});
-                break;
-            case SDL_SCANCODE_P:
-                if (pressed) event_buffer.push_back(TogglePause{});
-                break;
-            case SDL_SCANCODE_O:
-                if (pressed) open_rom_dialog();
-                break;
-            default:
-                break;
+        if (e.type == SDL_EVENT_KEY_DOWN && e.key.repeat == 0) {
+            if (e.key.scancode == SDL_SCANCODE_P) {
+                pause_requested = true;
+            } else if (e.key.scancode == SDL_SCANCODE_O) {
+                open_rom_dialog();
             }
         }
     }
@@ -83,14 +50,26 @@ void Frontend::poll_events() {
     }
 }
 
+ButtonState Frontend::get_button_state() {
+    const bool* keys = SDL_GetKeyboardState(nullptr);
 
-std::vector<AppEvent> Frontend::take_events() {
-    return std::exchange(event_buffer, std::vector<AppEvent>{});
+
+    ButtonState state;
+    state.a      = keys[SDL_SCANCODE_Z];
+    state.b      = keys[SDL_SCANCODE_X];
+    state.select = keys[SDL_SCANCODE_RSHIFT];
+    state.start  = keys[SDL_SCANCODE_RETURN];
+    state.right  = keys[SDL_SCANCODE_RIGHT] || keys[SDL_SCANCODE_D];
+    state.left   = keys[SDL_SCANCODE_LEFT]  || keys[SDL_SCANCODE_A];
+    state.up     = keys[SDL_SCANCODE_UP]    || keys[SDL_SCANCODE_W];
+    state.down   = keys[SDL_SCANCODE_DOWN]  || keys[SDL_SCANCODE_S];
+    
+    return state;
 }
 
 
 void Frontend::open_rom_dialog() {
-    event_buffer.push_back(RomDialogOpened{});
+    rom_dialog_open = true;
 
     SDL_DialogFileFilter filters[] = {
         {"Game Boy / Game Boy Color ROMs", "gb;gbc"}
@@ -101,30 +80,32 @@ void Frontend::open_rom_dialog() {
 }
 
 
-// std::optional<std::string> Frontend::take_pending_rom() {
-//     return std::exchange(pending_rom, std::nullopt);
-// }
+std::optional<std::string> Frontend::take_pending_rom() {
+    return std::exchange(pending_rom, std::nullopt);
+}
 
 
-// bool Frontend::take_pause_request() {
-//     bool requested = pause_requested;
-//     pause_requested = false;
-//     return requested;
-// }
+bool Frontend::take_pause_request() {
+    bool requested = pause_requested;
+    pause_requested = false;
+    return requested;
+}
 
 
 void SDLCALL Frontend::file_dialog_callback(void* userdata, const char* const* filelist, int filter) {
     Frontend* frontend = static_cast<Frontend*>(userdata);
 
     if (filelist == nullptr) {
-        frontend->event_buffer.push_back(RomDialogCanceled{});
+        frontend->rom_dialog_open = false;
         return;
     }
 
     if (filelist[0] != nullptr) {
-        frontend->event_buffer.push_back(RomSelected{filelist[0]});
+        frontend->pending_rom = filelist[0];
         frontend->focus_requested = true;
     }
+
+    frontend->rom_dialog_open = false;
 }
 
 

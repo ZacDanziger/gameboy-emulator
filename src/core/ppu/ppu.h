@@ -89,7 +89,7 @@ class PPU {
         bool take_hblank_event();
 
         const bool is_frame_ready() const { return frame_ready; }
-        const Frame& get_frame() const { return frame_buffer; }
+        const Frame& get_frame() { frame_ready = false; return frame_buffer; }
 
         void set_cgb_mode(const bool cgb) { cgb_mode = cgb; }
     private:

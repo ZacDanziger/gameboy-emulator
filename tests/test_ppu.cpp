@@ -6,7 +6,7 @@ Emulator emulator;
 TEST(ScreenTest, DMGAcid2) {
     std::string filename = "../../gb-test-roms/dmg-acid2.gb";
 
-    emulator.load(filename);
+    emulator.load_rom(filename);
 
     EXPECT_NO_THROW(
         emulator.run();
@@ -16,7 +16,7 @@ TEST(ScreenTest, DMGAcid2) {
 TEST(ScreenTest, CGBAcid2) {
     std::string filename = "../../gb-test-roms/cgb-acid2.gbc";
 
-    emulator.load(filename);
+    emulator.load_rom(filename);
 
     EXPECT_NO_THROW(
         emulator.run();

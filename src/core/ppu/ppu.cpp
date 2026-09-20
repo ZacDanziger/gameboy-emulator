@@ -10,8 +10,6 @@ void PPU::tick() {
         return;
     }
 
-    frame_ready = false;
-
     cycles += 1;
     cycles %= CYCLES_PER_SCANLINE;
 

@@ -26,7 +26,7 @@ class GameBoy {
             timer(interrupt),
             ppu(interrupt),
             apu(),
-            cpu(),
+            cpu(interrupt),
 
             wram{},
             hram{},
@@ -54,6 +54,7 @@ class GameBoy {
             save();
         }
         
+        void tick();
         void run_until_frame();
 
         void save() { if (mbc) mbc->save(); }
@@ -101,6 +102,8 @@ class GameBoy {
         Address hdma_source;
         Address hdma_destination;
         Word hdma_remaining;
+
+
 
         void oam_dma_transfer(const Byte value);
         void vram_dma_transfer(const Byte value);

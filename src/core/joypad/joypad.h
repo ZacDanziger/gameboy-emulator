@@ -25,7 +25,7 @@ class Joypad {
         Byte read() const;
         void write(const Byte data);
 
-        void set_key(InputEvent e);
+        void set_button_state(const ButtonState& state);
         bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
 
         bool take_save_request();

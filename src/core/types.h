@@ -31,6 +31,7 @@ enum class Bit : Word {
 
 
 enum class Interrupt : Byte {
+    None    = 0b00000000, // No Interrupt Pending
     VBlank  = 0b00000001, // PPU
     LCDStat = 0b00000010, // PPU
     Timer   = 0b00000100, // Timer

@@ -3,7 +3,17 @@
 void Emulator::load_rom(const std::string& rom_file) {
     gameboy.load(rom_file);
     frontend.set_title(rom_file);
+
     state = AppState::Running;
+
+    last_frame_time = std::chrono::steady_clock::now();
+    last_save_time = std::chrono::steady_clock::now();
+
+    frame_count = 0;
+    fps_timer = std::chrono::steady_clock::now();
+
+    rom_dialog_was_open = false;
+    state_before_dialog = AppState::Idle;
 }
 
 
@@ -12,10 +22,14 @@ void Emulator::run() {
         if (state == AppState::Running) {
             gameboy.run_until_frame();
             frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
+        } else {
+            frontend.delay_ms(16);  // ~60 fps
         }
 
-        // if window was closed, exit emulator
-        if (!frontend.poll_events()) {
+        frontend.poll_events();
+
+        // If the window was closed, quit the emulator
+        if (frontend.should_quit()) {
             break;
         }
 
@@ -32,6 +46,28 @@ void Emulator::run() {
                     break;
             }
         }
+
+        // Check ROM dialog state
+        bool rom_dialog_open = frontend.is_rom_dialog_open();
+
+
+        // Rising Edge - store old state, pause emulator
+        if (!rom_dialog_was_open && rom_dialog_open) {
+            state_before_dialog = state;
+            state = AppState::Paused;
+        }
+
+
+        // Falling edge - load ROM if one was selected, otherwise return to old state
+        if (rom_dialog_was_open && !rom_dialog_open) {
+            if (auto rom = frontend.take_pending_rom()) {
+                load_rom(*rom);
+            } else {
+                state = state_before_dialog;
+            }
+        }
+
+        rom_dialog_was_open = rom_dialog_open;
     }
 }
 

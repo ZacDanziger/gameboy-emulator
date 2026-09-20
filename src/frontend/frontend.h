@@ -8,7 +8,7 @@
 #include <optional>
 #include <utility>
 
-#include "../common/app_event.h"
+#include "../common/input.h"
 #include "../common/output.h"
 
 #include <SDL3/SDL.h>
@@ -31,6 +31,11 @@ class Frontend {
 
             base_title(title),
 
+            pending_rom(std::nullopt),
+
+            window_closed(false),
+            pause_requested(false),
+            rom_dialog_open(false),
             focus_requested(false),
 
             fps(60.0),
@@ -44,13 +49,19 @@ class Frontend {
         void present(const Frame& frame, const std::vector<float>& audio_buffer);
 
         void poll_events(); 
-        std::vector<AppEvent> take_events();
+        bool should_quit() { return window_closed; }
+        bool is_rom_dialog_open() { return rom_dialog_open; }
+        
+        bool take_pause_request();
+        std::optional<std::string> take_pending_rom();
 
-        void open_rom_dialog();
+        ButtonState get_button_state();
 
         void clear_audio() { SDL_ClearAudioStream(audio_stream); }
         void set_title(const std::string& title);
         void set_fps(const double new_fps) { fps = new_fps; }
+
+        void delay_ms(uint32_t ms) { SDL_Delay(ms); }
     private:
         SDL_Window* window;
         SDL_Renderer* renderer;
@@ -59,10 +70,12 @@ class Frontend {
         SDL_AudioStream* audio_stream;
         
         std::string base_title;
-        std::vector<AppEvent> event_buffer;
 
         std::optional<std::string> pending_rom;
 
+        bool window_closed;
+        bool pause_requested;
+        bool rom_dialog_open;
         bool focus_requested;
 
         double fps;
@@ -71,6 +84,7 @@ class Frontend {
         void init(const std::string& title);
         void teardown();
 
+        void open_rom_dialog();
         static void SDLCALL file_dialog_callback(void* userdata, const char* const* filelist, int filter);
 
         std::string update_title();

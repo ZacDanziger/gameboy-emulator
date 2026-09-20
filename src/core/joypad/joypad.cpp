@@ -28,50 +28,25 @@ void Joypad::write(const Byte data) {
  * @param key the key that has been changed
  * @param pressed true if pressed, false if released
  */
-void Joypad::set_key(InputEvent e) {
-    Byte* target = nullptr;
-    Bit bit = Bit::Bit0;
+void Joypad::set_button_state(const ButtonState& state) {
+    Byte old_button_keys = button_keys;
+    Byte old_direction_keys = direction_keys;
 
-    switch(e.button) {
-    case Button::A:
-        target = &button_keys;
-        bit = Bit::Bit0;
-        break;
-    case Button::B:
-        target = &button_keys;
-        bit = Bit::Bit1;
-        break;
-    case Button::Select:
-        target = &button_keys;
-        bit = Bit::Bit2;
-        break;
-    case Button::Start:
-        target = &button_keys;
-        bit = Bit::Bit3;
-        break;
-    case Button::Right:
-        target = &direction_keys;
-        bit = Bit::Bit0;
-        break;
-    case Button::Left:
-        target = &direction_keys;
-        bit = Bit::Bit1;
-        break;
-    case Button::Up:
-        target = &direction_keys;
-        bit = Bit::Bit2;
-        break;
-    case Button::Down:
-        target = &direction_keys;
-        bit = Bit::Bit3;
-        break;
-    }   
+    button_keys = 0x0F;
+    direction_keys = 0x0F;
 
-    if (e.pressed) {
-        reset_bit(*target, bit);
+    if (state.a) reset_bit(button_keys, Bit::Bit0);
+    if (state.b) reset_bit(button_keys, Bit::Bit1);
+    if (state.select) reset_bit(button_keys, Bit::Bit2);
+    if (state.start) reset_bit(button_keys, Bit::Bit3);
+
+    if (state.right) reset_bit(direction_keys, Bit::Bit0);
+    if (state.left) reset_bit(direction_keys, Bit::Bit1);
+    if (state.up) reset_bit(direction_keys, Bit::Bit2);
+    if (state.down) reset_bit(direction_keys, Bit::Bit3);
+
+    if ((old_button_keys & ~button_keys) || (old_direction_keys & ~old_direction_keys)) {
         interrupt.request_interrupt(Interrupt::Joypad);
-    } else {
-        set_bit(*target, bit);
     }
 }
 

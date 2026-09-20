@@ -3,22 +3,40 @@
 #include "cartridge/mbc1.h"
 #include "cartridge/mbc3.h"
 
+
+void GameBoy::tick() {
+    if (cpu.is_stopped()) {
+        // TODO: poll joypad
+        // TODO: On CGB: Handle speed switch delay
+        return;
+    }
+
+
+    // normal hardware cycle
+    cpu.tick(*this);
+    timer.tick();
+    apu.tick();
+    ppu.tick();
+
+
+    // 
+    if (ppu.take_hblank_event() && hdma_active) {
+        hdma_tick();
+    }
+}
+
+
 /**
  * Run the GameBoy until a frame is ready to be displayed, at which point the frame should be passed to the Frontend
  *  TODO: figure out how I want to pass the frame to the Frontend, maybe a callback function or something
  */
 void GameBoy::run_until_frame() {
     while (!ppu.is_frame_ready()) {
-        cpu.tick(*this);
-        timer.tick();
-        apu.tick();
-        ppu.tick();
-
-        if (ppu.take_hblank_event() && hdma_active) {
-            hdma_tick();
-        }
+        tick();
     }
 }
+
+
 
 
 /**
@@ -562,3 +580,74 @@ void GameBoy::vram_dma_transfer(const Byte value) {
         dma_active = false;
     }
 }
+
+
+
+// /**
+//  * Stops the program
+//  * - - - -
+//  * 
+//  * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
+//  */
+// void CPU::STOP() {
+//     // check if a button is being pressed
+//     if (joypad.any_button_pressed()) {
+//         if (interrupt.interrupt_pending()) {
+//             // stop is a 1 byte opcode, mode doesn't change, DIV is not reset
+//             return;
+//         } 
+
+//         // stop is a 2 byte opcode, HALT mode is entered, DIV is not reset
+//         reg_PC++;
+//         halted = true;
+//         return;
+//     }
+
+//     // check if a speed switch is requested
+//     if (is_set(memory_bus.read(KEY1_SPD_REGISTER), Bit::Bit0)) {
+//         if (interrupt.interrupt_pending()) {
+//             if (interrupts_enabled) {
+//                 // stop is a 1 byte opcode, mode doesn't change, DIV is reset, CPU speed switches
+//                 memory_bus.write(DIV_REGISTER, 0x00);
+
+//                 // true if currently double speed, false if currently normal speed
+//                 bool current_speed = timer.get_double_speed();
+
+//                 // change current speed
+//                 timer.set_double_speed(!current_speed);
+
+//                 // clear the switch armed bit in KEY1
+//                 memory_bus.write(KEY1_SPD_REGISTER, 0x00);
+//             }
+
+//             // CPU glitches non-deterministically
+//             // I'm just going to return here and not worry about that
+//             return;
+//         }
+
+//         // stop is a 2 byte opcode, HALT mode is entered, DIV is reset, CPU speed switches
+//         reg_PC++;
+//         halted = true;
+//         speed_switch_halt = true;
+//         memory_bus.write(DIV_REGISTER, 0x00);
+
+//         // true if currently double speed, false if currently normal speed
+//         bool current_speed = timer.get_double_speed();
+
+//         // change current speed
+//         timer.set_double_speed(!current_speed);
+//         return;
+//     }
+
+//     if (interrupt.interrupt_pending()) {
+//         // stop is a 1 byte opcode, STOP mode is entered, DIV is reset
+//         stopped = true;
+//         memory_bus.write(DIV_REGISTER, 0x00);
+//         return;
+//     }
+
+//     // stop is a 2 byte opcode, STOP mode is entered, DIV is reset
+//     reg_PC++;
+//     stopped = true;
+//     memory_bus.write(DIV_REGISTER, 0x00);
+// }
