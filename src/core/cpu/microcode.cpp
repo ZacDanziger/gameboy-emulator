@@ -376,9 +376,9 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
             // TODO: Add HALT Bug
             halted = true;
             return;
-        case MicroOp::EXEC_STOP:
-            stopped = true;
-            return;
+        case MicroOp::EXEC_STOP: {
+
+        }
 
         case MicroOp::EXEC_DECODE_CB:
             decode_cb();

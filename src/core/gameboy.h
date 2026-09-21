@@ -42,8 +42,8 @@ class GameBoy {
             hdma_chunk_buffer(16),
 
             cgb_mode(false),
-            dma_active(false),
 
+            dma_delay_counter(0x0000),
             speed_switch_delay_counter(0x0000),
 
             hdma_active(false),
@@ -67,10 +67,11 @@ class GameBoy {
 
         Frame flush_frame() { return ppu.get_frame(); }
         std::vector<float> flush_audio() { return apu.flush_audio_buffer(); }
+        
+        void set_button_state(const ButtonState& state) { joypad.set_button_state(state); }
+        bool check_joypad_pressed() const { return joypad.any_button_pressed(); }
 
-        // TODO: Take a look at these, see if they need to be public or private
-        void hdma_tick();
-        bool is_dma_active() const { return dma_active; }
+        bool is_cgb() const { return cgb_mode; }
     private:
         InterruptController interrupt;
         Joypad joypad;
@@ -88,8 +89,8 @@ class GameBoy {
         std::vector<Byte> hdma_chunk_buffer;
 
         bool cgb_mode;
-        bool dma_active;
 
+        uint16_t dma_delay_counter;
         uint16_t speed_switch_delay_counter;
 
         // CGB Registers
@@ -108,6 +109,7 @@ class GameBoy {
 
         void handle_stopped_state();
 
+        void hdma_tick();
         void oam_dma_transfer(const Byte value);
         void vram_dma_transfer(const Byte value);
 };

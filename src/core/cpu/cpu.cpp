@@ -22,7 +22,6 @@ void CPU::reset() {
     ei_pending = false;
     halted = false;
     stopped = false;
-    speed_switch_halt = false;
 }
 
 /**
@@ -89,7 +88,7 @@ void CPU::fetch(GameBoy& bus) {
  */
 void CPU::push_microop(const MicroOp microop) {
     if (queue_size >= MAX_QUEUE_SIZE) {
-        throw std::runtime_error("Pipeline overflow");
+        throw std::runtime_error("Queue overflow");
     }
 
     microcode_queue[queue_size++] = microop;
@@ -121,4 +120,59 @@ void CPU::update_flag(const Flag flag, bool new_val) {
 }
 
 
+/**
+ * Executes the STOP instruction
+ * 
+ * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
+ */
+void CPU::execute_stop(GameBoy& bus) {
+    bool button_pressed = bus.check_joypad_pressed();
+    bool pending_interrupt = interrupt.interrupt_pending();
+    bool speed_switch_requested = bus.is_cgb() &&is_set(bus.read(KEY1_SPD_REGISTER), Bit::Bit0);
 
+    // 1. Is button held & selected in JOYP?
+    if (button_pressed) {
+        // STOP is a 1-byte opcode, mode doesn't change, DIV doesn't reset
+        if (pending_interrupt) {
+            return;
+        // STOP is a 2-byte opcode, HALT mode is entered, DIV doesn't reset
+        } else {
+            registers.PC++;
+            halted = true;
+            return;
+        }
+    }
+
+    // 2. Is speed switch requested?
+    if (speed_switch_requested) {
+        if (pending_interrupt) {
+            // STOP is a 1-byte opcode, mode doesn't change, DIV is reset, CPU speed changes
+            if (interrupts_enabled) {
+                bus.write(DIV_REGISTER, 0x00);
+                // TODO: CPU speed change
+                return;
+            // CPU glitches non-deterministically, just going to return
+            } else {
+                return;
+            }
+        // STOP is a 2-byte opcode, HALT mode is entered, DIV is reset, CPU speed changes
+        } else {
+            registers.PC++;
+            halted = true;
+            bus.write(DIV_REGISTER, 0x00);
+            // TODO: CPU speed change
+            // TODO: 0x8000 m-cycle countdown clock to auto exit HALT mode
+            return;
+        }
+    }
+
+    // 3. Is interrupt pending?
+    // If yes, STOP is a 2-byte opcode, STOP mode is entered, DIV is reset
+    if (!pending_interrupt) {
+        registers.PC++;
+    }
+
+    // If no, STOP is a 1-byte opcode, STOP mode is entered, DIV is reset
+    stopped = true;
+    bus.write(DIV_REGISTER, 0x00);
+}

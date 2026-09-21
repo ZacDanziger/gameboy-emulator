@@ -46,7 +46,7 @@ class Timer {
 
         bool take_div_apu_event();
 
-        bool get_double_speed() const { return double_speed_mode; }
+        bool is_double_speed() const { return double_speed_mode; }
         void set_double_speed(const bool ds) { double_speed_mode = ds; }
     private:
         InterruptController& interrupt;

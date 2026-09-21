@@ -20,17 +20,26 @@ void Emulator::load_rom(const std::string& rom_file) {
 void Emulator::run() {
     while(true) {
         if (state == AppState::Running) {
+            // Input
+            gameboy.set_button_state(frontend.get_button_state());
+            
+            // Update
             gameboy.run_until_frame();
-            frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
             autosave();
             update_fps();
+
+
+            // Render
+            frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
+
+
         } else {
             frontend.delay_ms(16);  // ~60 fps
         }
 
         frontend.poll_events();
 
-        // If the window was closed, quit the emulator
+        // If the window was closed, stop the loop
         if (frontend.should_quit()) {
             break;
         }

@@ -1,5 +1,9 @@
 #include "joypad.h"
 
+/**
+ * Read the joypad register, which returns the state of the buttons selected 
+ *     by the upper-nibble of the register
+ */
 Byte Joypad::read() const {
     switch(joypad_register & 0x30) {
         case 0x00:
@@ -15,7 +19,11 @@ Byte Joypad::read() const {
     }
 }
 
-
+/**
+ * Write to the joypad register, which selects which set of buttons to read from
+ * 
+ * @param data the value to write to the joypad register (upper-nibble only, lower-nibble is read-only)
+ */
 void Joypad::write(const Byte data) {
     // lower nibble is read-only
     joypad_register = data & 0xF0;
@@ -23,7 +31,7 @@ void Joypad::write(const Byte data) {
 
 
 /**
- * Given a key press or release, set or reset the corresponding bit in the 2x4 joypad register
+ * Given a key press, reset the corresponding bit in the 2x4 joypad register (0s indicate pressed buttons)
  * 
  * @param key the key that has been changed
  * @param pressed true if pressed, false if released
@@ -45,14 +53,7 @@ void Joypad::set_button_state(const ButtonState& state) {
     if (state.up) reset_bit(direction_keys, Bit::Bit2);
     if (state.down) reset_bit(direction_keys, Bit::Bit3);
 
-    if ((old_button_keys & ~button_keys) || (old_direction_keys & ~old_direction_keys)) {
+    if ((old_button_keys & ~button_keys) || (old_direction_keys & ~direction_keys)) {
         interrupt.request_interrupt(Interrupt::Joypad);
     }
-}
-
-
-bool Joypad::take_save_request() {
-    bool request = save_requested;
-    save_requested = false;
-    return request;
 }

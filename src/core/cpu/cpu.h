@@ -48,8 +48,7 @@ class CPU {
             interrupts_enabled(false),
             ei_pending(false),
             halted(false),
-            stopped(false),
-            speed_switch_halt(false)
+            stopped(false)
         {}
 
         void reset();
@@ -81,12 +80,6 @@ class CPU {
         bool ei_pending;
         bool halted;
         bool stopped;
-
-        // one of the many possible outcomes of STOP is entering HALT mode
-        //      which will automatically exit after 0x8000 m-cycles
-        bool speed_switch_halt;
-
-
         
         void handle_interrupts();
         
@@ -106,6 +99,8 @@ class CPU {
 
         bool get_flag(const Flag flag) const;
         void update_flag(const Flag flag, bool new_val);
+
+        void execute_stop(GameBoy& bus);
 
         /** -------------------
          * Instruction Queues

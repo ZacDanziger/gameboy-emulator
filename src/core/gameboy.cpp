@@ -10,47 +10,64 @@
  */
 void GameBoy::run_until_frame() {
     while (!ppu.is_frame_ready()) {
+        bool skip_cpu = false;
+
         if (cpu.is_stopped()) {
             handle_stopped_state();
 
             if (cpu.is_stopped()) {
-                continue;
+                if (speed_switch_delay_counter == 0) {
+                    break;
+                }
+
+                // If we are speed switching, continue the loop
+                skip_cpu = true;
             }
         }
 
         // normal hardware cycle
-        cpu.tick(*this);
+
+        // CPU does not tick if we are in the middle of a DMA transfer, but the other hardware does
+        if (dma_delay_counter > 0) {
+            dma_delay_counter--;
+            skip_cpu = true;
+        }
+
+        if (!skip_cpu) {
+            cpu.tick(*this);
+        }
+        
         timer.tick();
         apu.tick();
         ppu.tick();
 
         if (ppu.take_hblank_event() && hdma_active) {
             hdma_tick();
+        }
+
+        if (timer.take_div_apu_event()) {
+            apu.frame_sequencer();
         }
     }
 }
 
 
 void GameBoy::handle_stopped_state() {
-    if (cgb_mode && is_set(prep_speed_switch, Bit::Bit0)) {
+    // Speed switch STOP, tick everything but the CPU, and decrement the speed switch countdown timer
+    if (cgb_mode && (is_set(prep_speed_switch, Bit::Bit0)) || speed_switch_delay_counter >0) {
+
         if (speed_switch_delay_counter == 0) {
             speed_switch_delay_counter = SPEED_SWITCH_DELAY;
             prep_speed_switch = 0x00;
         } 
 
         speed_switch_delay_counter--;
+
         if (speed_switch_delay_counter == 0) {
             cpu.clear_stopped();
-            timer.set_double_speed(!timer.get_double_speed());
+            timer.set_double_speed(!timer.is_double_speed());
         }
-    } else {
-        if (joypad.any_button_pressed()) {
-            cpu.clear_stopped();
-        }
-    }
 
-    if (cpu.is_stopped()) {
-        // if the CPU is still stopped, tick the timer and PPU to keep them in sync with the CPU
         timer.tick();
         apu.tick();
         ppu.tick();
@@ -58,8 +75,14 @@ void GameBoy::handle_stopped_state() {
         if (ppu.take_hblank_event() && hdma_active) {
             hdma_tick();
         }
+    // Normal STOP: Do not tick any hardware, just check for button presses to exit STOP mode
+    } else {
+        if (joypad.any_button_pressed()) {
+            cpu.clear_stopped();
+        }
     }
 }
+
 
 /**
  * Read data from a file and write it to ROM
@@ -168,7 +191,8 @@ void GameBoy::reset() {
     wram_bank = 0x01;
 
     cgb_mode = false;
-    dma_active = false;
+    dma_delay_counter = 0x0000;
+    speed_switch_delay_counter = 0x0000;
 
     hdma_active = false;
     hdma_source = 0x0000;
@@ -279,7 +303,7 @@ Byte GameBoy::read(Address address) const {
         }
 
         if (address == KEY1_SPD_REGISTER) {
-            if (timer.get_double_speed()) {
+            if (timer.is_double_speed()) {
                 return 0x80 | prep_speed_switch;
             } else {
                 return prep_speed_switch;
@@ -520,11 +544,8 @@ void GameBoy::hdma_tick() {
         vram_dma_control |= (new_val & 0x7F);
     }
 
-    // takes 4 m-cycles in double speed mode, 8 in single speed
-    int cycles = timer.get_double_speed() ? 4 : 8;
-    for (int i = 0; i < cycles; i++) {
-        timer.tick();
-    }
+    // takes 16 m-cycles in double speed mode, 8 in single speed
+    dma_delay_counter = timer.is_double_speed() ? 16 : 8;
 }
 
 
@@ -542,13 +563,6 @@ void GameBoy::oam_dma_transfer(const Byte value) {
     }
     
     ppu.load(OAM_START, dma_data);
-
-    // OAM DMA takes 160 m-cycles
-    dma_active = true;
-    for (int i = 0; i < 160; i++) {
-        timer.tick();
-    }
-    dma_active = false;
 }
 
 
@@ -594,82 +608,7 @@ void GameBoy::vram_dma_transfer(const Byte value) {
         // signal transfer is complete
         vram_dma_control = 0xFF;
 
-        // 8 m-cycles to transfer 16 bytes -> GPDMA takes length / 2 m-cycles
-        dma_active = true;
-        for (int i = 0; i < length / 2; i++) {
-            timer.tick();
-        }
-        dma_active = false;
+        // 16 μs regardless of speed, 1 double speed cycle per byte, 0.5 regular speed cycles per byte
+        dma_delay_counter = timer.is_double_speed() ? length : length / 2;
     }
 }
-
-
-
-// /**
-//  * Stops the program
-//  * - - - -
-//  * 
-//  * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
-//  */
-// void CPU::STOP() {
-//     // check if a button is being pressed
-//     if (joypad.any_button_pressed()) {
-//         if (interrupt.interrupt_pending()) {
-//             // stop is a 1 byte opcode, mode doesn't change, DIV is not reset
-//             return;
-//         } 
-
-//         // stop is a 2 byte opcode, HALT mode is entered, DIV is not reset
-//         reg_PC++;
-//         halted = true;
-//         return;
-//     }
-
-//     // check if a speed switch is requested
-//     if (is_set(memory_bus.read(KEY1_SPD_REGISTER), Bit::Bit0)) {
-//         if (interrupt.interrupt_pending()) {
-//             if (interrupts_enabled) {
-//                 // stop is a 1 byte opcode, mode doesn't change, DIV is reset, CPU speed switches
-//                 memory_bus.write(DIV_REGISTER, 0x00);
-
-//                 // true if currently double speed, false if currently normal speed
-//                 bool current_speed = timer.get_double_speed();
-
-//                 // change current speed
-//                 timer.set_double_speed(!current_speed);
-
-//                 // clear the switch armed bit in KEY1
-//                 memory_bus.write(KEY1_SPD_REGISTER, 0x00);
-//             }
-
-//             // CPU glitches non-deterministically
-//             // I'm just going to return here and not worry about that
-//             return;
-//         }
-
-//         // stop is a 2 byte opcode, HALT mode is entered, DIV is reset, CPU speed switches
-//         reg_PC++;
-//         halted = true;
-//         speed_switch_halt = true;
-//         memory_bus.write(DIV_REGISTER, 0x00);
-
-//         // true if currently double speed, false if currently normal speed
-//         bool current_speed = timer.get_double_speed();
-
-//         // change current speed
-//         timer.set_double_speed(!current_speed);
-//         return;
-//     }
-
-//     if (interrupt.interrupt_pending()) {
-//         // stop is a 1 byte opcode, STOP mode is entered, DIV is reset
-//         stopped = true;
-//         memory_bus.write(DIV_REGISTER, 0x00);
-//         return;
-//     }
-
-//     // stop is a 2 byte opcode, STOP mode is entered, DIV is reset
-//     reg_PC++;
-//     stopped = true;
-//     memory_bus.write(DIV_REGISTER, 0x00);
-// }

@@ -28,8 +28,6 @@ class Joypad {
         void set_button_state(const ButtonState& state);
         bool any_button_pressed() const { return ((button_keys != 0x0F) || (direction_keys != 0x0F)); }
 
-        bool take_save_request();
-
         void reset() { joypad_register = 0x00; button_keys = 0x0F; direction_keys = 0x0F; }
     private:
         InterruptController& interrupt;
