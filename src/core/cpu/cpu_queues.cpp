@@ -88,10 +88,10 @@ void CPU::queue_load_a_mem_r16(Register16* source_addr) {
 
     // HL+
     if (current_opcode == 0x2A) {
-        push_microop(MicroOp::INC_DEST_ADDR);
+        push_microop(MicroOp::INC_SOURCE_ADDR);
     // HL-
     } else if (current_opcode == 0x3A) {
-        push_microop(MicroOp::DEC_DEST_ADDR);
+        push_microop(MicroOp::DEC_SOURCE_ADDR);
     }
     return;
 }
@@ -135,6 +135,10 @@ void CPU::queue_pop_r16(Register16* dest_reg) {
     // M-cycle 3
     push_microop(MicroOp::ReadMemToDestHigh);            // PC[15:8] <- Mem[SP]
     push_microop(MicroOp::INC_SOURCE_ADDR);              // SP++
+
+    if (current_opcode == 0xF1) { // POP AF
+        push_microop(MicroOp::MASK_F);                    // F[3:0] = 0
+    }
 }
 
 
@@ -254,7 +258,7 @@ void CPU::queue_load_high_imm8_a() {
     push_microop(MicroOp::INC_SOURCE_ADDR);              // PC++
 
     // M-cycle 3
-    push_microop(MicroOp::CopySourceToDestAddr);         // Mem[scratch] <- A
+    push_microop(MicroOp::WriteMemFromSourceByte);         // Mem[scratch] <- A
 }
 
 

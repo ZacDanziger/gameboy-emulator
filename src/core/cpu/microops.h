@@ -40,6 +40,7 @@ enum class MicroOp : uint8_t {
     DEC_SOURCE_ADDR,
     INC_DEST_ADDR,
     DEC_DEST_ADDR,
+    MASK_F,
 
     // Executes
     EXEC_ALU,

@@ -65,8 +65,8 @@ void CPU::decode() {
         case 0x37: push_microop(MicroOp::EXEC_AF_OP); return;       // SCF
         case 0x38: queue_jr_cond(); return;                         // If C, PC += (int16_t)(Mem[PC++])
         case 0x39: queue_add_hl_r16(&registers.SP); return;         // HL += SP
-        case 0x3A: queue_load_a_mem_r16(&registers.SP); return;     // A <- Mem[HL--]
-        case 0x3B: queue_dec_r16(&registers.DE); return;            // SP--
+        case 0x3A: queue_load_a_mem_r16(&registers.HL); return;     // A <- Mem[HL--]
+        case 0x3B: queue_dec_r16(&registers.SP); return;            // SP--
         case 0x3C: queue_inc_r8(&registers.A); return;              // A++
         case 0x3D: queue_dec_r8(&registers.A); return;              // A--
         case 0x3E: queue_load_r8_imm8(&registers.A); return;        // A <- Mem[PC++]
@@ -415,6 +415,9 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
             return;
         case MicroOp::DEC_DEST_ADDR:
             (*dest_addr_ptr)--;
+            return;
+        case MicroOp::MASK_F:
+            registers.F &= 0xF0;
             return;
 
         case MicroOp::EXEC_INC_DEST_BYTE:

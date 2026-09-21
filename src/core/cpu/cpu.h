@@ -56,13 +56,13 @@ class CPU {
         
         void tick(GameBoy& bus);
         
-        bool is_halted() const { return halted; }
+        Word get_pc() const { return registers.PC.word; } bool is_halted() const { return halted; }
         bool is_stopped() const { return stopped; }
         void clear_stopped() { stopped = false; }
 
     private:
         InterruptController& interrupt;
-        Registers registers;
+        public: public: Registers registers;
 
         MicroOp microcode_queue[MAX_QUEUE_SIZE];
         uint8_t queue_size;

@@ -16,7 +16,7 @@
 #include "apu/apu.h"
 #include "cpu/cpu.h"
 
-
+constexpr uint16_t SPEED_SWITCH_DELAY = 0x8000; // 0x8000 m-cycles 
 
 class GameBoy {
     public:
@@ -44,6 +44,8 @@ class GameBoy {
             cgb_mode(false),
             dma_active(false),
 
+            speed_switch_delay_counter(0x0000),
+
             hdma_active(false),
             hdma_source(0x0000),
             hdma_destination(0x0000),
@@ -54,7 +56,6 @@ class GameBoy {
             save();
         }
         
-        void tick();
         void run_until_frame();
 
         void save() { if (mbc) mbc->save(); }
@@ -88,7 +89,9 @@ class GameBoy {
 
         bool cgb_mode;
         bool dma_active;
-        
+
+        uint16_t speed_switch_delay_counter;
+
         // CGB Registers
         Byte prep_speed_switch;                            // KEY1_SPD_REGISTER
         Byte vram_source_high;                             // HDMA1_REGISTER
@@ -103,7 +106,7 @@ class GameBoy {
         Address hdma_destination;
         Word hdma_remaining;
 
-
+        void handle_stopped_state();
 
         void oam_dma_transfer(const Byte value);
         void vram_dma_transfer(const Byte value);

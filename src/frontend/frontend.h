@@ -49,7 +49,7 @@ class Frontend {
         void present(const Frame& frame, const std::vector<float>& audio_buffer);
 
         void poll_events(); 
-        bool should_quit() { return window_closed; }
+        bool should_quit();
         bool is_rom_dialog_open() { return rom_dialog_open; }
         
         bool take_pause_request();

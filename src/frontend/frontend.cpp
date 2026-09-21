@@ -50,6 +50,12 @@ void Frontend::poll_events() {
     }
 }
 
+bool Frontend::should_quit() {
+    bool quit = window_closed;
+    window_closed = false;
+    return quit;
+}
+
 ButtonState Frontend::get_button_state() {
     const bool* keys = SDL_GetKeyboardState(nullptr);
 

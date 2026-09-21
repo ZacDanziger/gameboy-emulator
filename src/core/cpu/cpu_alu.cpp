@@ -65,6 +65,7 @@ void CPU::DAA() {
     update_flag(FLAG_ZERO, registers.A == 0);
     update_flag(FLAG_HALF_CARRY, false);
     update_flag(FLAG_CARRY, carry);
+
 }
 
 
@@ -222,6 +223,7 @@ void CPU::SUB(const Byte value, bool carry) {
     update_flag(FLAG_SUB, true);
     update_flag(FLAG_HALF_CARRY, half_carry);
     update_flag(FLAG_CARRY, carry);
+
 }
 
 
@@ -340,6 +342,7 @@ void CPU::ADD_HL(const Word value) {
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
     update_flag(FLAG_CARRY, carry);
+
 }
 
 /**
@@ -361,6 +364,7 @@ Word CPU::ADD_SP() {
     update_flag(FLAG_SUB, false);
     update_flag(FLAG_HALF_CARRY, half_carry);
     update_flag(FLAG_CARRY, carry);
+
 
     return res;
 }

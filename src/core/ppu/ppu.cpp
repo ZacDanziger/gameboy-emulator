@@ -274,6 +274,15 @@ void PPU::write(const Address address, const Byte value) {
 
     switch(address) {
     case LCDC_REGISTER:
+        // ANTIGRAVITY TEST CODE
+        // If LCD is being turned off, reset PPU state to unlock VRAM
+        if (is_set(lcd_control, Bit::Bit7) && !is_set(value, Bit::Bit7)) {
+            lcd_y = 0;
+            cycles = -1;
+            mode = Mode::HBLANK;
+            lcd_status &= 0xFC; // Clear bottom 2 bits
+        }
+
         lcd_control = value;
         break;
 

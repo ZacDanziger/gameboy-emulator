@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 
 
-bool SKIP_INDIVIDUAL_TESTS = true;
+bool SKIP_INDIVIDUAL_TESTS = false;
 Emulator emulator;
 
 TEST(IndividualTest, CPUTest01) {

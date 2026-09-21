@@ -4,40 +4,62 @@
 #include "cartridge/mbc3.h"
 
 
-void GameBoy::tick() {
-    if (cpu.is_stopped()) {
-        // TODO: poll joypad
-        // TODO: On CGB: Handle speed switch delay
-        return;
-    }
-
-
-    // normal hardware cycle
-    cpu.tick(*this);
-    timer.tick();
-    apu.tick();
-    ppu.tick();
-
-
-    // 
-    if (ppu.take_hblank_event() && hdma_active) {
-        hdma_tick();
-    }
-}
-
-
 /**
  * Run the GameBoy until a frame is ready to be displayed, at which point the frame should be passed to the Frontend
  *  TODO: figure out how I want to pass the frame to the Frontend, maybe a callback function or something
  */
 void GameBoy::run_until_frame() {
     while (!ppu.is_frame_ready()) {
-        tick();
+        if (cpu.is_stopped()) {
+            handle_stopped_state();
+
+            if (cpu.is_stopped()) {
+                continue;
+            }
+        }
+
+        // normal hardware cycle
+        cpu.tick(*this);
+        timer.tick();
+        apu.tick();
+        ppu.tick();
+
+        if (ppu.take_hblank_event() && hdma_active) {
+            hdma_tick();
+        }
     }
 }
 
 
+void GameBoy::handle_stopped_state() {
+    if (cgb_mode && is_set(prep_speed_switch, Bit::Bit0)) {
+        if (speed_switch_delay_counter == 0) {
+            speed_switch_delay_counter = SPEED_SWITCH_DELAY;
+            prep_speed_switch = 0x00;
+        } 
 
+        speed_switch_delay_counter--;
+        if (speed_switch_delay_counter == 0) {
+            cpu.clear_stopped();
+            timer.set_double_speed(!timer.get_double_speed());
+        }
+    } else {
+        if (joypad.any_button_pressed()) {
+            cpu.clear_stopped();
+        }
+    }
+
+    if (cpu.is_stopped()) {
+        // if the CPU is still stopped, tick the timer and PPU to keep them in sync with the CPU
+        timer.tick();
+        apu.tick();
+        ppu.tick();
+
+        if (ppu.take_hblank_event() && hdma_active) {
+            hdma_tick();
+        }
+    }
+}
 
 /**
  * Read data from a file and write it to ROM

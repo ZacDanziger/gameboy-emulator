@@ -22,6 +22,8 @@ void Emulator::run() {
         if (state == AppState::Running) {
             gameboy.run_until_frame();
             frontend.present(gameboy.flush_frame(), gameboy.flush_audio());
+            autosave();
+            update_fps();
         } else {
             frontend.delay_ms(16);  // ~60 fps
         }
