@@ -139,9 +139,9 @@ class PPU {
         bool cgb_mode;
 
         void draw_scanline();
-        void draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority);
-        void draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority);
-        void draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const std::array<bool, SCREEN_WIDTH>& bg_high_priority);
+        void draw_background(std::array<int, Frame::WIDTH>& bg_color_ids, std::array<bool, Frame::WIDTH>& bg_high_priority);
+        void draw_window(std::array<int, Frame::WIDTH>& bg_color_ids, std::array<bool, Frame::WIDTH>& bg_high_priority);
+        void draw_sprites(const std::array<int, Frame::WIDTH>& bg_color_ids, const std::array<bool, Frame::WIDTH>& bg_high_priority);
         
         // Helper functions
         Address get_tile_address(const Byte tile_id)const ;
@@ -159,8 +159,8 @@ class PPU {
             uint8_t x,
             uint8_t y,
             Address tile_map,
-            std::array<int, SCREEN_WIDTH>& bg_color_ids,
-            std::array<bool, SCREEN_WIDTH>& bg_high_priority
+            std::array<int, Frame::WIDTH>& bg_color_ids,
+            std::array<bool, Frame::WIDTH>& bg_high_priority
         );
 };
 

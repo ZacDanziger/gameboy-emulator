@@ -1,6 +1,8 @@
 set (SourceFiles
     core/apu/apu.cpp
     core/apu/channels.cpp
+    core/bus/memory_bus.cpp
+    core/cartridge/cartridge.cpp
     core/cartridge/mbc0.cpp
     core/cartridge/mbc1.cpp
     core/cartridge/mbc3.cpp

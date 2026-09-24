@@ -5,6 +5,7 @@
  */
 void APU::reset() {
     audio_buffer = {0};
+    front_buffer = {0};
 
     frame_sequencer_step = 0;
 
@@ -213,11 +214,11 @@ void APU::frame_sequencer() {
 }
 
 
-std::vector<float> APU::flush_audio_buffer() {
-    std::vector<float> buffer_copy = std::move(audio_buffer);
+std::vector<float>& APU::flush_audio_buffer() {
+    std::swap(audio_buffer, front_buffer);
     audio_buffer.clear();
 
-    return buffer_copy;
+    return front_buffer;
 }
 
 

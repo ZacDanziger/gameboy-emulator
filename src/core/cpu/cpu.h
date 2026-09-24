@@ -7,29 +7,29 @@
 #include "../memory_map.h"
 
 #include "../interrupt/interrupt_controller.h"
+#include "../bus/memory_bus.h"
 
 #include "microops.h"
 #include "cpu_registers.h"
 
-class GameBoy;
-
-static constexpr int MAX_QUEUE_SIZE = 16;    // current highest queue size required = 12
+constexpr int MAX_QUEUE_SIZE = 16;    // current highest queue size required = 12
+constexpr uint16_t HALT_TIMER_DELAY = 0x77FE; // 0x8000 m-cycles - 0x0802 m-cycles that CPU does not tick during speed switch
 
 using Flag = Bit;
 
-static constexpr Flag FLAG_ZERO       = Bit::Bit7;    // 0b10000000
-static constexpr Flag FLAG_SUB        = Bit::Bit6;    // 0b01000000
-static constexpr Flag FLAG_HALF_CARRY = Bit::Bit5;    // 0b00100000
-static constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
+constexpr Flag FLAG_ZERO       = Bit::Bit7;    // 0b10000000
+constexpr Flag FLAG_SUB        = Bit::Bit6;    // 0b01000000
+constexpr Flag FLAG_HALF_CARRY = Bit::Bit5;    // 0b00100000
+constexpr Flag FLAG_CARRY      = Bit::Bit4;    // 0b00010000
 
 /**
  * Central Processing Unit
  */
 class CPU {
     public:
-    //test
-        CPU(InterruptController& interrupt_controller) :
+        CPU(InterruptController& interrupt_controller, MemoryBus& memory_bus):
             interrupt(interrupt_controller),
+            bus(memory_bus),
             registers(),
 
             microcode_queue{},
@@ -48,20 +48,28 @@ class CPU {
             interrupts_enabled(false),
             ei_pending(false),
             halted(false),
-            stopped(false)
+            stopped(false),
+            halt_countdown_timer(0x0000),
+            speed_switch_pending(false)
         {}
 
         void reset();
         
-        void tick(GameBoy& bus);
+        void tick();
         
-        Word get_pc() const { return registers.PC.word; } bool is_halted() const { return halted; }
+        Word get_pc() const { return registers.PC.word; } 
+
+        bool is_halted() const { return halted; }
+        void clear_halted() { halted = false; }
         bool is_stopped() const { return stopped; }
         void clear_stopped() { stopped = false; }
 
+        bool is_speed_switch_pending() const { return speed_switch_pending; }
+        void clear_speed_switch_pending() { speed_switch_pending = false; }
     private:
         InterruptController& interrupt;
-        public: public: Registers registers;
+        MemoryBus& bus;
+        Registers registers;
 
         MicroOp microcode_queue[MAX_QUEUE_SIZE];
         uint8_t queue_size;
@@ -80,18 +88,21 @@ class CPU {
         bool ei_pending;
         bool halted;
         bool stopped;
+        uint16_t halt_countdown_timer;
+        bool speed_switch_pending;
         
         void handle_interrupts();
         
         // Fetch -> Decode -> Execute loop
 
-        void fetch(GameBoy& bus);
+        void fetch();
         void decode();
         void decode_cb();
-        void execute_microop(const MicroOp microop, GameBoy& bus);
+        void execute_microop(const MicroOp microop);
         
         bool accesses_memory(const MicroOp microop) {return microop <= MicroOp::WriteMemFromSourceHigh; }
         
+        // Queue Management
         void push_microop(const MicroOp microop);
         void clear_queue() { queue_size = 0; queue_index = 0; }
 
@@ -100,7 +111,7 @@ class CPU {
         bool get_flag(const Flag flag) const;
         void update_flag(const Flag flag, bool new_val);
 
-        void execute_stop(GameBoy& bus);
+        void execute_stop();
 
         /** -------------------
          * Instruction Queues

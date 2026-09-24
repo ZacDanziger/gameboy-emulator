@@ -7,19 +7,19 @@
 #include "../memory_map.h"
 #include "../utils/bit_utils.h"
 
-static constexpr bool duty_table[4][8] = {
+inline constexpr bool duty_table[4][8] = {
     {0, 0, 0, 0, 0, 0, 0, 1},   // 12.5%
     {1, 0, 0, 0, 0, 0, 0, 1},   // 25%
     {1, 0, 0, 0, 0, 1, 1, 1},   // 50%
     {0, 1, 1, 1, 1, 1, 1, 0}    // 75%
 };
 
-constexpr std::array<Byte, 16> DMG_WAVE_RAM_BOOT_STATE = {
+inline constexpr std::array<Byte, 16> DMG_WAVE_RAM_BOOT_STATE = {
     0x84, 0x40, 0x43, 0xAA, 0x2D, 0x78, 0x92, 0x3C,
     0x60, 0x59, 0x59, 0xB0, 0x34, 0xB8, 0x2E, 0xDA
 };
 
-constexpr std::array<Byte, 16> CGB_WAVE_RAM_BOOT_STATE = {
+inline constexpr std::array<Byte, 16> CGB_WAVE_RAM_BOOT_STATE = {
     0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
     0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF
 };

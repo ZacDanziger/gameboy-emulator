@@ -369,15 +369,15 @@ bool PPU::take_hblank_event() {
  * Draw one scanline to the frame
  */
 void PPU::draw_scanline() {
-    std::array<int, SCREEN_WIDTH> bg_color_ids{};
-    std::array<bool, SCREEN_WIDTH> bg_high_priority{};
+    std::array<int, Frame::WIDTH> bg_color_ids{};
+    std::array<bool, Frame::WIDTH> bg_high_priority{};
 
     // Fill scanline with white if DMG, and background palette 0 color 0 if CGB
-    int buffer_index = lcd_y * SCREEN_WIDTH;
+    int buffer_index = lcd_y * Frame::WIDTH;
     Pixel fill_color = cgb_mode ? color_id_to_rgba(0, 0x00, false) : dmg_palette[0];
     std::fill(
         frame_buffer.pixels.begin() + buffer_index,
-        frame_buffer.pixels.begin() + buffer_index + SCREEN_WIDTH,
+        frame_buffer.pixels.begin() + buffer_index + Frame::WIDTH,
         fill_color
     );
 
@@ -401,11 +401,11 @@ void PPU::draw_scanline() {
  * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
  * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
-void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
+void PPU::draw_background(std::array<int, Frame::WIDTH>& bg_color_ids, std::array<bool, Frame::WIDTH>& bg_high_priority) {
     uint8_t y = viewport_y + lcd_y;
     Address tile_map = is_set(lcd_control, Bit::Bit3) ? TILE_MAP_1_START : TILE_MAP_0_START;
 
-    for (uint8_t pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
+    for (uint8_t pixel_column = 0; pixel_column < Frame::WIDTH; pixel_column++) {
         uint8_t x = viewport_x + pixel_column;
         
         draw_bg_pixel(pixel_column, x, y, tile_map, bg_color_ids, bg_high_priority);
@@ -419,8 +419,8 @@ void PPU::draw_background(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::arra
  * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
  * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
-void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
-    if ((lcd_y < window_y) || (window_x >= SCREEN_WIDTH + 7)) {
+void PPU::draw_window(std::array<int, Frame::WIDTH>& bg_color_ids, std::array<bool, Frame::WIDTH>& bg_high_priority) {
+    if ((lcd_y < window_y) || (window_x >= Frame::WIDTH + 7)) {
         return;
     }
 
@@ -428,7 +428,7 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
     Address tile_map = is_set(lcd_control, Bit::Bit6) ? TILE_MAP_1_START : TILE_MAP_0_START;
 
     // screen x-coordinate starts at window_x - 7 and goes to the right edge of the screen
-    for (int pixel_column = window_x - 7; pixel_column < SCREEN_WIDTH; pixel_column++) {
+    for (int pixel_column = window_x - 7; pixel_column < Frame::WIDTH; pixel_column++) {
         // window_x values from 0..6 are offscreen
         if (pixel_column < 0) {
             continue;
@@ -449,7 +449,7 @@ void PPU::draw_window(std::array<int, SCREEN_WIDTH>& bg_color_ids, std::array<bo
  * @param bg_color_ids an array to keep track of which bg/window color ids each pixel in the scanline used
  * @param bg_high_priority an array to keep track of which bg/window pixels are marked high priority (CGB only)
  */
-void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const std::array<bool, SCREEN_WIDTH>& bg_high_priority) {
+void PPU::draw_sprites(const std::array<int, Frame::WIDTH>& bg_color_ids, const std::array<bool, Frame::WIDTH>& bg_high_priority) {
     // stored as height - 1 so boundary checks are lcd_y <= sprite_y + sprite_height
     int sprite_height = is_set(lcd_control, Bit::Bit2) ? 15: 7;
 
@@ -463,7 +463,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         Byte palette = 0x00;
     };
 
-    std::array<SpritePixel, SCREEN_WIDTH> sprite_buffer{};
+    std::array<SpritePixel, Frame::WIDTH> sprite_buffer{};
 
     // loop over all the sprites, marking which pixel belongs to which sprite according to the
     //  relevant priority rules
@@ -498,7 +498,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         }
 
         // if sprite is offscreen, skip it
-        if ((sprite_x_pos == 0) || (sprite_x_pos >= SCREEN_WIDTH + 8)) {
+        if ((sprite_x_pos == 0) || (sprite_x_pos >= Frame::WIDTH + 8)) {
             continue;
         }
 
@@ -531,7 +531,7 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
         for (int j = 8; j > 0; j--) {
             pixel_column = sprite_x_pos - j;
 
-            if (pixel_column >= SCREEN_WIDTH) {
+            if (pixel_column >= Frame::WIDTH) {
                 break;
             }
 
@@ -557,8 +557,8 @@ void PPU::draw_sprites(const std::array<int, SCREEN_WIDTH>& bg_color_ids, const 
     }
 
     // 2nd pass - set the pixels to the sprite that owns them's pixel value 
-    for (int pixel_column = 0; pixel_column < SCREEN_WIDTH; pixel_column++) {
-        int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+    for (int pixel_column = 0; pixel_column < Frame::WIDTH; pixel_column++) {
+        int buffer_index = (lcd_y * Frame::WIDTH) + pixel_column;
 
         /**
          * CGB Priority rules
@@ -723,13 +723,17 @@ Pixel PPU::color_id_to_rgba(const int color_id, const Byte palette, const bool i
 
     Word color = ram[index + 1] << 8 | ram[index];
 
-    Byte red = (color & 0x1F);
-    Byte green = ((color >> 5) & 0x1F);
-    Byte blue = ((color >> 10) & 0x1F);
+    Byte raw_red = (color & 0x1F);
+    Byte raw_green = ((color >> 5) & 0x1F);
+    Byte raw_blue = ((color >> 10) & 0x1F);
 
-    red = (red << 3) | (red >> 2);
-    green = (green << 3) | (green >> 2);
-    blue = (blue << 3) | (blue >> 2);
+    auto boost = [](Byte raw) -> Byte {
+        return static_cast<Byte>((raw << 3) | (raw >> 2));
+    };
+
+    Byte red = boost(raw_red);
+    Byte green = boost(raw_green);
+    Byte blue = boost(raw_blue);
 
     return (red << 24) | (green << 16) | (blue << 8) | 0xFF;
 }
@@ -783,8 +787,8 @@ void PPU::draw_bg_pixel(
     uint8_t x,
     uint8_t y,
     Address tile_map,
-    std::array<int, SCREEN_WIDTH>& bg_color_ids,
-    std::array<bool, SCREEN_WIDTH>& bg_high_priority)
+    std::array<int, Frame::WIDTH>& bg_color_ids,
+    std::array<bool, Frame::WIDTH>& bg_high_priority)
 {   
     // divide x and y by 8 to find correct tile in 32x32 grid
     uint8_t tile_column = x >> 3;   // in range [0, 31]
@@ -821,7 +825,7 @@ void PPU::draw_bg_pixel(
     int pixel_color_id = tile_cache[index].pixels[(row << 3) + col];
     bg_color_ids[pixel_column] = pixel_color_id;
 
-    int buffer_index = (lcd_y * SCREEN_WIDTH) + pixel_column;
+    int buffer_index = (lcd_y * Frame::WIDTH) + pixel_column;
 
     frame_buffer.pixels[buffer_index] = cgb_mode
         ? color_id_to_rgba(pixel_color_id, palette)

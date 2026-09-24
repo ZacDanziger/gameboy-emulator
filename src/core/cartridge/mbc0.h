@@ -5,25 +5,21 @@
 #include <utility>
 #include <stdexcept>
 
-#include "mbc.h"
+#include "cartridge.h"
 #include "../types.h"
 #include "../memory_map.h"
 
 /**
  * AKA no MBC
  */
-class MBC0 : public MBC {
+class MBC0 : public Cartridge {
     public:
         MBC0(std::vector<Byte> rom, size_t ram_size) :
-            rom(std::move(rom)),
-            eram(ram_size, 0xFF)
+            Cartridge(std::move(rom), ram_size)
         {}
 
         Byte read(const Address address) const override;
         void write(const Address address, const Byte data) override;
-    private:
-        std::vector<Byte> rom;
-        std::vector<Byte> eram;
 };
 
 #endif  // MBC_0_H

@@ -1,7 +1,7 @@
 #include "emulator.h"
 
 void Emulator::load_rom(const std::string& rom_file) {
-    gameboy.load(rom_file);
+    gameboy.load_rom(rom_file);
     frontend.set_title(rom_file);
 
     state = AppState::Running;
@@ -85,9 +85,10 @@ void Emulator::run() {
 
 void Emulator::update_fps() {
     frame_count++;
-    if (frame_count % 60 == 0) {
+    // Update FPS every ~3 seconds
+    if (frame_count % 180 == 0) {
         auto now = std::chrono::steady_clock::now();
-        double fps = 60.0 / std::chrono::duration<double>(now - fps_timer).count();
+        double fps = 180.0 / std::chrono::duration<double>(now - fps_timer).count();
         frontend.set_fps(fps);
         fps_timer = now;
         frame_count = 0;

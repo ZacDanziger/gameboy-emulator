@@ -312,7 +312,7 @@ void CPU::decode_cb() {
  * 
  * @param opcode an 8-bit opcode to be executed
 */
-void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
+void CPU::execute_microop(const MicroOp microop) {
     switch(microop) {
         /**
          * 1 m-cycle microops
@@ -342,6 +342,25 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
         /**
          * 0 m-cycle microops
          */
+        case MicroOp::PointSourceToSP:
+            source_addr_ptr = &registers.SP;
+            return;
+        case MicroOp::PointDestToSP:
+            dest_addr_ptr = &registers.SP;
+            return;
+        case MicroOp::PointSourceToScratch:
+            source_addr_ptr = &scratch_register;
+            return;
+        case MicroOp::PointDestToHL:
+            dest_addr_ptr = &registers.HL;
+            return;
+
+        case MicroOp::CopySourceToDestByte:
+            *dest_byte_ptr = *source_byte_ptr;
+            return;
+        case MicroOp::CopySourceToDestAddr:
+            *dest_addr_ptr = *source_addr_ptr;
+            return;
 
         case MicroOp::CheckCond: {
             uint8_t condition = (current_opcode >> 3) & 0x03;
@@ -362,47 +381,6 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
             clear_queue();
             return; 
         }
-        case MicroOp::EXEC_EI:
-            ei_pending = true;
-            return;
-        case MicroOp::EXEC_EI_Immediate:
-            interrupts_enabled = true;
-            return;
-        case MicroOp::EXEC_DI:
-            interrupts_enabled = false;
-            return;
-        
-        case MicroOp::EXEC_HALT:
-            // TODO: Add HALT Bug
-            halted = true;
-            return;
-        case MicroOp::EXEC_STOP: {
-
-        }
-
-        case MicroOp::EXEC_DECODE_CB:
-            decode_cb();
-            return;
-
-        case MicroOp::CopySourceToDestByte:
-            *dest_byte_ptr = *source_byte_ptr;
-            return;
-        case MicroOp::CopySourceToDestAddr:
-            *dest_addr_ptr = *source_addr_ptr;
-            return;
-
-        case MicroOp::PointSourceToSP:
-            source_addr_ptr = &registers.SP;
-            return;
-        case MicroOp::PointDestToSP:
-            dest_addr_ptr = &registers.SP;
-            return;
-        case MicroOp::PointSourceToScratch:
-            source_addr_ptr = &scratch_register;
-            return;
-        case MicroOp::PointDestToHL:
-            dest_addr_ptr = &registers.HL;
-            return;
 
         case MicroOp::INC_SOURCE_ADDR:
             (*source_addr_ptr)++;
@@ -420,13 +398,6 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
             registers.F &= 0xF0;
             return;
 
-        case MicroOp::EXEC_INC_DEST_BYTE:
-            INC(dest_byte_ptr);
-            return;
-        case MicroOp::EXEC_DEC_DEST_BYTE:
-            DEC(dest_byte_ptr);
-            return;
-
         case MicroOp::EXEC_ALU: {
             uint8_t alu_op = (current_opcode >> 3) & 0x07;
 
@@ -441,18 +412,15 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
                 case 7: CP(*source_byte_ptr);  return;
             }
         }
-        case MicroOp::EXEC_AF_OP: {
-            switch (current_opcode) {
-                case 0x07: RL(registers.A, true); update_flag(FLAG_ZERO, false); return;
-                case 0x0F: RR(registers.A, true); update_flag(FLAG_ZERO, false); return;
-                case 0x17: RL(registers.A, false); update_flag(FLAG_ZERO, false); return;
-                case 0x1F: RR(registers.A, false); update_flag(FLAG_ZERO, false); return;
-                case 0x27: DAA(); return;
-                case 0x2F: CPL(); return;
-                case 0x37: SCF(); return;
-                case 0x3F: CCF(); return;
-            };
-        }
+        case MicroOp::EXEC_INC_DEST_BYTE:
+            INC(dest_byte_ptr);
+            return;
+        case MicroOp::EXEC_DEC_DEST_BYTE:
+            DEC(dest_byte_ptr);
+            return;
+        case MicroOp::EXEC_DECODE_CB:
+            decode_cb();
+            return;
         case MicroOp::EXEC_CB_OP: {
             uint8_t op_type = (current_opcode >> 6) & 0x03;
             uint8_t op_or_bit_index = (current_opcode >> 3) & 0x07;
@@ -478,13 +446,24 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
                 case 3: SET(*dest_byte_ptr, bit); return;
             };
         }
-
         case MicroOp::EXEC_ADD_HL:
             ADD_HL(source_addr_ptr->word);
             return;
         case MicroOp::EXEC_ADD_SP: {
             dest_addr_ptr->word = ADD_SP();
             return;
+        }
+        case MicroOp::EXEC_AF_OP: {
+            switch (current_opcode) {
+                case 0x07: RL(registers.A, true); update_flag(FLAG_ZERO, false); return;
+                case 0x0F: RR(registers.A, true); update_flag(FLAG_ZERO, false); return;
+                case 0x17: RL(registers.A, false); update_flag(FLAG_ZERO, false); return;
+                case 0x1F: RR(registers.A, false); update_flag(FLAG_ZERO, false); return;
+                case 0x27: DAA(); return;
+                case 0x2F: CPL(); return;
+                case 0x37: SCF(); return;
+                case 0x3F: CCF(); return;
+            };
         }
 
         case MicroOp::EXEC_JR:
@@ -493,6 +472,26 @@ void CPU::execute_microop(const MicroOp microop, GameBoy& bus) {
         case MicroOp::EXEC_JP:
             registers.PC.word = scratch_register.word;
             return;
+
+        case MicroOp::EXEC_EI:
+            ei_pending = true;
+            return;
+        case MicroOp::EXEC_EI_Immediate:
+            interrupts_enabled = true;
+            return;
+        case MicroOp::EXEC_DI:
+            interrupts_enabled = false;
+            return;
+
+
+        case MicroOp::EXEC_HALT:
+            // TODO: Add HALT Bug
+            halted = true;
+            return;
+        case MicroOp::EXEC_STOP: {
+            execute_stop();
+            return;
+        }
         
         default: throw std::runtime_error("Execute MicroOp called on bad MicroOp");
     } 

@@ -1,5 +1,4 @@
 #include "cpu.h"
-#include "../gameboy.h"
 
 /**
  * Reset the CPU to its post Boot ROM state
@@ -22,14 +21,22 @@ void CPU::reset() {
     ei_pending = false;
     halted = false;
     stopped = false;
+    halt_countdown_timer = 0x0000;
+    speed_switch_pending = false;
 }
 
 /**
  * Executes 1 Machine Cycle (m-cycle) which is exactly 4 T-states
- * 
- * @param bus a reference to the owning GameBoy for memory accesses
  */
-void CPU::tick(GameBoy& bus) {
+void CPU::tick() {
+    // 0. Handle CGB Speed Switch HALT
+    if (halt_countdown_timer > 0) {
+        halt_countdown_timer--;
+        if (halt_countdown_timer == 0) {
+            halted = false;
+        }
+    }
+
     // 1. We have reached the end of the previous instruction
     if (queue_index >= queue_size) {
         clear_queue();
@@ -57,26 +64,24 @@ void CPU::tick(GameBoy& bus) {
         // 4. Fetch & Decode (If we didn't just queue an interrupt)
         if (!halted && queue_size == 0) {
             // M-cycle 1
-            fetch(bus);
+            fetch();
             decode();
         } 
     } else {
-        execute_microop(microcode_queue[queue_index++], bus);
+        execute_microop(microcode_queue[queue_index++]);
     }
 
 
     // Do as many 0 m-cycle ops as possible, stop before doing an m-cycle op
     while ((queue_index < queue_size) && (!accesses_memory(microcode_queue[queue_index]))) {
-        execute_microop(microcode_queue[queue_index++], bus);
+        execute_microop(microcode_queue[queue_index++]);
     }
 }
 
 /**
  * Fetches Mem[PC++] into current_opcode
- * 
- * @param bus a reference to the owning GameBoy for memory access
  */
-void CPU::fetch(GameBoy& bus) {
+void CPU::fetch() {
     current_opcode = bus.read(registers.PC++);
 }
 
@@ -125,10 +130,11 @@ void CPU::update_flag(const Flag flag, bool new_val) {
  * 
  * https://gbdev.io/pandocs/Reducing_Power_Consumption.html#the-bizarre-case-of-the-game-boy-stop-instruction-before-even-considering-timing
  */
-void CPU::execute_stop(GameBoy& bus) {
+void CPU::execute_stop() {
     bool button_pressed = bus.check_joypad_pressed();
     bool pending_interrupt = interrupt.interrupt_pending();
-    bool speed_switch_requested = bus.is_cgb() &&is_set(bus.read(KEY1_SPD_REGISTER), Bit::Bit0);
+    Byte key1_register = bus.read(KEY1_SPD_REGISTER);
+    bool speed_switch_requested = bus.get_cgb_mode() && is_set(key1_register, Bit::Bit0);
 
     // 1. Is button held & selected in JOYP?
     if (button_pressed) {
@@ -149,19 +155,24 @@ void CPU::execute_stop(GameBoy& bus) {
             // STOP is a 1-byte opcode, mode doesn't change, DIV is reset, CPU speed changes
             if (interrupts_enabled) {
                 bus.write(DIV_REGISTER, 0x00);
-                // TODO: CPU speed change
+                reset_bit(key1_register, Bit::Bit0);
+                bus.write(KEY1_SPD_REGISTER, key1_register);
+                speed_switch_pending = true;
                 return;
             // CPU glitches non-deterministically, just going to return
             } else {
                 return;
             }
         // STOP is a 2-byte opcode, HALT mode is entered, DIV is reset, CPU speed changes
+        // NOTE: HALT mode will be exited after 0x8000 m-cycles, and the CPU will resume execution at PC+1
         } else {
             registers.PC++;
             halted = true;
             bus.write(DIV_REGISTER, 0x00);
-            // TODO: CPU speed change
-            // TODO: 0x8000 m-cycle countdown clock to auto exit HALT mode
+            reset_bit(key1_register, Bit::Bit0);
+            bus.write(KEY1_SPD_REGISTER, key1_register);
+            speed_switch_pending = true;
+            halt_countdown_timer = HALT_TIMER_DELAY;
             return;
         }
     }

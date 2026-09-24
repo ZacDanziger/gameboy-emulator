@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <array>
 
+// audio sample frequency
+constexpr float SAMPLES_PER_SECOND = 44100.0f;
+
 using Pixel = uint32_t;
 
 struct Frame {
@@ -12,8 +15,5 @@ struct Frame {
 
     std::array<Pixel, WIDTH * HEIGHT> pixels;
 };
-
-// audio sample frequency
-constexpr float SAMPLES_PER_SECOND = 44100.0f;
 
 #endif  // OUTPUT_H

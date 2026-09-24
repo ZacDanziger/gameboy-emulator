@@ -21,6 +21,7 @@ class APU {
     public:
         APU() :
             audio_buffer{},
+            front_buffer{},
 
             audio_master_control(0x80),
             sound_panning(0xF3),
@@ -51,12 +52,13 @@ class APU {
         void tick();
         void frame_sequencer();
 
-        std::vector<float> flush_audio_buffer();
+        std::vector<float>& flush_audio_buffer();
         bool audio_enabled() const { return is_set(audio_master_control, Bit::Bit7); }
 
         void set_cgb_mode(const bool cgb) { channel_3.set_cgb_mode(cgb); }
     private:
         std::vector<float> audio_buffer;
+        std::vector<float> front_buffer;
         
         Byte audio_master_control;               // NR_52_REGISTER
         Byte sound_panning;                      // NR_51_REGISTER

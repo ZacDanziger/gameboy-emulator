@@ -15,7 +15,12 @@ void Frontend::present(const Frame& frame, const std::vector<float>& audio_buffe
 
     // sync-by-audio
     while(SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES) {
-        SDL_Delay(1);   // Unsure about this - remove if it impacts performance
+        // If the audio queue is too long, wait for it to drain a bit before pushing more audio data
+        if (SDL_GetAudioStreamQueued(audio_stream) > TARGET_QUEUE_BYTES + 4096) {
+            SDL_Delay(1);   // Unsure about this - remove if it impacts performance
+        } else {
+            // busy wait
+        }
     }
 
     SDL_PutAudioStreamData(audio_stream, audio_buffer.data(), audio_buffer.size() * sizeof(float));
@@ -36,10 +41,14 @@ void Frontend::poll_events() {
         }
 
         if (e.type == SDL_EVENT_KEY_DOWN && e.key.repeat == 0) {
-            if (e.key.scancode == SDL_SCANCODE_P) {
-                pause_requested = true;
-            } else if (e.key.scancode == SDL_SCANCODE_O) {
-                open_rom_dialog();
+            bool cmd_pressed = (e.key.mod & SDL_KMOD_GUI) != 0;
+
+            if (cmd_pressed) {
+                if (e.key.scancode == SDL_SCANCODE_P) {
+                    pause_requested = true;
+                } else if (e.key.scancode == SDL_SCANCODE_O) {
+                    open_rom_dialog();
+                }
             }
         }
     }
@@ -108,9 +117,9 @@ void SDLCALL Frontend::file_dialog_callback(void* userdata, const char* const* f
 
     if (filelist[0] != nullptr) {
         frontend->pending_rom = filelist[0];
-        frontend->focus_requested = true;
     }
-
+    
+    frontend->focus_requested = true;
     frontend->rom_dialog_open = false;
 }
 

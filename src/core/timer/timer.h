@@ -8,12 +8,6 @@
 #include "../utils/bit_utils.h"
 #include "../interrupt/interrupt_controller.h"
 
-using TickCallback = std::function<void()>;
-
-/**
- * TODO: adjust div-apu bit to bit 5 in double speed mode
- * TODO: tick APU
- */
 class Timer {
     public:
         Timer(InterruptController& i):
@@ -47,7 +41,7 @@ class Timer {
         bool take_div_apu_event();
 
         bool is_double_speed() const { return double_speed_mode; }
-        void set_double_speed(const bool ds) { double_speed_mode = ds; }
+        void set_double_speed(const bool ds) { double_speed_mode = ds; div_apu_bit = ds ? Bit::Bit11 : Bit::Bit10; }
     private:
         InterruptController& interrupt;
 
