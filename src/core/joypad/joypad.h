@@ -16,8 +16,6 @@ class Joypad {
 
             joypad_register(0x00),
 
-            save_requested(false),
-
             button_keys(0x0F),
             direction_keys(0x0F)
         {}
@@ -33,8 +31,6 @@ class Joypad {
         InterruptController& interrupt;
 
         Byte joypad_register;   // JOYP_REGISTER
-
-        bool save_requested;
 
         // 2x4 grid of values for JOYP
         Byte button_keys;

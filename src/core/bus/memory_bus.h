@@ -27,6 +27,8 @@ class MemoryBus {
             wram{},
             hram{},
 
+            hdma_chunk_buffer(16),
+
             cgb_mode(false),
 
             key1_register(0x7E),
@@ -36,8 +38,6 @@ class MemoryBus {
             vram_dest_low(0xFF),
             vram_dma_control(0xFF),
             wram_bank(0x01),
-
-            hdma_chunk_buffer(16),
 
             hdma_active(false),
             hdma_source(0x0000),

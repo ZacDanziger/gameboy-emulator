@@ -412,10 +412,10 @@ void CPU::RR(Byte &reg, bool circular) {
     reg = (reg >> 1);
     if (circular) {
         // RRC
-        reg = (reg & ~(1 << 7) | (bit_0 << 7));
+        reg = ((reg & ~(1 << 7)) | (bit_0 << 7));
     } else {
         // RR
-        reg = (reg & ~(1 << 7) | (get_flag(FLAG_CARRY) << 7));
+        reg = ((reg & ~(1 << 7)) | (get_flag(FLAG_CARRY) << 7));
     }
 
     update_flag(FLAG_ZERO, (reg == 0));

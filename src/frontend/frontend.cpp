@@ -88,7 +88,6 @@ void Frontend::open_rom_dialog() {
 
     SDL_DialogFileFilter filters[] = {
         {"Game Boy / Game Boy Color ROMs", "gb;gbc"}
-        //{"Game Boy Advance ROMs", "gba"}
     };
 
     SDL_ShowOpenFileDialog(file_dialog_callback, this, window, filters, 1, nullptr, false);
@@ -124,7 +123,7 @@ void SDLCALL Frontend::file_dialog_callback(void* userdata, const char* const* f
 }
 
 
-void Frontend::init(const std::string& title) {
+void Frontend::init() {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("Failed to initialize SDL ") + SDL_GetError());
     }

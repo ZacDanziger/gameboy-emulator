@@ -41,7 +41,7 @@ class Frontend {
             fps(60.0),
             frame_count(0)
         {
-            init(title);
+            init();
         }
 
         ~Frontend();
@@ -81,7 +81,7 @@ class Frontend {
         double fps;
         int frame_count;
         
-        void init(const std::string& title);
+        void init();
         void teardown();
 
         void open_rom_dialog();

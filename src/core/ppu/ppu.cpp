@@ -428,7 +428,7 @@ void PPU::draw_window(std::array<int, Frame::WIDTH>& bg_color_ids, std::array<bo
     Address tile_map = is_set(lcd_control, Bit::Bit6) ? TILE_MAP_1_START : TILE_MAP_0_START;
 
     // screen x-coordinate starts at window_x - 7 and goes to the right edge of the screen
-    for (int pixel_column = window_x - 7; pixel_column < Frame::WIDTH; pixel_column++) {
+    for (int pixel_column = window_x - 7; pixel_column < static_cast<int>(Frame::WIDTH); pixel_column++) {
         // window_x values from 0..6 are offscreen
         if (pixel_column < 0) {
             continue;
@@ -531,7 +531,7 @@ void PPU::draw_sprites(const std::array<int, Frame::WIDTH>& bg_color_ids, const 
         for (int j = 8; j > 0; j--) {
             pixel_column = sprite_x_pos - j;
 
-            if (pixel_column >= Frame::WIDTH) {
+            if (pixel_column >= static_cast<int>(Frame::WIDTH)) {
                 break;
             }
 
@@ -557,7 +557,7 @@ void PPU::draw_sprites(const std::array<int, Frame::WIDTH>& bg_color_ids, const 
     }
 
     // 2nd pass - set the pixels to the sprite that owns them's pixel value 
-    for (int pixel_column = 0; pixel_column < Frame::WIDTH; pixel_column++) {
+    for (int pixel_column = 0; pixel_column < static_cast<int>(Frame::WIDTH); pixel_column++) {
         int buffer_index = (lcd_y * Frame::WIDTH) + pixel_column;
 
         /**

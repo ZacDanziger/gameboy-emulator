@@ -77,8 +77,6 @@ void MBC1::write(const Address address, const Byte data) {
             rom_bank = 1;
         }
 
-        // // clamp rom bank selected to number of rom banks available
-        // rom_bank %= num_rom_banks;
         return;
     }
 

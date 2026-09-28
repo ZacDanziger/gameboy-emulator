@@ -398,7 +398,7 @@ void MemoryBus::oam_dma_transfer(const Byte value) {
     Address address = static_cast<Address>(value) << 8;
     std::vector<Byte> dma_data(OAM_SIZE);
 
-    for (int i = 0; i < OAM_SIZE; i++) {
+    for (size_t i = 0; i < OAM_SIZE; i++) {
         dma_data[i] = read(address + i);
     }
     

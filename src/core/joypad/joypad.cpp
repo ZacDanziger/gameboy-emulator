@@ -19,6 +19,7 @@ Byte Joypad::read() const {
     }
 }
 
+
 /**
  * Write to the joypad register, which selects which set of buttons to read from
  * 
