@@ -1,13 +1,13 @@
 #ifndef APU_H
 #define APU_H
 
+#include <vector>
+
 #include "../memory_map.h"
 #include "../types.h"
 #include "../utils/bit_utils.h"
 #include "channels.h"
 #include "../../common/output.h"
-
-#include <iostream>
 
 // output sample rate
 constexpr float CYCLES_PER_SAMPLE = CYCLES_PER_SECOND / SAMPLES_PER_SECOND;

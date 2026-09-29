@@ -63,6 +63,8 @@ class MemoryBus {
         void set_cgb_mode(const bool is_cgb) { cgb_mode = is_cgb; }
         bool get_cgb_mode() const { return cgb_mode; }
         bool get_hdma_active() const { return hdma_active; }
+
+        void update_speed(const bool is_double_speed);
     private:
         InterruptController& interrupt;
         Joypad& joypad;

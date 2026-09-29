@@ -1,8 +1,8 @@
 #include "memory_bus.h"
 
 void MemoryBus::reset() {
-    wram = {0};
-    hram = {0};
+    wram.fill(0x00);
+    hram.fill(0x00);
 
     cgb_mode = false;
 
@@ -296,7 +296,7 @@ void MemoryBus::write(Address address, Byte data) {
         }
 
         if (address == KEY1_SPD_REGISTER) {
-            key1_register = data & 0x81;
+            key1_register = data & 0x01;
             return;
         }
 
@@ -451,4 +451,9 @@ void MemoryBus::vram_dma_transfer(const Byte value) {
         // 16 μs regardless of speed, 1 double speed cycle per byte, 0.5 regular speed cycles per byte
         dma_delay_counter = length / 2;
     }
+}
+
+
+void MemoryBus::update_speed(const bool is_double_speed) {
+    is_double_speed ? set_bit(key1_register, Bit::Bit7) : reset_bit(key1_register, Bit::Bit7);
 }

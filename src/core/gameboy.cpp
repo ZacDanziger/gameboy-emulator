@@ -12,10 +12,9 @@ void GameBoy::reset() {
     bus.reset();
     cpu.reset();
 
-
-
     cgb_mode = false;
 
+    double_speed_mode = false;
     speed_switch_delay_counter = 0x0000;
 }
 
@@ -52,15 +51,7 @@ void GameBoy::run_until_frame() {
             speed_switch_delay_counter--;
 
             if (speed_switch_delay_counter == 0) {
-                timer.set_double_speed(!timer.is_double_speed());
-
-                Byte key1_register = bus.read(KEY1_SPD_REGISTER);
-                if (timer.is_double_speed()) {
-                    set_bit(key1_register, Bit::Bit0);
-                } else {
-                    reset_bit(key1_register, Bit::Bit0);
-                }
-                bus.write(KEY1_SPD_REGISTER, key1_register);
+                set_double_speed(!double_speed_mode);
             }
 
             skip_cpu = true;
@@ -79,16 +70,16 @@ void GameBoy::run_until_frame() {
         }
 
         // 5. Execute Hardware Ticks
-        if (!skip_cpu) {
-            cpu.tick();
+        int system_ticks = double_speed_mode ? 2 : 1;
+        for (int i = 0; i < system_ticks; i++) {
 
-            // In double speed mode, the CPU ticks twice as fast as the other hardware, so we tick it again
-            if (timer.is_double_speed()) {
+            if (!skip_cpu) {
                 cpu.tick();
             }
+
+            timer.tick();
         }
 
-        timer.tick();
         apu.tick();
         ppu.tick();
 
@@ -102,4 +93,20 @@ void GameBoy::run_until_frame() {
             apu.frame_sequencer();
         }
     }
+}
+
+
+void GameBoy::set_double_speed(const bool ds) {
+    double_speed_mode = ds;
+
+    // Disarm switch
+    Byte key1_register = bus.read(KEY1_SPD_REGISTER);
+    reset_bit(key1_register, Bit::Bit0);
+    bus.write(KEY1_SPD_REGISTER, key1_register);
+
+    // Set or reset the speed bit in the KEY1 register
+    bus.update_speed(double_speed_mode);
+
+    // Update the Timer's DIV/APU bit to match the new speed mode
+    timer.set_div_apu_bit(double_speed_mode);
 }

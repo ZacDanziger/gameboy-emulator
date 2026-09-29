@@ -2,6 +2,7 @@
 #define INTERRUPT_CONTROLLER_H
 
 #include <stdexcept>
+#include <array>
 
 #include "../types.h"
 #include "../memory_map.h"
@@ -28,7 +29,7 @@ class InterruptController {
         Byte if_register;           // IF_REGISTER
         Byte ie_register;           // IE_REGISTER
 
-        constexpr static Byte interrupt_vector[5]{
+        constexpr static std::array<Byte, 5> interrupt_vector{
             0x40,   // IVT[0] - VBlank
             0x48,   // IVT[1] - LCD
             0x50,   // IVT[2] - Timer 

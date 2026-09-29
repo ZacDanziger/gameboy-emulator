@@ -4,8 +4,8 @@
  * Reset the APU to its post Boot ROM state
  */
 void APU::reset() {
-    audio_buffer = {0};
-    front_buffer = {0};
+    audio_buffer.clear();
+    front_buffer.clear();
 
     frame_sequencer_step = 0;
 

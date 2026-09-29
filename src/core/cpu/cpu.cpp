@@ -155,8 +155,6 @@ void CPU::execute_stop() {
             // STOP is a 1-byte opcode, mode doesn't change, DIV is reset, CPU speed changes
             if (interrupts_enabled) {
                 bus.write(DIV_REGISTER, 0x00);
-                reset_bit(key1_register, Bit::Bit0);
-                bus.write(KEY1_SPD_REGISTER, key1_register);
                 speed_switch_pending = true;
                 return;
             // CPU glitches non-deterministically, just going to return
@@ -169,8 +167,6 @@ void CPU::execute_stop() {
             registers.PC++;
             halted = true;
             bus.write(DIV_REGISTER, 0x00);
-            reset_bit(key1_register, Bit::Bit0);
-            bus.write(KEY1_SPD_REGISTER, key1_register);
             speed_switch_pending = true;
             halt_countdown_timer = HALT_TIMER_DELAY;
             return;

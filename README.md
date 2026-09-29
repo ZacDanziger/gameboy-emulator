@@ -9,11 +9,6 @@ When I was a kid I really enjoyed playing on my GameBoy Color my parents bought 
 * Make emulator a stand-alone app for MacOS
 * CPU
     * Implement HALT bug
-    * Debug double speed mode
-* Timer 
-    * Debug double speed mode
-* MMU
-    * Debug double speed mode
 * MBC
     * Implement more MBC types
 * PPU

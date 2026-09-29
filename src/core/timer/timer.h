@@ -23,9 +23,7 @@ class Timer {
             overflow_delay(false),
             timer_reload_cycle(false),
 
-            div_apu_event(false),
-
-            double_speed_mode(false)
+            div_apu_event(false)
         {
             // initialize timer_control, div_bit, and enabled
             write(TAC_REGISTER, 0xF8);
@@ -40,8 +38,7 @@ class Timer {
 
         bool take_div_apu_event();
 
-        bool is_double_speed() const { return double_speed_mode; }
-        void set_double_speed(const bool ds) { double_speed_mode = ds; div_apu_bit = ds ? Bit::Bit11 : Bit::Bit10; }
+        void set_div_apu_bit(const bool is_double_speed) { div_apu_bit = is_double_speed ? Bit::Bit11 : Bit::Bit10; }
     private:
         InterruptController& interrupt;
 
@@ -58,9 +55,7 @@ class Timer {
         bool overflow_delay;
         bool timer_reload_cycle;
 
-        bool div_apu_event;
-
-        bool double_speed_mode;
+        bool div_apu_event; 
 };
 
 #endif // TIMER_H

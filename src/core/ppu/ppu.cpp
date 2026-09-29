@@ -1,6 +1,45 @@
 #include "ppu.h"
 
 /**
+ * Reset the PPU to its post Boot ROM state
+ */
+void PPU::reset() {
+    vram.fill(0x00);
+    oam.fill(0x00);
+
+    background_color_ram.fill(0x00);
+    object_color_ram.fill(0x00);
+
+    tile_cache.fill(Tile{});
+    frame_buffer.pixels.fill(0x00000000);
+
+    lcd_control = 0x91;
+    lcd_status = 0x00;
+    viewport_y = 0x00;
+    viewport_x = 0x00;
+    lcd_y = 0xFF;
+    ly_compare = 0x00;
+    oam_dma = 0x00;
+    background_palette = 0xFC;
+    object_palette_0 = 0x00;
+    object_palette_1 = 0x00;
+    window_y = 0x00;
+    window_x = 0x00;
+
+    vram_bank = 0x00;
+    background_palette_index = 0x00;
+    object_palette_index = 0x00;
+    object_priority = 0x00;
+
+    mode = Mode::VBLANK;
+    cycles = -1;
+    window_line_counter = 0;
+
+    cgb_mode = false;
+}
+
+
+/**
  * Step the PPU forward 1 m-cycle
  * Modes: (OAM SCAN -> DRAW PIXEL -> HBLANK) * 144 -> VBLANK * 10
  */
@@ -127,45 +166,6 @@ void PPU::load(const Address address, const std::vector<Byte>& data) {
     }
 
     throw std::runtime_error("PPU Load called on incorrect starting address");
-}
-
-
-/**
- * Reset the PPU to its post Boot ROM state
- */
-void PPU::reset() {
-    vram = {0};
-    oam = {0};
-
-    background_color_ram = {0};
-    object_color_ram = {0};
-
-    tile_cache = {0};
-    frame_buffer = {0};
-
-    lcd_control = 0x91;
-    lcd_status = 0x00;
-    viewport_y = 0x00;
-    viewport_x = 0x00;
-    lcd_y = 0xFF;
-    ly_compare = 0x00;
-    oam_dma = 0x00;
-    background_palette = 0xFC;
-    object_palette_0 = 0x00;
-    object_palette_1 = 0x00;
-    window_y = 0x00;
-    window_x = 0x00;
-
-    vram_bank = 0x00;
-    background_palette_index = 0x00;
-    object_palette_index = 0x00;
-    object_priority = 0x00;
-
-    mode = Mode::VBLANK;
-    cycles = -1;
-    window_line_counter = 0;
-
-    cgb_mode = false;
 }
 
 

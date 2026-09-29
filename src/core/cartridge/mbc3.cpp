@@ -1,5 +1,8 @@
 #include "mbc3.h"
 
+#include "../utils/bit_utils.h"
+#include "../utils/file_io.h"
+
 /**
  * Read from ROM or ERAM
  * 

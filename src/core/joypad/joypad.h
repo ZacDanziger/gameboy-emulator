@@ -2,7 +2,6 @@
 #define JOYPAD_H
 
 #include <stdexcept>
-#include <functional>
 
 #include "../types.h"
 #include "../utils/bit_utils.h"

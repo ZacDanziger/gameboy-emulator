@@ -13,7 +13,6 @@ void Timer::reset() {
     apu_previous_high = false;
     overflow_delay = false;
     timer_reload_cycle = false;
-    double_speed_mode = false;
 
     write(TAC_REGISTER, 0xF8);
 }
@@ -148,4 +147,3 @@ bool Timer::take_div_apu_event() {
     div_apu_event = false;
     return event;
 }
-

@@ -8,8 +8,7 @@
 #include "cartridge.h"
 #include "../types.h"
 #include "../memory_map.h"
-#include "../utils/bit_utils.h"
-#include "../utils/file_io.h"
+
 
 class MBC1 : public Cartridge {
     public:

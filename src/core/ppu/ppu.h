@@ -3,7 +3,7 @@
 
 #include <bitset>
 #include <array>
-#include <functional>
+#include <vector>
 
 #include "../types.h"
 #include "../memory_map.h"
@@ -11,8 +11,6 @@
 #include "../interrupt/interrupt_controller.h"
 #include "../../common/output.h"
 
-using FrameCallback = std::function<void()>;
-using HDMACallback = std::function<void()>;
 
 constexpr int MAX_SPRITES = 40;
 constexpr int MAX_SPRITES_PER_SCANLINE = 10;
@@ -26,7 +24,7 @@ constexpr int SCANLINES_PER_FRAME = 154;
 constexpr int OAM_SCAN_END = 20;
 constexpr int TRANSFER_END = 78;  // average, based on pan docs numbers [172, 289] dots
 
-constexpr Pixel dmg_palette[4] = {
+constexpr std::array<Pixel, 4> dmg_palette = {
     0xEFEFEFFF, // White
     0x9F9F9FFF, // Light Gray
     0x5F5F5FFF, // Dark Gray
@@ -77,11 +75,12 @@ class PPU {
 
             cgb_mode(false)
         {}
+        
+        void reset();
 
         void tick();
 
         void load(const Address address, const std::vector<Byte>& data);
-        void reset();
         
         Byte read(const Address address) const;
         void write(const Address address, const Byte value);

@@ -2,7 +2,6 @@
 #define TYPES_H
 
 #include <cstdint>
-#include <functional>
 
 // Types
 using Byte = uint8_t;

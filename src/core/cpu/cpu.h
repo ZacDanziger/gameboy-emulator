@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <functional>
+#include <array>
 
 #include "../types.h"
 #include "../memory_map.h"
@@ -71,7 +71,7 @@ class CPU {
         MemoryBus& bus;
         Registers registers;
 
-        MicroOp microcode_queue[MAX_QUEUE_SIZE];
+        std::array<MicroOp, MAX_QUEUE_SIZE> microcode_queue;
         uint8_t queue_size;
         uint8_t queue_index;
 

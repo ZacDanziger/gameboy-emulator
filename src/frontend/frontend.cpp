@@ -1,5 +1,8 @@
 #include "frontend.h"
 
+#include <sstream>
+#include <iomanip>
+
 
 Frontend::~Frontend() {
     teardown();

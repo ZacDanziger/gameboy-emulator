@@ -32,6 +32,7 @@ class GameBoy {
 
             cgb_mode(false),
 
+            double_speed_mode(false),
             speed_switch_delay_counter(0x0000)
         {}
 
@@ -46,12 +47,14 @@ class GameBoy {
 
         void run_until_frame();
 
-        Frame flush_frame() { return ppu.get_frame(); }
-        std::vector<float> flush_audio() { return apu.flush_audio_buffer(); }
+        const Frame& flush_frame() { return ppu.get_frame(); }
+        const std::vector<float>& flush_audio() { return apu.flush_audio_buffer(); }
         
         void set_button_state(const ButtonState& state) { joypad.set_button_state(state); }
         
         bool is_cgb() const { return cgb_mode; }
+
+        void set_double_speed(const bool ds);
     private:
         InterruptController interrupt;
         Joypad joypad;
@@ -60,11 +63,10 @@ class GameBoy {
         APU apu;
         MemoryBus bus;
         CPU cpu;
-
-
-
+        
         bool cgb_mode;
-
+        
+        bool double_speed_mode;
         uint16_t speed_switch_delay_counter;
 };
 

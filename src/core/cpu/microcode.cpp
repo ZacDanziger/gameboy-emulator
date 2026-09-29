@@ -1,5 +1,4 @@
 #include "cpu.h"
-#include "../gameboy.h"
 
 
 void CPU::decode() {

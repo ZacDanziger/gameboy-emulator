@@ -4,6 +4,9 @@
 #include "mbc1.h"
 #include "mbc3.h"
 
+#include "../utils/file_io.h"
+
+
 std::unique_ptr<Cartridge> Cartridge::load_from_file(const std::string& rom_file) {
     std::vector<Byte> data = read_file(rom_file);
 

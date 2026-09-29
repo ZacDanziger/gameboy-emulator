@@ -7,12 +7,12 @@
 #include "../memory_map.h"
 #include "../utils/bit_utils.h"
 
-inline constexpr bool duty_table[4][8] = {
+inline constexpr std::array<std::array<bool, 8>, 4> duty_table = {{
     {0, 0, 0, 0, 0, 0, 0, 1},   // 12.5%
     {1, 0, 0, 0, 0, 0, 0, 1},   // 25%
     {1, 0, 0, 0, 0, 1, 1, 1},   // 50%
     {0, 1, 1, 1, 1, 1, 1, 0}    // 75%
-};
+}};
 
 inline constexpr std::array<Byte, 16> DMG_WAVE_RAM_BOOT_STATE = {
     0x84, 0x40, 0x43, 0xAA, 0x2D, 0x78, 0x92, 0x3C,
