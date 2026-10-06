@@ -27,9 +27,7 @@ class MemoryBus {
             wram{},
             hram{},
 
-            oam_dma_active(false),
-            oam_dma_counter(0x0000),
-            oam_dma_source(0x0000),
+            hdma_chunk_buffer(16),
 
             cgb_mode(false),
 
@@ -46,8 +44,6 @@ class MemoryBus {
             hdma_destination(0x0000),
             hdma_remaining(0x0000),
 
-            hdma_chunk_buffer(16),
-
             dma_delay_counter(0x0000)
         {}
 
@@ -60,7 +56,6 @@ class MemoryBus {
         void write(const Address address, const Byte data);
 
         bool tick_dma_counter();
-        void tick_oam_dma();
         void hdma_tick();
 
         bool check_joypad_pressed() const { return joypad.any_button_pressed(); }
@@ -82,9 +77,7 @@ class MemoryBus {
         std::array<Byte, 8 * WRAM_BANK_SIZE> wram;         // 0xC000 - 0xDFFF
         std::array<Byte, HRAM_SIZE> hram;                  // 0xFF80 - 0xFFFE
 
-        bool oam_dma_active;
-        uint16_t oam_dma_counter;
-        Address oam_dma_source;
+        std::vector<Byte> hdma_chunk_buffer;
 
         bool cgb_mode;
 
@@ -102,10 +95,7 @@ class MemoryBus {
         Address hdma_destination;
         Word hdma_remaining;
 
-        std::vector<Byte> hdma_chunk_buffer;
-
         uint16_t dma_delay_counter;
-
 
         void oam_dma_transfer(const Byte value);
         void vram_dma_transfer(const Byte value);

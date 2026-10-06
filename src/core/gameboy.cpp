@@ -78,9 +78,8 @@ void GameBoy::run_until_frame() {
             }
 
             timer.tick();
-            bus.tick_oam_dma();
         }
-        
+
         apu.tick();
         ppu.tick();
 

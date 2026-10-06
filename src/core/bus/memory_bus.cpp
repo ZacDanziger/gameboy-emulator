@@ -4,10 +4,6 @@ void MemoryBus::reset() {
     wram.fill(0x00);
     hram.fill(0x00);
 
-    oam_dma_active = false;
-    oam_dma_counter = 0x0000;
-    oam_dma_source = 0x0000;
-
     cgb_mode = false;
 
     key1_register = 0x7E;
@@ -22,8 +18,6 @@ void MemoryBus::reset() {
     hdma_source = 0x0000;
     hdma_destination = 0x0000;
     hdma_remaining = 0x0000;
-
-    hdma_chunk_buffer.clear();
 
     dma_delay_counter = 0x0000;
 }
@@ -83,9 +77,9 @@ Byte MemoryBus::read(Address address) const {
         return wram[adjusted_address - WRAM_BANK_NN_START];
     }
 
-    // OAM read - will return 0xFF if OAM DMA is active
+    // OAM read
     if (address < NOT_USABLE_START) {
-        return oam_dma_active ? OPEN_BUS_VALUE : ppu.read(address);
+        return ppu.read(address);
     }
 
     // NOT USABLE read
@@ -227,9 +221,7 @@ void MemoryBus::write(Address address, Byte data) {
 
     // OAM write
     if (address < NOT_USABLE_START) {
-        if (!oam_dma_active) {
-            ppu.write(address, data);
-        }
+        ppu.write(address, data);
         return;
     }
 
@@ -317,9 +309,7 @@ void MemoryBus::write(Address address, Byte data) {
             ppu.write(address, data);
 
             if (address == DMA_REGISTER) {
-                oam_dma_source = static_cast<Address>(data) << 8;
-                oam_dma_counter = 0x0000;
-                oam_dma_active = true;
+                oam_dma_transfer(data);
             }
             return;
         }
@@ -354,20 +344,6 @@ bool MemoryBus::tick_dma_counter() {
         return true;
     }
     return false;
-}
-
-
-/**
- * Block CPU reads from OAM while OAM DMA is active, and tick the OAM DMA counter if it is active
- */
-void MemoryBus::tick_oam_dma() {
-    if (!oam_dma_active) {
-        return;
-    }
-
-    oam_dma_counter--;
-    if (oam_dma_counter == 0) {
-        oam_dma_active = false;    }
 }
 
 
@@ -419,13 +395,14 @@ void MemoryBus::hdma_tick() {
  * @param value the upper byte of the address to start transferring data from
  */
 void MemoryBus::oam_dma_transfer(const Byte value) {
-    Address source_address = static_cast<Address>(value) << 8;
+    Address address = static_cast<Address>(value) << 8;
     std::vector<Byte> dma_data(OAM_SIZE);
 
+    for (size_t i = 0; i < OAM_SIZE; i++) {
+        dma_data[i] = read(address + i);
+    }
+    
     ppu.load(OAM_START, dma_data);
-
-    oam_dma_active = true;
-    oam_dma_counter = 160;
 }
 
 
