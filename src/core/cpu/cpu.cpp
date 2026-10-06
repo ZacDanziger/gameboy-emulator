@@ -25,8 +25,10 @@ void CPU::reset() {
     speed_switch_pending = false;
 }
 
+
 /**
- * Executes 1 Machine Cycle (m-cycle) which is exactly 4 T-states
+ * Executes 1 Machine Cycle (m-cycle) which is exactly 4 T-states in normal speed mode
+ *     and 2 T-states in double speed mode
  */
 void CPU::tick() {
     // 0. Handle CGB Speed Switch HALT
@@ -77,6 +79,7 @@ void CPU::tick() {
         execute_microop(microcode_queue[queue_index++]);
     }
 }
+
 
 /**
  * Fetches Mem[PC++] into current_opcode
